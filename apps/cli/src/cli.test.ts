@@ -232,4 +232,46 @@ describe('failure paths', () => {
     expect(result.exitCode).toBe(1);
     expect(jsonOf(result).error.code).toBe('not_found');
   });
+
+  test('forget --purge without --revision fails closed; with the right revision the row is deleted for real', async () => {
+    const purgeable = await cli([
+      'remember',
+      'A statement destined for a hard purge.',
+      '--type',
+      'decision',
+      '--cwd',
+      root,
+      '--json',
+    ]);
+    expect(purgeable.exitCode).toBe(0);
+    const id = jsonOf(purgeable).memory_id;
+
+    // A purge can never be accidental: no revision token, no purge.
+    const noRevision = await cli(['forget', id, '--purge', '--cwd', root, '--json']);
+    expect(noRevision.exitCode).toBe(1);
+    expect(jsonOf(noRevision).error.code).toBe('invalid_request');
+
+    const inspected = await cli(['inspect', id, '--cwd', root, '--json']);
+    expect(inspected.exitCode).toBe(0);
+    const revision = jsonOf(inspected).memory.updated_at;
+
+    const purged = await cli([
+      'forget',
+      id,
+      '--purge',
+      '--revision',
+      revision,
+      '--reason',
+      'test',
+      '--cwd',
+      root,
+      '--json',
+    ]);
+    expect(purged.exitCode).toBe(0);
+    expect(jsonOf(purged).purged).toBe(true);
+
+    const gone = await cli(['inspect', id, '--cwd', root, '--json']);
+    expect(gone.exitCode).toBe(1);
+    expect(jsonOf(gone).error.code).toBe('not_found');
+  });
 });

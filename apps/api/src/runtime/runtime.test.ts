@@ -161,6 +161,47 @@ describe('the durable write path (real storage)', () => {
     expect((await backend.inspect(projectId, created.memory_id)).memory.status).toBe('active');
   });
 
+  test('purge is the destructive path: row gone, one purged audit row survives, revision gates it', async () => {
+    const backend = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
+    const created = await backend.remember({
+      project_id: projectId,
+      content: 'Purgeable statement with a revision token.',
+    });
+
+    // A stale revision never purges (a purge can never be accidental).
+    const stale = (await backend
+      .purge({ project_id: projectId, memory_id: created.memory_id, expected_revision: '1999-01-01T00:00:00.000Z' })
+      .catch((error: unknown) => error)) as BackendError;
+    expect(stale).toBeInstanceOf(BackendError);
+    expect(stale.code).toBe('conflict');
+
+    // The current revision purges for real.
+    const current = await backend.inspect(projectId, created.memory_id);
+    const purged = await backend.purge({
+      project_id: projectId,
+      memory_id: created.memory_id,
+      expected_revision: current.memory.updated_at,
+      reason: 'right to be forgotten',
+    });
+    expect(purged.purged).toBe(true);
+    expect(purged.from_status).toBe('active');
+
+    // The row is GONE (this is the destructive path) — the audit trail is all that remains.
+    const missing = (await backend
+      .inspect(projectId, created.memory_id)
+      .catch((error: unknown) => error)) as BackendError;
+    expect(missing).toBeInstanceOf(BackendError);
+    expect(missing.code).toBe('not_found');
+
+    const events = await runtime.storage.store.listMemoryEvents(created.memory_id);
+    expect(events.some((event) => event.action === 'purged')).toBeTrue();
+
+    // …and the soft path still advertises the real destructive command.
+    const forgotten = await backend.remember({ project_id: projectId, content: 'Soft path still works after a purge.' });
+    const soft = await backend.forget({ project_id: projectId, memory_id: forgotten.memory_id });
+    expect(soft.purge_hint).toContain('--purge');
+  });
+
   test('stats and doctor describe the real state (degraded, honestly)', async () => {
     const backend = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
     const stats = await backend.stats(projectId);

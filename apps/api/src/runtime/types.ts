@@ -96,6 +96,24 @@ export interface ForgetOutcome {
   note: string;
 }
 
+export interface PurgeInput {
+  project_id: string;
+  memory_id: string;
+  /** Purges are never accidental: the revision token (`updated_at`) from your last read. */
+  expected_revision: string;
+  reason?: string;
+  actor?: string;
+}
+
+export interface PurgeOutcome {
+  memory_id: string;
+  purged: true;
+  from_status: string;
+  /** The surviving 'purged' audit row id (memory_events is FK-less by design). */
+  audit_event_id: string;
+  note: string;
+}
+
 export interface InspectResult {
   memory: MemoryRecord;
   /** Supersession chain, oldest first (includes `memory`). */
@@ -200,6 +218,12 @@ export interface OnememoryBackend {
   forget(input: ForgetInput): Promise<ForgetOutcome>;
   /** Undo a soft forget (archived → active, audited) — what makes "recoverable" true. */
   restore(input: ForgetInput): Promise<ForgetOutcome>;
+  /**
+   * Hard purge (destructive — forget ≠ delete): the row and its cascaded vectors/bindings/edges
+   * are deleted, and one 'purged' audit row survives. Requires the revision token so a purge can
+   * never happen by accident (ADR-0010).
+   */
+  purge(input: PurgeInput): Promise<PurgeOutcome>;
   inspect(projectId: string, memoryId: string): Promise<InspectResult>;
   stats(projectId: string, options?: { session_id?: string }): Promise<StatsResult>;
   context(projectId: string, options?: ContextOptions): Promise<SessionContext>;

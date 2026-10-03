@@ -33,6 +33,8 @@ import {
   MemoryIdParamSchema,
   ProjectListResponseSchema,
   ProjectSchema,
+  PurgeRequestSchema,
+  PurgeResponseSchema,
   RememberRequestSchema,
   RememberResponseSchema,
   SearchRequestSchema,
@@ -441,6 +443,38 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
         await backend.restore({
           project_id: id,
           memory_id: memoryId,
+          ...(body.reason === undefined ? {} : { reason: body.reason }),
+        }),
+        200,
+      );
+    },
+  );
+
+  add(
+    createRoute({
+      method: 'post',
+      path: '/v1/projects/{id}/memories/{memoryId}/purge',
+      tags: ['memories'],
+      summary: 'Hard purge (destructive): the row and its vectors are deleted; a purged audit row survives',
+      request: {
+        params: MemoryIdParamSchema,
+        body: { content: { 'application/json': { schema: PurgeRequestSchema } } },
+      },
+      responses: {
+        200: { content: { 'application/json': { schema: PurgeResponseSchema } }, description: 'purged' },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id, memoryId } = c.req.valid('param');
+      const body = c.req.valid('json');
+      return respond(
+        c,
+        PurgeResponseSchema,
+        await backend.purge({
+          project_id: id,
+          memory_id: memoryId,
+          expected_revision: body.expected_revision,
           ...(body.reason === undefined ? {} : { reason: body.reason }),
         }),
         200,

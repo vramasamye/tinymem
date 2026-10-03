@@ -210,6 +210,25 @@ export const ForgetResponseSchema = z
   })
   .openapi('ForgetResponse');
 
+export const PurgeRequestSchema = z
+  .strictObject({
+    /** The revision token (updated_at) from your last read — a purge can never be accidental. */
+    expected_revision: z.string().min(1),
+    reason: z.string().max(500).optional(),
+  })
+  .openapi('PurgeRequest');
+
+export const PurgeResponseSchema = z
+  .strictObject({
+    memory_id: z.uuid(),
+    purged: z.literal(true),
+    from_status: z.string(),
+    /** The surviving 'purged' audit row id. */
+    audit_event_id: z.string(),
+    note: z.string(),
+  })
+  .openapi('PurgeResponse');
+
 export const MemoryEventRecordSchema = z
   .looseObject({
     id: z.uuid(),

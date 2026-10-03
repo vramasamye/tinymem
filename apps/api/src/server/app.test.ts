@@ -17,6 +17,7 @@ import type {
   InspectResult,
   IngestResult,
   ProjectListResult,
+  PurgeOutcome,
   RememberOutcome,
   StatsResult,
 } from '../runtime/types';
@@ -105,6 +106,14 @@ const forgetOutcome: ForgetOutcome = {
   note: 'soft forget',
 };
 
+const purgeOutcome: PurgeOutcome = {
+  memory_id: MEMORY_ID,
+  purged: true,
+  from_status: 'active',
+  audit_event_id: '0195a7f0-9f5e-7a1d-bc2d-000000000009',
+  note: 'hard purge',
+};
+
 const inspectResult: InspectResult = {
   memory: {
     id: MEMORY_ID,
@@ -169,6 +178,7 @@ interface Scripted {
   searchRequest?: MemorySearchRequest;
   rememberInput?: Record<string, unknown>;
   forgetInput?: Record<string, unknown>;
+  purgeInput?: Record<string, unknown>;
   projectListResult?: ProjectListResult;
 }
 
@@ -200,6 +210,10 @@ function fakeBackend(script: Scripted = {}): OnememoryBackend {
       return forgetOutcome;
     },
     restore: async () => forgetOutcome,
+    purge: async (input) => {
+      script.purgeInput = { ...input };
+      return purgeOutcome;
+    },
     inspect: async () => inspectResult,
     stats: async () => stats,
     context: async () => context,
@@ -264,6 +278,7 @@ describe('system endpoints', () => {
       '/v1/projects/{id}/memories/{memoryId}',
       '/v1/projects/{id}/memories/{memoryId}/forget',
       '/v1/projects/{id}/memories/{memoryId}/restore',
+      '/v1/projects/{id}/memories/{memoryId}/purge',
       '/v1/projects/{id}/stats',
     ]) {
       expect(document.paths[path]).toBeDefined();
@@ -414,6 +429,25 @@ describe('memories', () => {
     const response = await post(`/v1/projects/${PROJECT_ID}/memories/${MEMORY_ID}/restore`, {});
     expect(response.status).toBe(200);
     expect((await body(response)).memory_id).toBe(MEMORY_ID);
+  });
+
+  test('purge is a destructive POST and forwards the revision token', async () => {
+    const script: Scripted = {};
+    const response = await post(
+      `/v1/projects/${PROJECT_ID}/memories/${MEMORY_ID}/purge`,
+      { expected_revision: iso },
+      script,
+    );
+    expect(response.status).toBe(200);
+    expect(script.purgeInput?.expected_revision).toBe(iso);
+    const payload = await body(response);
+    expect(payload.purged).toBe(true);
+    expect(payload.audit_event_id).toBeDefined();
+  });
+
+  test('purge without the revision token is a 400 (a purge can never be accidental)', async () => {
+    const response = await post(`/v1/projects/${PROJECT_ID}/memories/${MEMORY_ID}/purge`, {});
+    expect(response.status).toBe(400);
   });
 
   test('a memory id that is not a UUID is a 400 (param validation)', async () => {

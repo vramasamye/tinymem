@@ -48,6 +48,8 @@ import {
   type IngestResult,
   type InspectResult,
   type ListOptions,
+  type PurgeInput,
+  type PurgeOutcome,
   type RememberInput,
   type RememberOutcome,
 } from './types';
@@ -373,6 +375,50 @@ export async function restoreMemory(
   };
 }
 
+/**
+ * Hard purge — the destructive counterpart of forget (forget ≠ delete, ADR-0010 §5). The storage
+ * primitive deletes the row and its cascaded vectors/bindings/edges in ONE transaction; one
+ * 'purged' audit row survives (`memory_events` is FK-less by design). The revision token makes a
+ * purge never accidental; a stale revision is a conflict, never a guess.
+ */
+export async function purgeMemory(
+  runtime: OnememoryRuntime,
+  input: PurgeInput,
+  options: ForgetOptions = { adapter: 'cli' },
+): Promise<PurgeOutcome> {
+  const project = await requireProject(runtime, input.project_id);
+  const memory = await requireMemoryOfProject(runtime, input.memory_id, project.id);
+  const user = await localUser(runtime);
+  const actor = input.actor ?? `user:${user.id}`;
+
+  if (memory.updated_at !== input.expected_revision) {
+    throw new BackendError(
+      `revision conflict: memory ${memory.id} is at revision ${memory.updated_at}, expected ${input.expected_revision} — re-read the memory and retry with the current revision`,
+      'conflict',
+    );
+  }
+
+  const result = await runtime.storage.store.deleteMemory(memory.id, {
+    actor,
+    reason: input.reason ?? 'purge',
+    details: { purge: true, adapter: options.adapter },
+  });
+  if (result === null) {
+    // Raced between the read and the purge — the row is already gone.
+    throw new BackendError(`memory ${memory.id} was not found`, 'not_found');
+  }
+
+  runtime.engine.invalidateCache(project.id);
+
+  return {
+    memory_id: memory.id,
+    purged: true,
+    from_status: result.audit.from_status ?? memory.status,
+    audit_event_id: result.audit.id,
+    note: 'hard purge: the row and its vectors/bindings/edges are deleted; one purged audit row survives. This is NOT recoverable — forget is the reversible path',
+  };
+}
+
 async function requireMemoryOfProject(
   runtime: OnememoryRuntime,
   memoryId: string,
@@ -394,7 +440,7 @@ function restoreHint(memoryId: string): string {
 }
 
 function purgeHint(): string {
-  return 'onemem never deletes on forget. A hard purge (row deletion + a `purged` audit row, ADR-0010 memory_delete) is not implemented in Phase 1 — see the mission-13 report follow-ups.';
+  return `destructive purge: 'onemem forget <id> --purge --revision <rev>' (or POST …/memories/<id>/purge) deletes the row for real — one 'purged' audit row survives`;
 }
 
 // ---------------------------------------------------------------------------

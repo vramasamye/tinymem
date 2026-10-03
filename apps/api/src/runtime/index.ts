@@ -81,6 +81,8 @@ export {
   type ListOptions,
   type OnememoryBackend,
   type ProjectListResult,
+  type PurgeInput,
+  type PurgeOutcome,
   type RememberInput,
   type RememberOutcome,
   type StatsResult,

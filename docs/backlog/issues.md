@@ -198,9 +198,11 @@ formalization, to be folded rather than run as written.
 1. ~~**`Store.deleteMemory` (hard purge)**~~ ✅ Resolved (coordinator, 2026-10-03): the primitive landed —
    one transaction deletes the memories row (vectors/bindings/edges/payload rows cascade), clears
    the two non-cascading references (`superseded_by`, `promoted_memory_id`) so FKs never block, and
-   appends a surviving `'purged'` audit row. `packages/mcp` `memory_delete` now purges for real
-   against its pinned output schema; the `purge_unavailable` error code is retired. A purge scenario
-   runs in the both-profile integration matrix (embedded + env-gated Postgres).
+   appends a surviving `'purged'` audit row. Exposed on every surface: `packages/mcp`
+   `memory_delete`, the CLI (`onemem forget <id> --purge --revision <rev>`, fail-closed without the
+   revision token), REST (`POST /v1/projects/:id/memories/:id/purge`), and the `OnememoryBackend`
+   port (local + HTTP). The `purge_unavailable` error code is retired. A purge scenario runs in the
+   both-profile integration matrix (embedded + env-gated Postgres).
 2. **Storage field-update primitive** (or a blessed metadata sidecar) [P2] — unlocks metadata-only
    `memory_update` (today honestly rejected: identical-content supersede collides on
    `content_hash`).

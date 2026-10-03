@@ -16,6 +16,7 @@ import {
   forgetMemory,
   ingestEvents,
   inspectMemory,
+  purgeMemory,
   rememberMemory,
   restoreMemory,
   searchMemories,
@@ -131,6 +132,10 @@ export function createLocalBackend(
 
     restore(input) {
       return restoreMemory(runtime, input, { adapter });
+    },
+
+    purge(input) {
+      return purgeMemory(runtime, input, { adapter });
     },
 
     inspect(projectId, memoryId) {

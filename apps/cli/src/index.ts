@@ -17,7 +17,7 @@ export { runInit, type InitOptions, type InitPreset, type InitResult } from './c
 export { runDoctor, printReport, type DoctorOptions } from './commands/doctor';
 export { runSearch, printSearch, type SearchOptions } from './commands/search';
 export { runRemember, printRemember, type RememberOptions } from './commands/remember';
-export { runForget, runRestore, printTransition, type ForgetOptions } from './commands/forget';
+export { runForget, runPurge, runRestore, printTransition, printPurge, type ForgetOptions } from './commands/forget';
 export { runInspect, printInspect, type InspectOptions } from './commands/inspect';
 export { runStats, printStats, type StatsOptions } from './commands/stats';
 export { runServe, type ServeOptions } from './commands/serve';

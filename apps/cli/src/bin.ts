@@ -20,7 +20,7 @@ import { runDoctor } from './commands/doctor';
 import { runInit } from './commands/init';
 import { runSearch } from './commands/search';
 import { runRemember } from './commands/remember';
-import { runForget, runRestore } from './commands/forget';
+import { runForget, runPurge, runRestore } from './commands/forget';
 import { runInspect } from './commands/inspect';
 import { runStats } from './commands/stats';
 import { runServe } from './commands/serve';
@@ -276,10 +276,12 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
     .description('soft-forget a memory (audited status change to archived — never a deletion)')
     .argument('<id>', 'memory id (from onemem search / onemem inspect)')
     .option('--reason <reason>', 'why (recorded in the audit trail)')
+    .option('--purge', 'hard purge instead: delete the row for real (destructive, NOT recoverable)')
+    .option('--revision <rev>', 'the updated_at revision token from your last read (required with --purge)')
     .action(async (id: string, options) => {
       const io = ioFor(options);
       await execute(io, () =>
-        runForget(
+        (options.purge === true ? runPurge : runForget)(
           {
             ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
             ...(options.config === undefined ? {} : { configPath: String(options.config) }),
@@ -287,6 +289,8 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             env,
             memoryId: id,
             ...(options.reason === undefined ? {} : { reason: String(options.reason) }),
+            ...(options.purge === undefined ? {} : { purge: options.purge === true }),
+            ...(options.revision === undefined ? {} : { revision: String(options.revision) }),
           },
           io,
         ),

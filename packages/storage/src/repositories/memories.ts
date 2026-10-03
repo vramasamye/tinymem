@@ -489,6 +489,7 @@ export async function deleteMemory(
       to_status: null,
       actor: options.actor,
       details: {
+        ...options.details,
         reason: options.reason,
         cleared_superseded_by: clearedSupersededBy.rows.length,
         cleared_promoted_links: clearedPromotions.rows.length,

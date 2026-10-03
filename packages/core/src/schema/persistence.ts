@@ -125,6 +125,8 @@ export const DeleteMemoryOptionsSchema = z.looseObject({
   /** `system|user:<id>|agent:<id>|job:<kind>` — audited on the 'purged' row. */
   actor: z.string().min(1),
   reason: z.string().optional(),
+  /** Extra audit context (e.g. which surface performed the purge). */
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 export type DeleteMemoryOptions = z.infer<typeof DeleteMemoryOptionsSchema>;
 

@@ -22,6 +22,8 @@ import {
   type ListOptions,
   type OnememoryBackend,
   type ProjectListResult,
+  type PurgeInput,
+  type PurgeOutcome,
   type RememberInput,
   type RememberOutcome,
   type StatsResult,
@@ -158,6 +160,18 @@ export function createHttpBackend(options: HttpBackendOptions): OnememoryBackend
         'POST',
         `/v1/projects/${encode(input.project_id)}/memories/${encode(input.memory_id)}/restore`,
         { body: input.reason === undefined ? {} : { reason: input.reason } },
+      ),
+
+    purge: (input: PurgeInput) =>
+      call<PurgeOutcome>(
+        'POST',
+        `/v1/projects/${encode(input.project_id)}/memories/${encode(input.memory_id)}/purge`,
+        {
+          body: {
+            expected_revision: input.expected_revision,
+            ...(input.reason === undefined ? {} : { reason: input.reason }),
+          },
+        },
       ),
 
     inspect: (projectId: string, memoryId: string) =>
