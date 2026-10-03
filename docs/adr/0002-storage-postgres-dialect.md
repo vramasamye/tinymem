@@ -57,3 +57,20 @@ data dir is unsafe (SIGSEGV report). Therefore:
 §16 (jobs); `docs/research/memory-systems-landscape.md` adopt-items 10 (Postgres convergence),
 avoid-item 4 (graph DB dependency); `docs/architecture/database-schema.md` (DDL + GATE-1);
 `docs/risks.md` R1/R2/R14/D1.
+
+## GATE-1 result (2026-10-03): **PASS** — embedded profile promoted to supported
+
+Mission 1's acceptance suite (`packages/storage/src/integration/gate1.test.ts`) verified all 14
+capabilities on Bun 1.3.14 / PGlite 0.5.8 / `pglite-pgvector` 0.0.9: extension load, `vector(384)`
++ HNSW DDL, cosine KNN, STORED tsvector + GIN, partial/expression unique-index enforcement,
+SKIP LOCKED, migration idempotency, persistence across reopen, honest backend selection — and
+the identical repository suite passes on real Postgres + pgvector (33/33). Adopted consequences:
+
+- The embedded profile is **supported** (no longer evaluation-gated); the `float8[]` fallback
+  remains a tested insurance seam, not a primary path.
+- **Extension-less embedded boots fail loudly at migration** (deliberate): PGlite without the
+  vector extension cannot apply the migration set. This is a documented requirement, not a
+  guarded migration.
+- Known, semantically-identical drizzle-kit emissions vs. the doc DDL: `DESC NULLS LAST` on
+  NOT NULL columns; table-level CHECKs instead of column-level. The committed migration is
+  the executable schema truth; the doc DDL is normative intent (syntax fix applied 2026-10-03).

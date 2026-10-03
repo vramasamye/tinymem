@@ -311,7 +311,8 @@ CREATE TABLE jobs (                            -- internal work queue (stages 3â
 );
 CREATE INDEX jobs_ready_idx ON jobs (status, run_at);
 -- Prevent scheduling duplicate instances of the same logical work
-CREATE UNIQUE INDEX jobs_singleton_idx ON jobs (kind, payload->>'key')
+-- (expression index elements must be parenthesized â€” caught by M1's GATE-1 suite)
+CREATE UNIQUE INDEX jobs_singleton_idx ON jobs (kind, (payload->>'key'))
   WHERE status IN ('pending','running');
 
 CREATE TABLE memory_events (                   -- append-only audit trail

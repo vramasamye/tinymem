@@ -81,6 +81,10 @@ type EventKind =
   | 'raw.unknown';
 ```
 
+Payload contracts: every payload carries a `kind` discriminator mirroring the envelope `kind`
+(the Zod schema is a discriminated union over the variants below). The engine injects it into
+doc-shaped payloads on validation, but adapters SHOULD always set it explicitly.
+
 ### Conversation
 
 ```ts

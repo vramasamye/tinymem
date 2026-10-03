@@ -15,5 +15,29 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bun test
-      # Postgres-target parity job (ONEMEMORY_PG_URL + docker compose service) is added
-      # when the M1 storage suite lands on main.
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: onememory
+          POSTGRES_PASSWORD: onememory
+          POSTGRES_DB: onememory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U onememory"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun test
+        env:
+          ONEMEMORY_PG_URL: postgresql://onememory:onememory@localhost:5432/onememory
