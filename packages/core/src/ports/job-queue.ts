@@ -19,7 +19,10 @@ export interface JobQueue {
    */
   claim(input: { claimant: string; limit?: number; leaseSeconds?: number; now?: string }): Promise<JobRecord[]>;
   complete(jobId: string): Promise<void>;
-  /** Record a failure: retry with exponential backoff, or dead-letter at max_attempts. */
-  fail(jobId: string, error: string): Promise<JobRecord>;
+  /**
+   * Record a failure: retry with exponential backoff, or dead-letter at max_attempts.
+   * `options.now` is an injectable clock (ISO) for deterministic tests; defaults to the JS clock.
+   */
+  fail(jobId: string, error: string, options?: { now?: string }): Promise<JobRecord>;
   getJob(jobId: string): Promise<JobRecord | null>;
 }

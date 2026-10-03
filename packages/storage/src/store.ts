@@ -104,8 +104,8 @@ export function createJobQueue(db: Database, options?: { backoffBaseSeconds?: nu
     enqueue: (input): Promise<EnqueueJobResult> => jobsRepo.enqueueJob(db, input),
     claim: (input): Promise<JobRecord[]> => jobsRepo.claimJobs(db, input),
     complete: (jobId: string): Promise<void> => jobsRepo.completeJob(db, jobId),
-    fail: (jobId: string, error: string): Promise<JobRecord> =>
-      jobsRepo.failJob(db, jobId, error, { backoffBaseSeconds }),
+    fail: (jobId: string, error: string, options?: { now?: string }): Promise<JobRecord> =>
+      jobsRepo.failJob(db, jobId, error, { backoffBaseSeconds, now: options?.now }),
     getJob: (jobId: string): Promise<JobRecord | null> => jobsRepo.getJob(db, jobId),
   };
 }
