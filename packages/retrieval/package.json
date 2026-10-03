@@ -1,0 +1,24 @@
+{
+  "name": "@onememory/retrieval",
+  "version": "0.1.0",
+  "description": "onememory retrieval: hybrid lexical/vector/graph engine with RRF fusion, weighted scoring, token packing, and session-context assembly",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@onememory/core": "workspace:*",
+    "@onememory/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}
