@@ -17,8 +17,10 @@
 
 import {
   MEMORY_STATUSES,
+  eventContentHash,
   memoryContentHash,
   normalizeEntityName,
+  uuidv7,
   validateOnememoryEvent,
   type MemoryRecord,
   type MemorySearchRequest,
@@ -496,10 +498,26 @@ export async function inspectMemory(
 /**
  * Ingest a batch of raw event envelopes (adapters and tests feed this).
  *
- * Per event: validate the envelope → path exclusion (ADR-0007's first gate) → redact → persist. A
- * malformed event is dead-lettered with path+message issues only, an excluded path is dropped
- * whole, and duplicates are reported rather than silently ignored.
+ * Drafts may omit id, ingested_at, content_hash, and redactions; those fields are completed here.
+ * Per event: complete draft → validate the envelope → path exclusion (ADR-0007's first gate) →
+ * redact → persist. A malformed event is dead-lettered with path+message issues only, an excluded
+ * path is dropped whole, and duplicates are reported rather than silently ignored.
  */
+function completeDraftEvent(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return raw;
+
+  const draft = raw as Record<string, unknown>;
+  return {
+    ...draft,
+    ...(draft.id === undefined ? { id: uuidv7() } : {}),
+    ...(draft.ingested_at === undefined ? { ingested_at: new Date().toISOString() } : {}),
+    ...(draft.payload !== undefined && draft.content_hash === undefined
+      ? { content_hash: eventContentHash(draft.payload) }
+      : {}),
+    ...(draft.redactions === undefined ? { redactions: [] } : {}),
+  };
+}
+
 export async function ingestEvents(
   runtime: OnememoryRuntime,
   projectId: string,
@@ -515,7 +533,7 @@ export async function ingestEvents(
   let firstStoredId: string | null = null;
 
   for (const [index, raw] of rawEvents.entries()) {
-    const validated = validateOnememoryEvent(raw);
+    const validated = validateOnememoryEvent(completeDraftEvent(raw));
     if (!validated.ok) {
       deadLettered += 1;
       outcomes.push({

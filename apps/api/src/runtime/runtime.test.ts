@@ -145,6 +145,42 @@ describe('the durable write path (real storage)', () => {
     expect(result.normalize_job_id).not.toBeNull();
   });
 
+  test('ingest completes draft envelopes (the published REST contract)', async () => {
+    const backend = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
+    const draft = {
+      kind: 'conversation.message',
+      occurred_at: '2026-10-01T12:00:00.000Z',
+      payload: {
+        kind: 'conversation.message',
+        role: 'user',
+        content: 'A draft without the canonical fields.',
+      },
+      source: { runtime: 'claude-code', adapter_version: '0.0.0' },
+      scope: { project_id: projectId },
+    };
+    const stored = await backend.ingestEvents(projectId, [draft]);
+    expect(stored.stored).toBe(1);
+    expect(stored.dead_lettered).toBe(0);
+    expect(stored.outcomes[0]?.event_id).toBeDefined();
+
+    // The same draft again → duplicate by the completed content_hash (idempotent ingest).
+    const again = await backend.ingestEvents(projectId, [draft]);
+    expect(again.stored).toBe(0);
+    expect(again.duplicates).toBe(1);
+
+    // A draft without a payload is dead-lettered with the real reason, not a fake hash.
+    const gutless = await backend.ingestEvents(projectId, [
+      {
+        kind: 'conversation.message',
+        occurred_at: '2026-10-01T12:00:00.000Z',
+        source: { runtime: 'claude-code', adapter_version: '0.0.0' },
+        scope: { project_id: projectId },
+      },
+    ]);
+    expect(gutless.dead_lettered).toBe(1);
+    expect(gutless.outcomes[0]?.reason).toContain('payload');
+  });
+
   test('forget is an audited status change, restore undoes it, and nothing is deleted', async () => {
     const backend = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
     const created = await backend.remember({ project_id: projectId, content: 'Forgettable statement for the audit trail.' });
