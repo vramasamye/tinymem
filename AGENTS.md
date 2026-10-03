@@ -32,6 +32,12 @@ for AI coding agents. This file is the contract every contributor — human or A
 
 - One mission = one branch = one bounded scope. Branch naming: `mission/<n>-<slug>`
   (e.g. `mission/2-retrieval-engine`).
+- **One working tree per mission.** Parallel missions never share the repo checkout: the
+  coordinating session creates an isolated `git worktree` per mission
+  (`git worktree add ../onememory-m<n> -b mission/<n>-<slug>` from `main`), and the mission
+  commits only inside its own worktree. A single-mission wave may use the main checkout on its
+  mission branch, but the coordinating session must not commit to that branch while the mission
+  is active.
 - Missions must not modify the same files. Files under `docs/adr/`, root configs (`package.json`,
   `AGENTS.md`, `README.md`, `LICENSE`), and `docs/architecture/` are owned by the coordinating
   session; missions link to them, they do not edit them.
