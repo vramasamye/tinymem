@@ -144,7 +144,12 @@ export function createRetrievalEngine(
     const key = sha256Hex(`${embedder.model}:${embedder.dim}:${query}`);
     const cached = embeddings.get(key);
     if (cached && cached.expires > Date.now()) return cached.vector;
-    const [vector] = await embedder.embed([query]);
+    // Query side prefers the port's optional embedQuery (bge-style query forms); embedders
+    // without one fall back to embed (ADR-0006 post-M3 amendment).
+    const queryEmbed = embedder.embedQuery
+      ? (texts: string[]) => embedder.embedQuery!(texts)
+      : (texts: string[]) => embedder.embed(texts);
+    const [vector] = await queryEmbed([query]);
     if (vector === undefined) throw new Error('embedder returned no vector for the query');
     if (embeddings.size >= config.caches.embeddingMaxEntries) {
       const oldest = embeddings.keys().next().value;

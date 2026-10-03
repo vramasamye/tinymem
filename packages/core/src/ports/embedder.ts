@@ -18,6 +18,14 @@ export interface Embedder {
   /** Fixed per deployment (config at init); a model swap goes through the re_embed job (ADR-0006). */
   readonly dim: number;
   embed(texts: string[]): Promise<number[][]>;
+  /**
+   * Query-side embedding for models that prescribe an asymmetric query form (e.g. bge-small's
+   * query instruction). Optional: implementors without a documented query form omit it and
+   * retrieval falls back to `embed`. A query prefix touches the query vector only — stored
+   * passages always go through `embed`, so prefixes never reach the database or vector
+   * provenance (ADR-0006 post-M3 amendment).
+   */
+  embedQuery?(texts: string[]): Promise<number[][]>;
 }
 
 export type EmbeddingBackend = 'pgvector' | 'float8';

@@ -58,3 +58,14 @@ local mode (no telemetry, no external calls, no account) is first-class. Critica
 `docs/research/dependency-verification.md` §5–§7 (embedding/router verdicts), §11;
 `docs/research/memory-systems-landscape.md` avoid-item 6 (no standing LLM per ingest);
 `docs/risks.md` R3, R4, R9, D2/D5.
+
+## Amendment (2026-10-03, post-M3): asymmetric query embedding on the Embedder port
+
+bge-small-en-v1.5 (the pinned transformers.js default) prescribes an instruction prefix for
+queries but not for passages. The core `Embedder` port gains an OPTIONAL `embedQuery(texts)`:
+implementors with a documented query form implement it (the local transformers embedder applies
+BGE's query instruction); implementors without one omit it — retrieval falls back to `embed`.
+Constraints: the prefix touches the query vector only; stored passages and vector provenance
+(model/revision/dim) are unchanged, so no `re_embed` is triggered by querying. HTTP embedders
+(Ollama, OpenAI-compatible) deliberately do not implement `embedQuery`: model-specific prefixing
+for server-side models stays the operator's choice, never silent.

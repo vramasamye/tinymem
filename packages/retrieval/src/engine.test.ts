@@ -20,6 +20,7 @@ import { MemorySearchResponseSchema } from '@onememory/core';
 import { createRetrievalEngine } from './engine';
 import type { RetrievalEngine, RetrievalStorage } from './engine';
 import { seedWorld, WORLD_NOW, type WorldHandle } from './test-world';
+import { createQueryAwareTestEmbedder } from './testing';
 
 let world: WorldHandle;
 let engine: RetrievalEngine;
@@ -260,6 +261,17 @@ describe('retrieval engine (embedded PGlite)', () => {
     const response = await degraded.search({ query: 'postgres connection problems', project_id: world.ids.projectId });
     expect(response.warnings.some((warning) => warning.includes('vector channel failed'))).toBe(true);
     expect(ids(response)).toContain(world.ids.failureSolved);
+  });
+
+  test('query-side embedding prefers the port embedQuery when the embedder defines it', async () => {
+    const queryAware = createQueryAwareTestEmbedder();
+    const queryEngine = createRetrievalEngine(world.storage, { embedder: queryAware, now: fixedNow });
+    const response = await queryEngine.search({
+      query: 'why did we choose postgresql for the database',
+      project_id: world.ids.projectId,
+    });
+    expect(queryAware.queryCalls).toBeGreaterThan(0);
+    expect(ids(response).length).toBeGreaterThan(0);
   });
 
   test('rerank tier: opt-in by config + injection; requested-but-missing is warned', async () => {

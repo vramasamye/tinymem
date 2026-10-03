@@ -14,10 +14,10 @@
  *   in a Node worker process or the deployment degrades to lexical+graph retrieval with a warning.
  *   This module implements the in-process path; the worker-process fallback is a follow-up;
  * - embeddings use the model's documented feature-extraction settings: mean pooling + L2
- *   normalization, **no instruction prefix**. Changing pooling/normalization/prefix is a
- *   provenance-visible change and must go through the `re_embed` job (ADR-0006 §5). The core
- *   `Embedder` port has no query/passage split, so BGE's query instruction is a follow-up that
- *   needs a port decision (recorded in the mission report).
+ *   normalization. Stored passages are **prefix-free** (`embed`); queries go through the port's
+ *   `embedQuery`, which applies BGE's query instruction to the query vector only — the prefix
+ *   never reaches storage or provenance, so no `re_embed` is triggered (ADR-0006 §5 + the
+ *   post-M3 port amendment).
  */
 
 import {
@@ -161,6 +161,15 @@ export function createLocalTransformersEmbedder(
     return vectors;
   }
 
+  /** bge-small-en-v1.5 prescribes this instruction for QUERIES only (model card FAQ);
+   *  passages stay prefix-free, so the prefix never reaches stored vectors or provenance. */
+  const BGE_QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
+
+  async function embedQuery(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    return embed(texts.map((text) => BGE_QUERY_PREFIX + text));
+  }
+
   return {
     provider,
     get model(): string {
@@ -184,5 +193,6 @@ export function createLocalTransformersEmbedder(
       return meta();
     },
     embed,
+    embedQuery,
   };
 }

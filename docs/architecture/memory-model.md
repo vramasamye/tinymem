@@ -192,6 +192,11 @@ for correctness**: extraction may be LLM or heuristic; every async stage has a f
 Backpressure: one internal `jobs` table (Postgres) drives stages 3–9 and 12–14; the API/CLI never
 awaits them. Job scheduling is round-based with per-stage concurrency limits.
 
+As-built (M3): the NORMALIZE output is not persisted in an `events.normalized` column — the
+structured batch is carried in the enqueued `extract` job's payload and recomputed at EXTRACT
+(`normalizeEvent` is pure, so this is idempotent and auditable). If normalized forms ever need to
+be queryable, a later migration adds the column; no query consumer exists today.
+
 ## 9. Consolidation & promotion rules
 
 - **Episodic → semantic**: ≥ 3 episodes with embedding similarity ≥ threshold, same project, same

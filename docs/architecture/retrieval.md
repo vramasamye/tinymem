@@ -46,7 +46,8 @@ Three independent channels, all time-boxed; each returns (memory_id, channel, ra
 
 - **Lexical**: `search_text @@ query_ts` + `ts_rank`, top 50. Always available (even with no
   embedding model, no LLM).
-- **Vector**: embed query once (cache by query hash), KNN top 50. Skipped if no embedding
+- **Vector**: embed query once (cache by query hash — through the port's optional `embedQuery`
+  when the model prescribes a query form, else `embed`), KNN top 50. Skipped if no embedding
   provider configured (local default ships one, so this is rare).
 - **Graph**: entity IDs from stage 1 → entity-bound memories (top 30 per entity, cap 60) →
   1-hop edge expansion from top lexical/vector seeds (cap 40). Typed shortcuts: intent `decision`

@@ -125,6 +125,21 @@ describe('localTransformersEmbedder', () => {
     });
     await expect(embedder.embed(['x'])).rejects.toThrow(/failed to embed: onnxruntime blew up/);
   });
+
+  test('embedQuery applies the BGE query instruction; embed stays prefix-free', async () => {
+    const calls: ExtractorCall[] = [];
+    const embedder = createLocalTransformersEmbedder({
+      dim: 2,
+      loadModule: async () => doubleModule(2, calls, []),
+    });
+    const { embedQuery } = embedder;
+    if (embedQuery === undefined) throw new Error('local transformers embedder must implement embedQuery');
+    await embedder.embed(['passage']);
+    await embedQuery(['query']);
+    expect(calls[0]!.texts).toEqual(['passage']);
+    expect(calls[1]!.texts).toEqual(['Represent this sentence for searching relevant passages: query']);
+    expect(await embedQuery([])).toEqual([]);
+  });
 });
 
 describe('local embeddings env gate', () => {
