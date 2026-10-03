@@ -62,6 +62,23 @@
         "@types/bun": "^1.4.2",
       },
     },
+    "packages/adapters/codex": {
+      "name": "@onememory/adapter-codex",
+      "version": "0.1.0",
+      "bin": {
+        "onemem-codex-capture": "./src/bin.ts",
+      },
+      "dependencies": {
+        "@onememory/config": "workspace:*",
+        "@onememory/core": "workspace:*",
+        "@onememory/security": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+        "smol-toml": "^1.9.0",
+      },
+    },
     "packages/config": {
       "name": "@onememory/config",
       "version": "0.1.0",
@@ -294,6 +311,8 @@
 
     "@onememory/adapter-claude": ["@onememory/adapter-claude@workspace:packages/adapters/claude"],
 
+    "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
+
     "@onememory/api": ["@onememory/api@workspace:apps/api"],
 
     "@onememory/config": ["@onememory/config@workspace:packages/config"],
@@ -501,6 +520,8 @@
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
 
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
+
+    "smol-toml": ["smol-toml@1.9.0", "", {}, "sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ=="],
 
     "source-map": ["source-map@0.6.1", "", {}, "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g=="],
 
