@@ -1,0 +1,23 @@
+{
+  "name": "onememory",
+  "private": true,
+  "description": "One memory across every agent — open-source, self-hostable, local-first persistent memory engine for AI coding agents",
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/adapters/*"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "test:node": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
