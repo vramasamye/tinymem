@@ -58,6 +58,14 @@ Identity and pedigree:
 
 The core implementable idea: attach a machine-checkable provenance header to each generated knowledge artifact, where provenance = (baseline git commit, monitored path set). Freshness is then a subprocess call, not an LLM call. Per SPEC.md §4.5 the invariant is "Universal Fingerprint (Code Grounding & Drift Invariant)" with optional `Fingerprint:`/`Monitored:` fields; enforcement is mechanical inside `check_evidence.py`. Sources: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/SPEC.md , https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/skills/wiki-manager/scripts/check_evidence.py
 
+Exact mechanics, from the checker source (worth copying where they were hard-won):
+
+- Metadata is parsed from the contiguous blockquote right after the page H1, with case-insensitive regexes `^>\s*Fingerprint:\s*(\S+)` and `^>\s*Monitored:\s*(.+)$`; `Monitored` accepts comma/semicolon-separated paths, backtick/quote-stripped, normalized to POSIX. Source: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/skills/wiki-manager/scripts/check_evidence.py (`parse_fingerprint_info`)
+- Git mode: verify work tree via `git rev-parse --is-inside-work-tree` (5s timeout; non-repo → return, no error), then `git diff --name-only <commit> -- <paths>` (10s timeout); each output line becomes "<file> modified since <fingerprint>"; "unknown revision"/"bad revision" stderr becomes "invalid or unknown git commit hash". Source: same file (`check_code_drift`, git branch)
+- SHA-256 mode: per-file entries `<path>:sha256:<hex>` (8+ hex chars) with a legacy fallback applying one header hash to all listed files; content is hashed in 64 KiB chunks; outcomes are "monitored file not found" and "<path> SHA-256 changed (current: … vs expected: …)". Source: same file (`check_code_drift`, sha256 branch)
+- Exit policy: report-only by default; `--strict` → exit 1 on evidence errors or drift; `--strict-all` also fails on fidelity suspects (verbatim-literal misses); their CI runs `--strict`. Source: same file (`main`), plus https://github.com/PALAN-K/llm-wiki-loop/commit/8f13091a7cc221e9647f3f81ad321bc495c78b97
+- Alongside drift, the same script enforces the text-grounding invariant: candidate literals (specific numbers, ISO dates, 15+ char quotes) in a wiki page must appear verbatim in the `raw/` files its `Raw:` field links; unresolvable or escaping links are errors, unreferenced raw files are reported as backlog. Source: same file (docstring + `check_article`, `unreferenced_raws`)
+
 ### 2. Karpathy's LLM Wiki pattern (the origin): compile-once knowledge, not per-query retrieval
 
 The gist's thesis: instead of RAG rediscovering knowledge per query, the LLM "incrementally builds and maintains a persistent wiki"; raw sources are immutable, the LLM owns the wiki layer, `index.md` (content catalog, one line per page) + `log.md` (append-only, parseable prefixes) provide navigation/audit; lint looks for contradictions, stale claims, orphans. This is the "memory should be a compiled, maintained artifact" stance onememory shares. Source: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
@@ -137,3 +145,24 @@ A memory is fresh **iff** all of: `repo_commit` is an ancestor of HEAD (or conte
 - **Embedding invalidation coupling**: the patterns above cover textual memories; if onememory also stores vector embeddings of code chunks, the staleness rule must additionally cover "embedding model version changed" (Turbo analog: tool/config inputs in the hash). Which model-version key belongs in the fingerprint?
 - **llm-wiki-loop maturity**: it is a 13-star, single-maintainer project; its numbers (0.01s checks, 99% savings) are unbenchmarked. We should cite it as design inspiration (as our spec does) but not treat its claims as measured results. Source: https://github.com/PALAN-K/llm-wiki-loop
 - **stack-graphs/precise-analysis value**: SCIP-style precise indexing is heavyweight (per-language indexers); for onememory v1, tree-sitter tags + git fingerprints may suffice — but "find references" quality memories may eventually want SCIP. Is incremental SCIP upload worth integrating, given stack-graphs is archived and SCIP indexers are per-language compilers? Sources: https://sourcegraph.com/blog/announcing-scip , https://github.com/github/stack-graphs
+
+## Primary sources consulted
+
+llm-wiki-loop (analyzed from source):
+- Repo: https://github.com/PALAN-K/llm-wiki-loop (README, commit history, v1.2.1 commit 8f13091)
+- npm: https://www.npmjs.com/package/llm-wiki-loop
+- SPEC: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/SPEC.md
+- Checker engine: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/skills/wiki-manager/scripts/check_evidence.py
+- Skill + protocol: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/skills/wiki-manager/SKILL.md , https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/skills/wiki-manager/references/wiki-protocol.md
+- Dogfooding + audit: https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/wiki/topics/cross-platform-cli-and-cicd.md , https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/log.md , https://raw.githubusercontent.com/PALAN-K/llm-wiki-loop/master/CONTRIBUTING.md
+
+Adjacent patterns:
+- Karpathy origin gist (+ Link 3.0 `lnk stale` comment): https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+- Incremental code wiki: https://dev.to/yysun/bringing-the-llm-wiki-idea-to-a-codebase-22go
+- SCIP: https://sourcegraph.com/blog/announcing-scip , https://scip-code.org/
+- stack-graphs: https://github.com/github/stack-graphs
+- Bazel remote caching: https://bazel.build/docs/remote-caching
+- Turborepo caching: https://turborepo.dev/docs/crafting-your-repository/caching
+- tree-sitter tags: https://tree-sitter.github.io/tree-sitter/4-code-navigation.html
+- ast-grep: https://ast-grep.github.io/
+- CodeDrift: https://github.com/darshil3011/codedrift

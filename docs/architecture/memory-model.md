@@ -40,7 +40,7 @@ retrieval. So: seven content types plus three structural layers.
 | 4 | **Decision** | `memories.type = decision` + `decisions` payload table (title, decision, alternatives, rationale, participants, evidence, status: proposed/accepted/superseded/rejected). Prevents agents from re-litigating settled architecture. |
 | 5 | **Failure** | `memories.type = failure` + `failures` payload table (problem, context, root cause, solution, verification, occurrence count). Highly retrievable on similar errors. |
 | 6 | **Preference** | `memories.type = preference`. User/project preferences. Promotion from candidate to durable requires confidence ≥ threshold (configurable; default 0.7) or explicit user statement. |
-| 7 | **Working** | `memories.type = working` + `session_id` + `expires_at`. Session-scoped: current task, hypotheses, files, errors, temporary decisions, open questions. TTL-swept at session end; most of it expires. |
+| 7 | **Working** | Separate `working_memory` table (spec §23): session-scoped current task, hypotheses, files, errors, temporary decisions, open questions. TTL-swept at session end; most of it expires. Promotions re-enter the pipeline as durable candidates. Wire representation still carries type `working`. |
 | 8 | **Project** | **Scope, not a type.** `project_id` on every memory, plus a project record with a rollup digest (summary, stack, conventions) rebuilt by consolidation. |
 | 9 | **Entity** | **Registry + bindings, not a type.** `entities` table (canonical name, aliases, type) + `memory_entities` bindings. Entity-centric facts keep their natural content type. |
 | 10 | **Source** | **Structural layer.** `sources` table + evidence spans + provenance fields on every memory. |
