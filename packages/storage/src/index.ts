@@ -66,6 +66,7 @@ export * from './schema/tables';
 export * as memoriesRepo from './repositories/memories';
 export * as entitiesRepo from './repositories/entities';
 export * as edgesRepo from './repositories/edges';
+export * as searchRepo from './repositories/search';
 export * as eventsRepo from './repositories/events';
 export * as sourcesRepo from './repositories/projects';
 export * as workingMemoryRepo from './repositories/working-memory';
