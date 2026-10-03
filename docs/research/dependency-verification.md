@@ -85,13 +85,13 @@ Sources: [`sqlite-vec` repository](https://github.com/asg017/sqlite-vec), [relea
 - The feature-extraction pipeline supports embedding workflows; models commonly use mean pooling and normalization. Pin the model revision and pooling/task settings so a model upgrade does not silently make stored vectors incompatible.
 - Node support is a first-class target, but the Node ONNX path uses native/runtime-specific components. Bun has historical issues with `onnxruntime-node` native bindings and Transformers.js itself. Use an explicit Bun × OS × architecture smoke matrix, and compare the WASM backend as a possible fallback.
 - Model weights are downloaded/cached on first use through Hugging Face model loading. Ship clear cache location, offline prewarm, `local_files_only`/offline behavior, model revision pinning, and disk-space UX; first-run download is not zero-network.
-- **all-MiniLM-L6-v2:** small 384-dimensional English baseline; often the easiest latency/footprint test. Model family is Apache-2.0. Its shorter context and retrieval quality may be limiting for coding-agent memory.
-- **BGE-small-en-v1.5:** 384-dimensional, roughly 33M-parameter English retrieval model; likely a stronger small CPU baseline. The BAAI model family is MIT-licensed; follow its query/passage instruction convention consistently.
-- **BGE-base-en-v1.5:** 768-dimensional, roughly 109M parameters; higher footprint and CPU cost. Compare only if small-model retrieval quality is insufficient.
-- **Snowflake Arctic Embed XS/S/M:** Apache-2.0 family with increasing model sizes/cost. The XS/S variants are sensible local candidates; check that the selected exact ONNX export and Transformers.js task support are available.
-- **nomic-embed-text-v1.5:** Apache-2.0, 768-dimensional/long-context option, but materially larger than small models and has search-query/document prefixes. Verify ONNX export provenance and practical throughput rather than assuming a standard Transformers.js model card is drop-in.
-- Approximate float32 weight payload by parameter count is about 4 bytes/parameter (quantized weights are smaller); actual model downloads include config/tokenizer and may have multiple quantizations. Treat published “model size” figures as export-specific.
-- No reliable apples-to-apples CPU latency number for Bun + the exact ONNX backend + these model exports was found. Warm latency depends heavily on CPU, backend, quantization, token length, batching, and first-use initialization.
+- **all-MiniLM-L6-v2:** 22.7M parameters, 384 dimensions, 256-token context; about 90 MB at FP32 / 23 MB at int8 by raw weight arithmetic, with exact ONNX file size depending on export. Apache-2.0; the common Xenova ONNX model card is old/stable rather than frequently refreshed. It is a good small latency baseline, but context/retrieval quality may limit coding-agent memory.
+- **BGE-small-en-v1.5:** about 33M parameters, 384 dimensions; roughly 130 MB FP32 / 33 MB int8 by raw-weight arithmetic. BAAI model is MIT-licensed and has query/passage conventions; compare it to MiniLM rather than assuming a quality win.
+- **BGE-base-en-v1.5:** about 109M parameters, 768 dimensions; roughly 436 MB FP32 / 109 MB int8; higher footprint and CPU cost. Use only if the small model’s measured retrieval quality is insufficient.
+- **Snowflake Arctic Embed XS/S/M:** Apache-2.0 family, roughly 22M/33M/110M parameters respectively (about 88/132/440 MB FP32 raw weights); increasing size/cost and typically 384/384/768 dimensions. XS/S are sensible local candidates; verify exact ONNX export availability and pipeline compatibility.
+- **nomic-embed-text-v1.5:** Apache-2.0, 137M parameters, 768 dimensions and up to 8,192-token input (about 548 MB raw FP32 weights). It has search-query/document prefixes; verify ONNX export provenance and throughput rather than assuming the original model card is a drop-in Transformers.js export.
+- These are raw-weight estimates (`parameter count × bytes/weight`), not guaranteed downloads. The actual files add tokenizer/config/graph overhead; quantization and ONNX export variants can change size substantially. Pin a specific export and commit hash.
+- No reliable apples-to-apples **Bun + Transformers.js CPU ms/embedding** result for these exact exports was found. Warm latency depends on CPU, ONNX backend, quantization, token length, batching, and initialization. Set a project benchmark target rather than quoting incompatible Python/GPU numbers.
 - Benchmark cold startup/download separately from warm p50/p95 per text and batched texts on representative Apple Silicon and x64 machines. A short-text bi-encoder is likely viable for interactive use; larger/base models must earn their cost with retrieval gains.
 - License applies separately to the JS package, ONNX runtime, and model weights; retain each model’s license and revision in the model catalog.
 
@@ -102,28 +102,28 @@ Sources: [Transformers.js npm](https://www.npmjs.com/package/@huggingface/transf
 **Verdict: ADOPT provider adapters; prefer Ollama native embeddings, allow OpenAI-compatible endpoints.**
 
 - Current Ollama embeddings API is **`POST /api/embed`**. `/api/embeddings` is the older/deprecated API; do not bake it into new clients.
-- Ollama exposes OpenAI-compatible routes under `/v1`; the OpenAI TypeScript SDK can point at the local server with `baseURL`. Confirm embeddings on the precise Ollama version/model; prefer native `/api/embed` for embeddings and use compatibility routes when they are the desired common abstraction.
+- Ollama supports OpenAI-compatible routes under `/v1` for chat/completions, and the OpenAI TypeScript SDK can point at them with `baseURL`. **I could not verify a current, official Ollama `/v1/embeddings` endpoint**: current Ollama docs promote `/api/embed`, and an Ollama client issue still requested `/v1/embeddings` compatibility in 2025. Use `/api/embed` for Ollama embeddings; do not assume the generic OpenAI embedding path works there.
 - LM Studio documents OpenAI-compatible `/v1/embeddings`, and llama.cpp server documents OpenAI-compatible server routes when launched/configured for embedding models.
-- A TS client can use `openai` against an OpenAI-compatible `baseURL`; LM Studio and llama.cpp need their own local URL/model setup. Ollama native `/api/embed` is a small `fetch` adapter and avoids compatibility ambiguities.
+- A TS client can use `openai` against LM Studio and llama.cpp OpenAI-compatible `/v1/embeddings` endpoints with a local `baseURL` and model. Ollama native `/api/embed` is a small `fetch` adapter and avoids compatibility ambiguities.
 - Keep embedding-provider ID, model ID/revision, dimensions, and normalization in stored metadata. Never mix vectors from different embedding models in one index without an explicit migration strategy.
 - These are local network calls, not external API calls, when the service is bound to loopback. Do not silently route to cloud when local service is missing.
 
-Sources: [Ollama embeddings API](https://docs.ollama.com/api/embed), [Ollama embedding guidance](https://docs.ollama.com/capabilities/embeddings), [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility), [LM Studio embeddings](https://lmstudio.ai/docs/developer/openai-compat/embeddings), [LM Studio OpenAI compatibility](https://lmstudio.ai/docs/developer/openai-compat), [llama.cpp server docs](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md), [OpenAI Node SDK](https://github.com/openai/openai-node).
+Sources: [Ollama embeddings API](https://docs.ollama.com/api/embed), [Ollama embedding guidance](https://docs.ollama.com/capabilities/embeddings), [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility), [Ollama compatibility request issue](https://github.com/ollama/ollama-python/issues/599), [LM Studio embeddings](https://lmstudio.ai/docs/developer/openai-compat/embeddings), [LM Studio OpenAI compatibility](https://lmstudio.ai/docs/developer/openai-compat), [llama.cpp server docs](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md), [OpenAI Node SDK](https://github.com/openai/openai-node).
 
 ### 7. Model router / structured extraction: Vercel AI SDK vs OpenAI SDK
 
 **Verdict: ADOPT AI SDK behind an internal provider interface; EVALUATE structured output against the local models.**
 
-- AI SDK is a widely adopted TypeScript toolkit with a fast release cadence; AI SDK 6 is the current major line in 2026. Its source and package have recent releases. Exact `ai` package semver should be read from npm at dependency lock time.
+- AI SDK is a widely adopted TypeScript toolkit with a fast release cadence; npm surfaced **`ai` 6.0.191**, last published about five days before 2026-10-03. AI SDK 6 is the current major line. Its many provider packages version independently, so pin compatible package versions together and review the v5→v6 migration notes.
 - Provider coverage includes first-party OpenAI, Anthropic, Google, AI Gateway; OpenRouter has its provider; Ollama is served by community providers; `@ai-sdk/openai-compatible` supports custom OpenAI-style endpoints/base URLs.
 - Structured extraction is supported with Zod schemas and JSON-schema output. Important v6 note: `generateObject` is deprecated in favor of `generateText({ output: Output.object({ schema }) })`; write new extraction code against the current API.
 - Model/provider behavior varies: local OpenAI-compatible servers may not implement constrained JSON schema or tool semantics consistently. Validate returned data with Zod and make retries/fallback explicit; a valid JSON-shaped response is not necessarily semantically valid memory.
 - AI SDK’s provider abstraction is useful for swapping backends, but it does not make cloud providers local. Do not configure AI Gateway, OpenAI, or OpenRouter as automatic fallback in a zero-external-call profile.
-- Keep provider dependencies modular and import only the selected provider; avoid shipping browser/UI packages into the server core. The core package can use the provider interface and dynamically load optional SDK adapters.
+- Keep provider dependencies modular and import only the selected provider; avoid shipping browser/UI packages into the server core. No independent bundle-size comparison was verified; provider modularity should limit the dependency surface, but measure the actual shipped server/CLI bundle.
 - The `openai` SDK is simpler if the product supports only OpenAI-compatible endpoints. It is actively maintained (npm surfaced **7.25.0**, published 2026-10-02) and provides `baseURL`; it lacks the common typed abstraction and provider breadth of AI SDK.
 - License: AI SDK is Apache-2.0; OpenAI Node SDK is Apache-2.0. Confirm license metadata for community Ollama adapters independently.
 
-Sources: [AI SDK repo](https://github.com/vercel/ai), [AI SDK 6 announcement](https://vercel.com/blog/ai-sdk-6), [current structured-data docs](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data), [v6 generateObject notice](https://v6.ai-sdk.dev/docs/reference/ai-sdk-core/generate-object), [OpenAI-compatible providers](https://ai-sdk.dev/providers/openai-compatible-providers), [LM Studio provider](https://ai-sdk.dev/providers/openai-compatible-providers/lmstudio), [Ollama provider options](https://ai-sdk.dev/providers/community-providers/ollama), [OpenRouter provider](https://github.com/OpenRouterTeam/ai-sdk-provider), [OpenAI SDK npm](https://www.npmjs.com/package/openai).
+Sources: [`ai` npm](https://www.npmjs.com/package/ai), [AI SDK repo](https://github.com/vercel/ai), [AI SDK 6 announcement](https://vercel.com/blog/ai-sdk-6), [v5 to v6 migration guide](https://ai-sdk.dev/docs/migration-guides/migration-guide-6-0), [current structured-data docs](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data), [v6 generateObject notice](https://v6.ai-sdk.dev/docs/reference/ai-sdk-core/generate-object), [OpenAI-compatible providers](https://ai-sdk.dev/providers/openai-compatible-providers), [LM Studio provider](https://ai-sdk.dev/providers/openai-compatible-providers/lmstudio), [Ollama provider options](https://ai-sdk.dev/providers/community-providers/ollama), [OpenRouter provider](https://github.com/OpenRouterTeam/ai-sdk-provider), [OpenAI SDK npm](https://www.npmjs.com/package/openai).
 
 ### 8. MCP: `@modelcontextprotocol/sdk`
 
@@ -136,7 +136,7 @@ Sources: [AI SDK repo](https://github.com/vercel/ai), [AI SDK 6 announcement](ht
 - Bun is a plausible host for stdio and `Bun.serve` HTTP, but verify stdio stream handling, request cancellation, and authorization against the exact chosen package. Keep the MCP adapter at a package boundary.
 - License: official SDK repository is Apache-2.0; check package metadata for each split package.
 
-Sources: [official SDK repo](https://github.com/modelcontextprotocol/typescript-sdk), [v2.3.0 release](https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/v2.3.0), [v1 npm package](https://www.npmjs.com/package/@modelcontextprotocol/sdk), [v2 migration guide](https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2.html), [server package](https://www.npmjs.com/package/@modelcontextprotocol/server), [client package](https://www.npmjs.com/package/@modelcontextprotocol/client), [server docs](https://ts.sdk.modelcontextprotocol.io/documents/server.html), [transport spec](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports), [OAuth authorization guidance](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/authorization).
+Sources: [official SDK repo](https://github.com/modelcontextprotocol/typescript-sdk), [v2.3.0 release](https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/v2.3.0), [v1 npm package](https://www.npmjs.com/package/@modelcontextprotocol/sdk), [v2 migration guide](https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2.html), [server package](https://www.npmjs.com/package/@modelcontextprotocol/server), [client package](https://www.npmjs.com/package/@modelcontextprotocol/client), [v2 server docs](https://ts.sdk.modelcontextprotocol.io/v2/documents/Documents.Server_Guide.html), [current transport spec](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports), [OAuth authorization guidance](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/authorization).
 
 ### 9. Code intelligence: Tree-sitter vs native bindings vs ast-grep
 
@@ -169,7 +169,7 @@ Sources: [`simple-git` npm](https://www.npmjs.com/package/simple-git), [simple-g
 **Verdict: EVALUATE behind an opt-in reranker interface; do not make it retrieval’s default stage.**
 
 - Transformers.js can potentially run cross-encoder ONNX models, but inherits the native ONNX/Bun compatibility risk and the need to verify the exact exported architecture.
-- `cross-encoder/ms-marco-MiniLM-L6-v2` is a small MS MARCO reranker candidate; BGE rerankers offer larger/more capable candidates. Model family licensing is separate from package licensing.
+- `cross-encoder/ms-marco-MiniLM-L6-v2` is a small (~23M parameter) MS MARCO reranker candidate with a 512-token pair window; BGE rerankers offer larger/more capable candidates. Verify licenses on the exact model cards (MS MARCO MiniLM Apache-2.0; BGE models MIT) separately from the package.
 - Cross-encoders score each query/document pair, so cost grows with candidate count and token length. Run only after first-stage retrieval, batch a bounded top-N (e.g. 20–50), truncate deliberately, and benchmark cold/warm p50/p95.
 - No target-hardware Bun CPU latency was validated here. Do not assert interactive latency from GPU benchmark claims; compare local reranking to the actual end-to-end recall/latency budget.
 - Cohere Rerank and Jina-hosted reranking are optional remote providers only. They transmit query and candidate text outside the local installation; require explicit user opt-in and document privacy/cost implications.
@@ -180,8 +180,8 @@ Sources: [MS MARCO MiniLM model](https://huggingface.co/cross-encoder/ms-marco-M
 
 **PDF — Verdict: ADOPT `unpdf`; avoid defaulting to `pdf-parse`.**
 
-- `unpdf` npm surfaced **1.8.1**, published 2026-08-13 (about a month old), with several hundred registry projects shown using it. It explicitly targets Node/browser/worker runtimes and is the better Bun-fit candidate.
-- `pdf-parse` surfaced **2.4.5**, last published about a year before snapshot. It is TypeScript/cross-platform but has slower visible release cadence; retain only if its extraction behavior beats unpdf on the project corpus.
+- `unpdf` npm surfaced **1.8.1**, published 2026-08-13 (about a month old), with several hundred registry projects shown using it. It explicitly targets Node/browser/worker runtimes, is MIT-licensed, and is the better Bun-fit candidate.
+- `pdf-parse` surfaced **2.4.5**, last published about a year before snapshot. It is TypeScript/cross-platform and MIT-licensed, but has slower visible release cadence; retain only if its extraction behavior beats unpdf on the project corpus.
 - Test scanned/OCR-only PDFs separately; neither text extractor supplies OCR by itself.
 
 Sources: [`unpdf` npm](https://www.npmjs.com/package/unpdf), [unpdf repo](https://github.com/unjs/unpdf), [`pdf-parse` npm](https://www.npmjs.com/package/pdf-parse).
@@ -189,7 +189,7 @@ Sources: [`unpdf` npm](https://www.npmjs.com/package/unpdf), [unpdf repo](https:
 **HTML — Verdict: ADOPT Cheerio for DOM parsing; EVALUATE Readability extraction.**
 
 - `cheerio` **1.2.0** was last published about eight months before the snapshot. It is mature, MIT-licensed, and useful for selectors without a browser engine.
-- `@mozilla/readability` **0.6.0** was last published about two years before snapshot. The Firefox Reader View algorithm is a useful optional content extractor, but its visible npm cadence is low and it expects a DOM.
+- `@mozilla/readability` **0.6.0** was last published about two years before snapshot and is Apache-2.0-licensed. The Firefox Reader View algorithm is a useful optional content extractor, but its visible npm cadence is low and it expects a DOM.
 - Keep URL fetch/sanitization, script removal, and Readability execution isolated. HTML ingestion can carry prompt-injection text; parsing is not trust/safety filtering.
 
 Sources: [`cheerio` npm](https://www.npmjs.com/package/cheerio), [Cheerio repo](https://github.com/cheeriojs/cheerio), [Mozilla Readability npm](https://www.npmjs.com/package/@mozilla/readability), [Readability repo](https://github.com/mozilla/readability).
@@ -197,6 +197,7 @@ Sources: [`cheerio` npm](https://www.npmjs.com/package/cheerio), [Cheerio repo](
 **Markdown — Verdict: ADOPT `unified` + `remark-parse` (+ only needed plugins).**
 
 - `unified` **11.0.5**, `remark` **15.0.1**, and `remark-parse` **11.0.0** showed last publishes around two to three years ago. The API/ecosystem is established; this looks like low-churn maintenance, not evidence of a recent release cadence.
+- Unified/remark packages are MIT-licensed.
 - Use syntax trees when preserving headings, links, code fences, and frontmatter matters; do not round-trip/reformat source unless requested.
 
 Sources: [`unified` npm](https://www.npmjs.com/package/unified), [`remark` npm](https://www.npmjs.com/package/remark), [`remark-parse` npm](https://www.npmjs.com/package/remark-parse), [unified package guide](https://unifiedjs.com/explore/package/remark/).
@@ -236,9 +237,9 @@ Sources: [Hono npm](https://www.npmjs.com/package/hono), [Hono repo](https://git
 **Verdict: ADOPT Commander + `@clack/prompts`; AVOID Clipanion RC for this project.**
 
 - Commander **15.0.0** was the npm latest in the search snapshot, last published about four months before Oct 3; the registry result showed roughly 149,797 projects using it. This is the maturity/compatibility pick (MIT).
-- `citty` **0.2.2** last published about six months before snapshot; elegant and Bun/Node-friendly but has a smaller, still-0.x maturity profile. Evaluate if its subcommand API materially improves the CLI.
-- `clipanion` surfaced **4.0.0-rc.4**, last published about a year earlier; avoid its RC for a new core CLI.
-- `@clack/prompts` **1.8.1** was published 2026-09-13 and actively maintained; use for optional interactive setup, but ensure every command also works in CI/non-TTY mode.
+- `citty` **0.2.2** last published about six months before snapshot; MIT-licensed, elegant and Bun/Node-friendly but has a smaller, still-0.x maturity profile. Evaluate if its subcommand API materially improves the CLI.
+- `clipanion` surfaced **4.0.0-rc.4**, last published about a year earlier; MIT-licensed, but avoid its RC for a new core CLI.
+- `@clack/prompts` **1.8.1** was published 2026-09-13 and actively maintained (MIT); use for optional interactive setup, but ensure every command also works in CI/non-TTY mode.
 - Commands that consume stdin/stdio should not print prompts or progress to MCP stdio transport.
 
 Sources: [Commander npm](https://www.npmjs.com/package/commander), [Commander releases](https://github.com/tj/commander.js/releases), [Citty npm](https://www.npmjs.com/package/citty), [Clipanion npm](https://www.npmjs.com/package/clipanion), [Clack npm](https://www.npmjs.com/package/@clack/prompts), [Clack repo](https://github.com/bombshell-dev/clack).

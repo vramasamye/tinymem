@@ -24,17 +24,17 @@ specific research report. Each risk carries its mitigation and owner-mission.
 
 ## B. Unresolved architectural decisions (decide before/at review)
 
-| # | Decision | Options & leaning | Blocked by |
-|---|---|---|---|
-| D1 | **Embedded-mode process model**: who owns PGlite when CLI + MCP stdio server both want storage? | (a) local daemon `onemem serve` owns storage, CLI/MCP speak HTTP; (b) file-lock round-robin; (c) embedded mode = single consumer, concurrent use requires server mode. Leaning: (a) with (c) as documented limitation. | dep research (PGlite multi-instance story) |
-| D2 | **Default embedding model**: local transformers.js MiniLM (384-d, ~30MB, zero services) vs requiring Ollama. | Leaning: transformers.js default (init works with zero services), Ollama auto-detected and preferred when present. | dep research (R3: Bun compat) |
-| D3 | **MCP tool surface finalization**: names, annotations, result shapes; possible additions (`memory_working`, `memory_stats`). | Leaning: keep the 11 spec tools; adjust naming only with strong evidence from MCP research. | MCP research |
-| D4 | **Raw event payload retention** default (90 days? 30?) before compaction to sources. | Leaning: 90 days, configurable, 0 = keep forever. | review |
-| D5 | **Phase 1 extractor default**: heuristic-only shipped first vs LLM extractor enabled by default when configured. | Leaning: heuristic default; LLM activates via config when a provider is set (keeps 100%-local invariant and first-release surface small). | review |
-| D6 | **FTS config**: language-neutral `simple` vs `english` stemming. | Leaning: `simple` + query-side normalization; revisit if recall benchmarks show misses. | M11 results |
-| D7 | **Skill auto-promotion**: default `false` (candidates + review flow) vs auto. | Leaning: false (spec: "Require verification before promoting") — confirmed in ADR-0009. | review |
-| D8 | **Working memory MCP exposure**: expose session working memory as a tool? | Leaning: `memory_working` read-only tool for the owning session only. | M5 |
-| D9 | **GitHub publication**: repo name (`onememory`), org, remote, issue import. | Needs user decision + auth; backlog file is GitHub-issue-ready meanwhile. | user |
+| # | Decision | Status / resolution |
+|---|---|---|
+| D1 | **Embedded-mode process model** | ✅ Resolved by ADR-0002: embedded storage has exactly ONE owner process — a local `onemem serve` daemon owns PGlite; CLI and MCP stdio speak HTTP to it. Concurrent multi-agent use routes to the `server` profile (documented limitation, not hidden). Driver: PGlite is single-owner-process (concurrent init SIGSEGV report); dep-research §1. |
+| D2 | **Default embedding model** | ✅ Resolved by ADR-0006: Ollama native `/api/embed` preferred when present; else transformers.js v4 + pinned `bge-small-en-v1.5` (384-d) behind a Bun×OS×backend matrix gate, with Node worker-process fallback; last resort = lexical+graph retrieval with explicit warning. Never silently degrades without reporting. |
+| D3 | **MCP tool surface finalization** (names, annotations, result shapes; possible `memory_working`, `memory_stats`) | ⏳ Blocked on MCP research (in flight). Leaning: keep the 11 spec tools. |
+| D4 | **Raw event payload retention** default before compaction to sources | Open at review. Leaning: 90 days, configurable, 0 = keep forever. |
+| D5 | **Phase 1 extractor default** | ✅ Resolved (ADR-0006): heuristic extractor is the shipped default (correctness baseline, zero network); LLM extractor activates via config when a provider is set. |
+| D6 | **FTS config**: `simple` vs `english` stemming | Open. Leaning: `simple` + query-side normalization; revisit on M11 recall results. |
+| D7 | **Skill auto-promotion** | ✅ Resolved by ADR-0009: `auto_promote_skills = false` default; candidates + `onemem skills review` flow. |
+| D8 | **Working memory MCP exposure** | Open for M5. Leaning: `memory_working` read-only tool, owning session only. |
+| D9 | **GitHub publication** (repo name/org/remote, issue import) | Needs user decision + auth. `docs/backlog/issues.md` is GitHub-issue-ready meanwhile. |
 
 ## C. Process risks
 
