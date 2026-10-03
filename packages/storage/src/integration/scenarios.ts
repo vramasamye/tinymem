@@ -368,7 +368,7 @@ export async function workingMemoryScenario(storage: OnememoryStorage): Promise<
     makeWorking(session.id, { kind: 'task', content: 'expired unpromoted', expires_at: '2026-10-03T11:00:00.000Z' }),
   );
   const live = await storage.store.insertWorking(
-    makeWorking(session.id, { kind: 'open_question', content: 'still within TTL', expires_at: '2026-10-03T18:00:00.000Z' }),
+    makeWorking(session.id, { kind: 'open_question', content: 'still within TTL', expires_at: '2099-01-01T00:00:00.000Z' }),
   );
   const promotedCandidate = await storage.store.insertWorking(
     makeWorking(session.id, { kind: 'temp_decision', content: 'promoted before expiry', expires_at: '2026-10-03T11:00:00.000Z', importance: 0.6, source_id: ctx.sourceId }),
@@ -401,7 +401,7 @@ export async function jobsScenario(storage: OnememoryStorage): Promise<void> {
   const key = `evt-${uniqueId().slice(0, 8)}`;
 
   // Singleton: same (kind, key) while pending/running → same job.
-  const enqueued = await storage.jobs.enqueue({ kind: 'normalize', key, payload: { eventId: uniqueId() } });
+  const enqueued = await storage.jobs.enqueue({ kind: 'normalize', key, payload: { eventId: uniqueId() }, run_at: '2026-10-03T11:00:00.000Z' });
   expect(enqueued.outcome).toBe('enqueued');
   expect(enqueued.job.status).toBe('pending');
   const reenqueued = await storage.jobs.enqueue({ kind: 'normalize', key });
@@ -433,7 +433,7 @@ export async function jobsScenario(storage: OnememoryStorage): Promise<void> {
   const afterComplete = await storage.jobs.getJob(enqueued.job.id);
   expect(afterComplete?.status).toBe('done');
   expect(afterComplete?.locked_by).toBeNull();
-  const freshEnqueue = await storage.jobs.enqueue({ kind: 'normalize', key });
+  const freshEnqueue = await storage.jobs.enqueue({ kind: 'normalize', key, run_at: '2026-10-03T11:00:00.000Z' });
   expect(freshEnqueue.outcome).toBe('enqueued');
 
   // Retry with backoff: attempt 1 → pending with run_at in the future (base 2s, injectable clock).
@@ -455,7 +455,7 @@ export async function jobsScenario(storage: OnememoryStorage): Promise<void> {
 
   // Dead-letter at max_attempts.
   const deadKey = `dead-${uniqueId().slice(0, 8)}`;
-  const dead = await storage.jobs.enqueue({ kind: 'normalize', key: deadKey, max_attempts: 2 });
+  const dead = await storage.jobs.enqueue({ kind: 'normalize', key: deadKey, max_attempts: 2, run_at: '2026-10-03T11:00:00.000Z' });
   await storage.jobs.claim({ claimant: 'w4', now: '2026-10-03T12:10:00.000Z' });
   const once = await storage.jobs.fail(dead.job.id, 'first failure', {
     now: '2026-10-03T12:10:00.000Z',

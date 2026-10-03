@@ -168,7 +168,7 @@ describe('GATE-1: pglite-pgvector 0.0.9 under PGlite 0.5.8 / Bun', () => {
   test('FOR UPDATE SKIP LOCKED claim semantics work (the jobs claim statement)', async () => {
     const key = `claim-${uuidv7().slice(0, 8)}`;
     const enqueued = await gate.query<{ id: string }>(
-      `INSERT INTO jobs (id, kind, payload) VALUES ($1::uuid, 'normalize', $2::jsonb) RETURNING id`,
+      `INSERT INTO jobs (id, kind, payload, run_at) VALUES ($1::uuid, 'normalize', $2::jsonb, '2026-10-03T00:00:00.000Z'::timestamptz) RETURNING id`,
       [uuidv7(), JSON.stringify({ key })],
     );
     const jobId = enqueued.rows[0]!.id;
