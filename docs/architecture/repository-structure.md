@@ -89,6 +89,9 @@ storage      retrieval    extraction    consolidation   graph   codememory
    └────────────┴─────┬──────┴──────────────┴─────────────┴──────────┘
                       ▼
         packages/llm  packages/embeddings  packages/security
+
+As-built (M2): retrieval → storage (read-only candidate fetchers). It is the one
+engine-to-engine import; rule 4 still holds — SQL never leaves storage.
 ```
 
 1. **`core` declares ports, does not import implementations.** `Storage`, `Searcher`, `Embedder`,
@@ -98,7 +101,9 @@ storage      retrieval    extraction    consolidation   graph   codememory
 2. **`adapters/*` import `sdk` only.** Zero engine internals. An adapter is a translator:
    runtime-native event → `OnememoryEvent`.
 3. **No adapter imports another adapter.** Shared event logic lives in `core`.
-4. **`storage` is the only package with SQL.** Migrations ship with every schema change.
+4. **`storage` is the only package with SQL.** Migrations ship with every schema change. The one
+   engine-to-engine import is `retrieval → storage` for read-only candidate fetchers (as-built
+   M2); every other engine package consumes `core` ports only.
 5. **`llm`/`embeddings` are the only packages that may make outbound network calls** (and only to
    user-configured providers; `security` gates even those in 100%-local mode).
 

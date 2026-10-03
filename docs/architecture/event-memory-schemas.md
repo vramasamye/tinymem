@@ -42,7 +42,7 @@ interface EventScope {
 
 interface Redaction {
   kind: 'api-key' | 'password' | 'token' | 'private-key' | 'connection-string' | 'other';
-  location: string;          // JSON path of the redacted field, e.g. "payload.content"
+  location: string;          // $-rooted JSON path of the redacted field, e.g. "$.payload.content"
   length: number;            // length of removed secret (for audit), the secret is NEVER stored
 }
 ```

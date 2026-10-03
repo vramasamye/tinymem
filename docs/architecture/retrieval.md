@@ -157,8 +157,10 @@ provenance → Layer 3: `memory_related(id)` graph neighbors → Layer 4: `sourc
 ## 5. Performance & caching
 
 - Embedding cache: query hash → vector (session TTL). Entity lookup: in-memory index per process.
-- Result cache: identical (query, scope, temporal_mode) within a session → cached, invalidated by
-  writes to the affected project.
+- Result cache: identical (query, scope, temporal_mode) within a session → cached. The engine
+  exposes `invalidateCache(projectId)`; every write path (extraction jobs, REST/MCP write tools,
+  the daemon) must call it after durable writes to that project — invalidation is explicit, never
+  a TTL guess.
 - Budget: p50 < 150ms lexical+graph only; p50 < 300ms with vector; rerank adds its cost explicitly.
   These are benchmark targets, enforced by `benchmarks/` regressions, not vibes.
 
