@@ -18,7 +18,8 @@ a decision, write a new ADR that supersedes the old one — never edit history s
 | 0010 | [MCP-first protocol surface + universal adapters](0010-mcp-protocol-adapters.md) | Accepted |
 | 0011 | [SaaS path without open-core rot](0011-saas-path.md) | Accepted |
 
-ADR-0010 lands with `docs/research/mcp-memory-implementations.md` (in flight at authoring time).
+ADR-0010 is grounded in `docs/research/mcp-memory-implementations.md` (MCP 2026-07-28 facts,
+per-runtime integration matrix, memory-server survey).
 
 Companion documents: `docs/architecture/` (normative designs), `docs/risks.md` (open decisions),
 `docs/plan/phased-plan.md` + `docs/backlog/issues.md` (execution).

@@ -26,7 +26,7 @@ Goal: Claude Code and Codex can store and retrieve memories, 100% locally, offli
 | M2 Retrieval engine | `mission/2-retrieval` | `packages/retrieval`: lexical + vector + graph channels, RRF fusion, weighted scoring, token packing, explain | M1 (ports only) |
 | M3 Memory extraction | `mission/3-extraction` | `packages/extraction` (heuristic extractor + classifier + future-value gate), `packages/llm` model router, `packages/embeddings` (transformers.js local, ollama, openai-compatible) | M1 |
 | M13 CLI + API | `mission/13-cli-api` | `apps/cli` (`init serve doctor search remember forget inspect stats`), `apps/api` (REST `/v1/*`), `packages/config` | M1, M2 |
-| M5 MCP server | `mission/5-mcp` | `packages/mcp`: stdio + Streamable HTTP, 11 memory tools, session context assembly | M1, M2 |
+| M5 MCP server | `mission/5-mcp` | `packages/mcp`: stdio (`serveStdio`) + stateless Streamable HTTP, ADR-0010 surface (8-tool default exposure covering all 11 capabilities), progressive disclosure, session context assembly | M1, M2 |
 | M6 Claude Code adapter | `mission/6-claude` | `packages/adapters/claude`: hooks → events, `.mcp.json` scaffold, skills wiring, compact-context injection | M5, M13 |
 | M7 Codex adapter | `mission/7-codex` | `packages/adapters/codex`: config.toml MCP, AGENTS.md bootstrap, session capture | M5, M13 |
 | M12 Security core | `mission/12-security` | `packages/security`: secret detection/redaction at ingest, path exclusions, privacy mode | M1 (ingest path) |

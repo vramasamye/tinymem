@@ -122,17 +122,17 @@ the same `buildServer()` factory.
 
 MCP config (https://code.claude.com/docs/en/mcp):
 
-- `claude mcp add [--transport http|sse|stdio]`, `claude mcp add-json`, `claude mcp list`.
-  Config types: `"http" | "streamable-http" | "sse" | "ws" | "stdio" | "sdk"`.
-- Scopes: local, project (`.mcp.json`, committed), user (`~/.claude.json`). `${VAR}` env expansion
-  in configs; stdio servers get `CLAUDE_PROJECT_DIR` set to the launch directory.
-- Workspace trust: project-scope servers require approval; MCP servers see roots as the launch
-  directory plus additional directories; server `instructions` and tool **descriptions are
-  truncated at 2,048 chars** (`CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`).
-- **Tool search (ToolSearch) is on by default**: tools are discovered lazily by description;
-  `ENABLE_TOOL_SEARCH` / `alwaysLoad` (config, or `"anthropic/alwaysLoad": true` in a tool's
-  `_meta`) forces eager loading. Discovery results are cached (`cached` status).
-- MCP prompts appear as `/mcp__server__prompt`; resources usable via `@server:uri` references.
+- `claude mcp add [--transport http|sse|stdio]`, `claude mcp add-json`, `claude mcp list`;
+  config types `"http" | "streamable-http" | "sse" | "ws" | "stdio" | "sdk"`.
+- Scopes: local, project (`.mcp.json`, committed), user (`~/.claude.json`); `${VAR}` env
+  expansion; stdio servers get `CLAUDE_PROJECT_DIR` set to the launch directory; project-scope
+  servers require workspace-trust approval; roots = launch dir + additional dirs.
+- **Tool search (ToolSearch) default ON**: tools are discovered lazily by description;
+  `ENABLE_TOOL_SEARCH` / `alwaysLoad` (or `"anthropic/alwaysLoad": true` in a tool's `_meta`)
+  forces eager loading; discovery results are cached (`cached` status).
+- Server `instructions` and tool **descriptions truncated at 2,048 chars**
+  (`CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH`); MCP prompts as `/mcp__server__prompt`; resources
+  via `@server:uri` references.
 
 Hooks (https://code.claude.com/docs/en/hooks):
 
@@ -169,14 +169,13 @@ MCP config (https://learn.chatgpt.com/docs/mcp, earlier https://developers.opena
 - `~/.codex/config.toml`, `[mcp_servers.<name>]` tables: stdio (`command`, `args`, `env`,
   `env_vars`, `cwd`) or Streamable HTTP (`url`, `bearer_token_env_var`, `http_headers`,
   `env_http_headers`, `http_headers_helper`, `auth: oauth|chatgpt`).
-- Per-server: `startup_timeout_sec` (default 10s), `tool_timeout_sec` (default 60s), `enabled`,
-  `required`, `enabled_tools` / `disabled_tools`, `default_tools_approval_mode`
-  (`auto|prompt|writes|approve`) plus **per-tool `approval_mode`**, and **`output_token_limit`** —
-  a per-tool token budget on tool output (with ~20% serialization allowance). This is the only
-  surveyed runtime with a first-class per-tool output budget — a strong argument for onememory
-  tools that return compact, predictable, token-estimated results.
-- Server `instructions` are read; the docs recommend the first 512 chars be self-contained.
-- `codex mcp add/list/login`; project-level `.codex/config.toml` for trusted projects.
+- Per-server: `startup_timeout_sec` (10s), `tool_timeout_sec` (60s), `enabled`, `required`,
+  `enabled_tools`/`disabled_tools`, `default_tools_approval_mode` (`auto|prompt|writes|approve`)
+  + per-tool `approval_mode`, and **`output_token_limit`** — a per-tool token budget on tool
+  output (~20% serialization allowance). The only surveyed runtime with a first-class per-tool
+  output budget — a strong argument for compact, token-estimated tool results.
+- Server `instructions` are read; docs recommend the first 512 chars be self-contained.
+  `codex mcp add/list/login`; project-level `.codex/config.toml` for trusted projects.
 
 AGENTS.md (https://learn.chatgpt.com/docs/agent-configuration/agents-md): `~/.codex/AGENTS.md`
 global + root→cwd discovery; `AGENTS.override.md`; `project_doc_fallback_filenames`;
@@ -228,18 +227,17 @@ MCP config (https://opencode.ai/docs/mcp-servers/, https://opencode.ai/docs/conf
 
 - `opencode.json` (JSONC), `"mcp"` key: `"type": "local"` (`command` array, `cwd`,
   `environment`) or `"type": "remote"` (`url`, `headers`, `oauth` object or `false`); `enabled`;
-  `timeout` (default 5s tool fetch).
-- Automatic OAuth with DCR (legacy vs. CIMD — flag for onememory's hosted mode);
-  `opencode mcp auth/list/logout`; tokens persisted in
+  `timeout` (default 5s tool fetch). Automatic OAuth with DCR (legacy vs. CIMD — flag for
+  onememory's hosted mode); `opencode mcp auth/list/logout`; tokens in
   `~/.local/share/opencode/mcp-auth.json`.
 - Config precedence: remote `.well-known/opencode` → `~/.config/opencode/opencode.json` →
   `OPENCODE_CONFIG` → project `opencode.json` → `.opencode` dirs → inline → managed
-  (`/Library/Application Support/opencode/`, macOS MDM `ai.opencode.managed`).
-- `{env:NAME}` and `{file:path}` substitution; plugins (npm or `.opencode/plugins/`); an
-  `instructions` option that can point at e.g. `.cursor/rules/*.md`; agents, commands,
-  permissions, and skills (SKILL.md) — claude-mem's installer writes both the plugin reference
-  and an `mcp.claude-mem` local-server entry into `opencode.json` via Node
-  (https://github.com/thedotmack/claude-mem PR #3621), a useful precedent for `onemem init`.
+  (`/Library/Application Support/opencode/`, macOS MDM `ai.opencode.managed`). `{env:NAME}` and
+  `{file:path}` substitution; plugins (npm or `.opencode/plugins/`); an `instructions` option
+  that can point at e.g. `.cursor/rules/*.md`; agents, commands, permissions, skills (SKILL.md).
+  claude-mem's installer writes both the plugin reference and an `mcp.claude-mem` local-server
+  entry into `opencode.json` (https://github.com/thedotmack/claude-mem PR #3621) — a useful
+  precedent for `onemem init`.
 
 #### B.5 Pi
 
@@ -304,37 +302,35 @@ single-user — the reference baseline onememory must clearly beat.
 #### C.2 doobidoo/mcp-memory-service
 
 https://github.com/doobidoo/mcp-memory-service — the most feature-dense open-source memory
-server. Python (PyPI package), v11.14.0, recently moved back to GitHub from Codeberg (fork
-lineage from vlastimil-zim is **[UNVERIFIED]** from primary sources). Multi-backend: SQLite
-(sqlite-vec), Cloudflare, Hybrid, Milvus; ONNX local embeddings; claims ~5ms retrieval. Ships
-REST API + MCP + OAuth + CLI + web dashboard; also `claude-hooks/` (Claude Code) and
-`opencode/` plugin integration directories. Features: temporal metadata injection (`@timestamp`),
-deduplication with `conversation_id` bypass, autonomous consolidation, causal knowledge graph,
-NLI-based contradiction detection (RFC #732), Insight Cards, `X-Agent-ID` auto-tagging, tag
-matching with AND/OR on `memory_search`. MCP tools (as of v11.x; core verified from README/handler
-commits, full enumeration from repo docs): `store_memory`, `recall_memory` (agentic retrieval),
-`memory_search`, `memory_resolve` (dedup/merge resolution), `dashboard_memory`,
-`delete_memory_by_hash`, `get_memory_by_hash`, `get_memory_uri`, `get_recent_memories`,
-`get_all_tags`, `get_tag_catalog`, `get_directories`, `get_memory_stats`, `get_observation`
-(+details), plus usage/health helpers. Notable for onememory: two-step retrieval
-(search → fetch details), resolve-as-a-tool for conflicts, and temporal injection at store time.
+server. Python (PyPI), v11.14.0, recently moved back to GitHub from Codeberg (fork lineage from
+vlastimil-zim **[UNVERIFIED]** from primary sources). Multi-backend: SQLite (sqlite-vec),
+Cloudflare, Hybrid, Milvus; ONNX local embeddings; claims ~5ms retrieval. Ships REST + MCP +
+OAuth + CLI + web dashboard, plus `claude-hooks/` and `opencode/` integration directories.
+Features: temporal metadata injection (`@timestamp`), deduplication with `conversation_id`
+bypass, autonomous consolidation, causal knowledge graph, NLI-based contradiction detection
+(RFC #732), Insight Cards, `X-Agent-ID` auto-tagging, AND/OR tag matching on `memory_search`.
+MCP tools (as of v11.x; core names verified from README/handler commits): `store_memory`,
+`recall_memory` (agentic retrieval), `memory_search`, `memory_resolve` (dedup/merge resolution),
+`dashboard_memory`, `delete_memory_by_hash`, `get_memory_by_hash`, `get_memory_uri`,
+`get_recent_memories`, `get_all_tags`, `get_tag_catalog`, `get_directories`, `get_memory_stats`,
+`get_observation`(+details), plus usage/health helpers. Notable for onememory: two-step retrieval
+(search → fetch details), resolve-as-a-tool for conflicts, temporal injection at store time.
 
 #### C.3 basicmachines-co/basic-memory
 
 https://github.com/basicmachines-co/basic-memory — 4.1k stars, AGPL-3.0, Python, v0.23.2.
-Markdown-file-first: knowledge lives in human-readable notes (Obsidian-compatible) with a
-typed knowledge schema (entities/observations/relations in frontmatter), indexed into SQLite
-(default) or **Postgres** (added #439, pgvector compose #840); a sync layer keeps files ↔ DB
-consistent (`basic-memory doctor`, `reindex`). MCP tools (~25): `search_notes`, `read_note`,
-`write_note`, `edit_note`, `move_note`, `delete_note`, `view_note`, `read_content`,
-`recent_activity`, `build_*`, `create_memory_project`, `delete_project`, `schema_infer`,
-`schema_validate`, `schema_diff`, `search`, `fetch`, `basic_memory_diagnostics` — text output by
-default with `output_format="json"` for structured responses. Multi-project with local/cloud
-routing (`--local`/`--cloud`). Recent design decisions worth stealing: **`write_note` can only
-overwrite the revision the caller read** (revision-based optimistic concurrency, #1642), Redis
-caching for QUERY/MCP reads (#1172), a "hook producer front door" for harness capture (#1070),
-one-command Claude Code plugin install (#1498), a Codex plugin `.mcp.json`, and a **Pi memory
-package** (Sep 2026). AGPL is a licensing note for any onememory design borrowing.
+Markdown-file-first: knowledge lives in human-readable notes (Obsidian-compatible) with a typed
+knowledge schema (entities/observations/relations in frontmatter), indexed into SQLite (default)
+or **Postgres** (added #439; pgvector compose #840); a sync layer keeps files ↔ DB consistent
+(`basic-memory doctor`, `reindex`). MCP tools (~25): `search_notes`, `read_note`, `write_note`,
+`edit_note`, `move_note`, `delete_note`, `view_note`, `read_content`, `recent_activity`, `build_*`,
+`create_memory_project`, `delete_project`, `schema_infer`, `schema_validate`, `schema_diff`,
+`search`, `fetch`, `basic_memory_diagnostics` — text output by default, `output_format="json"`
+for structured. Multi-project with local/cloud routing (`--local`/`--cloud`). Design decisions
+worth stealing: **`write_note` can only overwrite the revision the caller read** (optimistic
+concurrency, #1642); Redis caching for QUERY/MCP reads (#1172); a "hook producer front door" for
+harness capture (#1070); one-command Claude Code plugin install (#1498); a Codex plugin
+`.mcp.json`; a **Pi memory package** (Sep 2026). AGPL is a licensing note for design borrowing.
 
 #### C.4 mem0 OpenMemory
 
@@ -365,15 +361,15 @@ lifecycle idea:
   /architecture/search-architecture).
 - **Retrieval = progressive disclosure across 3 MCP tools**: `search` (compact index with IDs,
   ~50–100 tokens/result, filters by type/date/project) → `timeline` (chronological context) →
-  `get_observations` (full details only for selected IDs, ~500–1,000 tokens/result, batched) —
-  advertised as **~10x token savings**. This is the strongest existence-proof for onememory's
+  `get_observations` (full details for selected IDs only, ~500–1,000 tokens/result, batched) —
+  advertised as **~10x token savings**. The strongest existence-proof for onememory's
   "retrieval packs a token budget with information-dense memories" thesis.
-- **Injection at SessionStart** (context configuration, `CLAUDE_MEM_SESSION_START_INCLUDE_ALL_SOURCES`),
-  plus citations by observation ID, progressive disclosure with token-cost visibility, cloud sync
-  to cmem.ai, and multi-harness reach (Claude Code, OpenClaw, Codex, Gemini, Hermes, Copilot,
-  OpenCode via `opencode.json` registration, Cursor, Grok Bot via chat-log watching). Awareness
-  pilot writes markdown memory logs (`memory/log/YYYY-MM.md`) for bots that re-read files from
-  disk — a file-based fallback channel worth noting.
+- **Injection at SessionStart** (context configuration,
+  `CLAUDE_MEM_SESSION_START_INCLUDE_ALL_SOURCES`), citations by observation ID, progressive
+  disclosure with token-cost visibility, cloud sync to cmem.ai, multi-harness reach (Claude Code,
+  OpenClaw, Codex, Gemini, Hermes, Copilot, OpenCode via `opencode.json` registration, Cursor,
+  Grok Bot via chat-log watching). The awareness pilot writes markdown memory logs
+  (`memory/log/YYYY-MM.md`) for bots that re-read files from disk — a file-based fallback channel.
 
 #### C.6 Skims (lower confidence, repo descriptions / search snippets only — `[SKIM]`)
 
@@ -406,59 +402,54 @@ The planned 11 tools: `memory_search`, `memory_get`, `memory_store`, `memory_upd
 `memory_decisions`, `memory_failures`, `memory_skills`. Assessment against observed reality:
 
 1. **Split the surface into core verbs + kind filters.** Real servers cluster at 3–9 tools
-   (claude-mem 3–4, OpenMemory 4, official demo 9, basic-memory ~25 but heavily audited to fix
-   model-facing contract errors, doobidoo 15+). Eleven flat tools dilute tool selection and
-   spend description budget (Claude Code truncates descriptions at 2,048 chars and loads tools
-   lazily via ToolSearch; Pi defaults tools to codemode). Recommendation: keep
-   `memory_search / memory_get / memory_store / memory_update / memory_delete / memory_forget /
-   memory_related / memory_project_context` (8) and fold **decisions/failures/skills into
-   `memory_search(kind="decision"|"failure"|"skill", …)`** — this matches Claude Code's skills
-   (1% context listing, kind-like discoverability) and claude-mem's `search(type="bugfix")`
-   pattern. If distinct tools win internal evals, keep the 11 but mark the four curated tools
-   `deferred`/searchable rather than eagerly loaded, since kind names carry no extra semantics to
-   the model beyond what a `kind` enum describes.
+   (claude-mem 3–4, OpenMemory 4, official demo 9, doobidoo 15+; basic-memory ships ~25 but had
+   to run a dedicated audit of model-facing text to fix contract errors). Eleven flat tools
+   dilute tool selection and spend description budget (Claude Code truncates descriptions at
+   2,048 chars and loads tools lazily via ToolSearch; Pi defaults tools to codemode).
+   Recommendation: keep `memory_search/get/store/update/delete/forget/related/project_context`
+   (8) and fold **decisions/failures/skills into `memory_search(kind=...)`** — matching claude-mem
+   `search(type="bugfix")` and Claude Code skills' kind-like discoverability. If distinct tools
+   win internal evals, keep the 11 but mark the curated four `deferred`/searchable rather than
+   eagerly loaded.
 2. **Make `memory_project_context` the session-start tool and pair it with hooks.** The winning
    pattern is injection, not polling: claude-mem injects at SessionStart via hooks; Claude Code
    auto memory loads 200 lines/25 KB every session; basic-memory has a hook producer front door.
    `onemem init` should install hook handlers (SessionStart → inject packed context;
-   Stop/PostToolUse → capture transcript deltas) for Claude Code, Codex, and Cursor
-   (hook shapes are now cross-compatible), with the tool as fallback for non-hook runtimes.
+   Stop/PostToolUse → capture transcript deltas) for Claude Code, Codex, Cursor (hook shapes are
+   now cross-compatible), with the tool as fallback for non-hook runtimes.
 3. **Progressive disclosure with token budgets on every read tool.** Copy claude-mem's
    three-layer economics: `memory_search` returns an ID-index (one line + token estimate per
    memory, ~50–100 tokens), `memory_get`/`memory_related` return full records for selected IDs
-   only. Include a `token_estimate` field in `structuredContent` and honor a `max_tokens` hint
-   parameter — Codex clients enforce `output_token_limit` per tool server-side, so predictable
-   output sizes directly protect users there.
-4. **Merge or clearly separate delete vs. forget.** To a model, `delete` and `forget` look
-   identical (destructive removal). Either differentiate hard — `forget` = soft expiry/decay
-   (`valid_until`, archive, recoverable), `delete` = hard removal — and say so in the first
-   sentence of each description, or ship one tool with a `mode` parameter. Mark both
-   `destructiveHint: true`; mark `memory_store`/`memory_update` `idempotentHint` where true
-   (annotations per https://modelcontextprotocol.io/specification/latest/basic/tools).
-5. **Write-path semantics to adopt from peers.** `memory_store` should return the stored ID plus
-   a dedup outcome (new | merged | superseded, cf. doobidoo `memory_resolve`, mem0
-   consolidation) rather than silently merging; `memory_update` should require the revision the
-   caller read (basic-memory #1642 pattern) and manage `valid_from`/`valid_until` transitions
-   (onememory's temporal truth). Return conflicts as `isError: true` results, not exceptions.
-6. **Structured output everywhere**: every tool gets an `outputSchema` + `structuredContent`
-   (spec since 2025-06-18) with human-readable `content` summaries for weaker clients. Keep
-   handles (memory IDs, cursors) as opaque strings valid per server instance
-   (https://modelcontextprotocol.io/specification/latest/basic/tools).
-7. **Transport plan**: stdio as primary (all five runtimes; zero config network; inherits
-   project dir), built with `serveStdio` on the TS SDK v2 (Bun-supported). Optional Streamable
-   HTTP via `createMcpHandler` for a shared/hosted server — stateless by design, matching the
-   2026-07-28 spec direction. Do not build SSE. Do not depend on deprecated Roots/Sampling/
-   Logging (SEP-2577): infer workspace from `CLAUDE_PROJECT_DIR`/launch dir; run consolidation
-   in onemem's own worker (like claude-mem's Bun worker), not via Sampling.
+   only. Include `token_estimate` in `structuredContent` and honor a `max_tokens` hint — Codex
+   enforces `output_token_limit` per tool, so predictable output sizes directly protect users.
+4. **Merge or clearly separate delete vs. forget.** To a model they look identical. Either
+   differentiate hard — `forget` = soft expiry/decay (`valid_until`, archive, recoverable),
+   `delete` = hard removal — and say so in each description's first sentence, or ship one tool
+   with a `mode` parameter. Mark both `destructiveHint: true`; mark `memory_store`/`memory_update`
+   `idempotentHint` where true (https://modelcontextprotocol.io/specification/latest/basic/tools).
+5. **Write-path semantics to adopt from peers.** `memory_store` returns the stored ID plus a
+   dedup outcome (new | merged | superseded; cf. doobidoo `memory_resolve`, mem0 consolidation)
+   rather than silently merging; `memory_update` requires the revision the caller read
+   (basic-memory #1642) and manages `valid_from`/`valid_until` transitions. Return conflicts as
+   `isError: true` results, not exceptions.
+6. **Structured output everywhere**: `outputSchema` + `structuredContent` (spec since 2025-06-18)
+   with human-readable `content` for weaker clients; keep handles (IDs, cursors) opaque and
+   per-instance (https://modelcontextprotocol.io/specification/latest/basic/tools).
+7. **Transport plan**: stdio primary (all five runtimes, zero network config, inherits project
+   dir) via `serveStdio` on TS SDK v2 (Bun-supported); optional Streamable HTTP via
+   `createMcpHandler` for a shared/hosted server — stateless by design, matching the 2026-07-28
+   direction. No SSE. No dependence on deprecated Roots/Sampling/Logging (SEP-2577): infer
+   workspace from `CLAUDE_PROJECT_DIR`/launch dir; run consolidation in onemem's own worker
+   (like claude-mem's Bun worker), not via Sampling.
 8. **Defer 2026-07-28-only features** (MRTR `input_required`, `ttlMs`/`cacheScope`,
    `server/discover`, per-request `_meta`) until client adoption is confirmed — none of the five
-   runtimes' docs yet document them [UNVERIFIED adoption status]. MRTR is the natural fit for a
-   future `memory_resolve`-style clarification loop; note it in the ADR, don't ship it first.
-9. **Beyond tools, ship the discovery artifacts**: a short server `instructions` (self-contained
-   in the first 512 chars for Codex; under 2,048 chars total for Claude Code), a Claude Code
-   skill + `.mdc`/`.pi` equivalents describing when to use memory, and `onemem init` emitting
-   per-runtime config (`.mcp.json`, `.codex/config.toml`, `.cursor/mcp.json`, `opencode.json`,
-   `.pi/mcp.json`) with the correct per-runtime env expansion syntax.
+   runtimes' docs document them yet [UNVERIFIED]. MRTR is the natural fit for a future
+   `memory_resolve`-style clarification loop; note it in the ADR, don't ship it first.
+9. **Ship the discovery artifacts beyond tools**: short server `instructions` (self-contained in
+   the first 512 chars for Codex, <2,048 total for Claude Code); a Claude Code skill + `.mdc`/
+   `.pi` equivalents describing when to use memory; `onemem init` emitting per-runtime config
+   (`.mcp.json`, `.codex/config.toml`, `.cursor/mcp.json`, `opencode.json`, `.pi/mcp.json`) with
+   the correct per-runtime env expansion syntax.
 
 ## Per-runtime integration matrix
 

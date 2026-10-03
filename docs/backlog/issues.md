@@ -76,10 +76,14 @@ Issues:
 Branch: `mission/5-mcp` · Deps: M1, M2 · Package: `packages/mcp`
 
 Issues:
-1. stdio transport + all 11 tools (`memory_search`, `memory_get`, `memory_store`, `memory_update`,
-   `memory_delete`, `memory_forget`, `memory_related`, `memory_project_context`,
-   `memory_decisions`, `memory_failures`, `memory_skills`); tool results budget-aware (validated
-   against research: naming/annotations may adjust pre-implementation).
+1. stdio transport (`serveStdio`) implementing the ADR-0010 surface: 8 tools by default —
+   `memory_search` (with `kind=` covering decisions/failures/skills), `memory_get`, `memory_store`
+   (returns dedup outcome: new|merged|superseded), `memory_update` (revision-checked),
+   `memory_delete`, `memory_forget`, `memory_related`, `memory_project_context`; the full
+   11-tool exposure (`memory_decisions`, `memory_failures`, `memory_skills`) is a config profile.
+   Progressive disclosure: search returns an ID-index with token estimates, `memory_get` returns
+   full records; `outputSchema` + `structuredContent` everywhere; annotations (`destructiveHint`,
+   `idempotentHint`); descriptions ≤ 2,048 chars (length-tested).
 2. Streamable HTTP transport (server mode) with session management.
 3. Compact-context session tool (`memory_project_context` ≤ 750 tokens default).
 4. MCP conformance test suite (reused by every adapter, M6–M9).
