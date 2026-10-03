@@ -58,14 +58,16 @@ export interface PackResult {
   droppedForBudget: number;
 }
 
-/** Deterministic base order: score desc, then id asc. */
-function byScoreDesc<T extends { score: number; id: string }>(a: T, b: T): number {
-  return b.score - a.score || (a.id < b.id ? -1 : 1);
-}
-
+/**
+ * `items` must arrive in final rank order (best first). Input order, not `score`, is the
+ * ranking: a rerank tier may reorder candidates without rewriting their fused scores, and
+ * re-sorting here would silently undo it. `score` only drives the density knapsack.
+ */
 export function packResults(items: readonly PackableItem[], options: PackOptions): PackResult {
   const budget = Math.max(0, options.budget);
-  const ordered = [...items].sort(byScoreDesc);
+  const ordered = [...items];
+  const rankOf = new Map(ordered.map((item, index) => [item.id, index]));
+  const byRank = (a: PackableItem, b: PackableItem): number => rankOf.get(a.id)! - rankOf.get(b.id)!;
   const head = ordered.slice(0, options.maxMemories);
   const tail = ordered.slice(options.maxMemories);
 
@@ -73,7 +75,7 @@ export function packResults(items: readonly PackableItem[], options: PackOptions
   const density = [...head].sort((a, b) => {
     const da = a.score / Math.max(1, estimateTokens(a.summaryText));
     const db = b.score / Math.max(1, estimateTokens(b.summaryText));
-    return db - da || byScoreDesc(a, b);
+    return db - da || byRank(a, b);
   });
 
   const packed = new Map<string, PackedItem>();
@@ -96,7 +98,7 @@ export function packResults(items: readonly PackableItem[], options: PackOptions
     }
   }
 
-  // Phase 2 — content upgrades, highest score first, when the delta fits.
+  // Phase 2 — content upgrades, best rank first, when the delta fits.
   for (const item of head) {
     const entry = packed.get(item.id);
     if (entry === undefined) continue;
@@ -117,7 +119,7 @@ export function packResults(items: readonly PackableItem[], options: PackOptions
   // Phase 3 — titles-only overflow for everything that did not get a summary slot.
   const overflowCandidates = [...unpackedHead, ...tail]
     .filter((item) => !packed.has(item.id))
-    .sort(byScoreDesc);
+    .sort(byRank);
   let droppedForBudget = 0;
   let omitted = 0;
   let overflowCount = 0;

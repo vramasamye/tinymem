@@ -38,7 +38,7 @@ import type { Database } from '@onememory/storage';
 import { candidateFromMemory, candidateFromWorking, mergeCandidates } from './candidates';
 import type { RetrievalCandidate } from './candidates';
 import { mergeConfig } from './config';
-import type { RetrievalConfig } from './config';
+import type { RetrievalConfig, RetrievalConfigInput } from './config';
 import { dedupeCandidates } from './dedupe';
 import type { SimilarityFn } from './dedupe';
 import { EntityIndex } from './entity-index';
@@ -69,7 +69,7 @@ export interface RetrievalEngineOptions {
   embedder?: Embedder;
   /** Optional rerank tier — runs only when `config.rerank.enabled` is also set (ADR-0004: opt-in). */
   reranker?: Reranker;
-  config?: Partial<RetrievalConfig>;
+  config?: RetrievalConfigInput;
   /** Injectable clock (tests / deterministic runs). */
   now?: () => Date;
 }
@@ -177,11 +177,15 @@ export function createRetrievalEngine(
 
   // --- channels ------------------------------------------------------------
 
-  async function runLexical(queryText: string, filter: searchRepo.CandidateFilter, warnings: string[]): Promise<ChannelRun> {
+  async function runLexical(
+    terms: readonly string[],
+    filter: searchRepo.CandidateFilter,
+    warnings: string[],
+  ): Promise<ChannelRun> {
     try {
       const records = await searchRepo.searchLexical(
         storage.client,
-        { queryText, limit: config.lexical.limit },
+        { terms, limit: config.lexical.limit },
         filter,
       );
       return {
@@ -226,6 +230,12 @@ export function createRetrievalEngine(
     } catch (error) {
       warnings.push(`vector channel failed: embedding error: ${errorMessage(error)}`);
       return { candidates: [], ids: [], active: false, failed: true };
+    }
+    // A zero-norm query has no direction to rank by; pgvector's cosine distance against it is
+    // NaN, and NaN compares greater than every number in Postgres, so minCosine would admit
+    // every row.
+    if (!embedding.some((value) => value !== 0)) {
+      return { candidates: [], ids: [], active: true, failed: false };
     }
     try {
       const matches = await vectors.search(embedding, config.vector.limit, {
@@ -508,7 +518,11 @@ export function createRetrievalEngine(
           { candidates: [], ids: [], active: false, failed: false } as ChannelRun,
         ]
       : await Promise.all([
-          runLexical(request.query, filter, warnings),
+          runLexical(
+            understanding.keywords.length > 0 ? understanding.keywords : [request.query],
+            filter,
+            warnings,
+          ),
           runVector(request.query, filter, warnings),
         ]);
 

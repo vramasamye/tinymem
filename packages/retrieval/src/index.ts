@@ -34,6 +34,7 @@ export {
   DEFAULT_WEIGHTS,
   mergeConfig,
   type RetrievalConfig,
+  type RetrievalConfigInput,
   type RetrievalWeights,
   type TypeAffinityMatrix,
 } from './config';

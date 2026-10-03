@@ -15,13 +15,16 @@ import type { Embedder } from '@onememory/core';
  * Deterministic hash-axis embedder: each known word lights up one axis (synonym groups share an
  * axis, so related texts get non-trivial cosine similarity), vectors are L2-normalized, unknown
  * words contribute nothing. `calls` counts embed() invocations for cache assertions.
+ *
+ * Default dim is 384 to match the committed `memory_vectors.embedding vector(384)` column — the
+ * pgvector backend compares against the column type, so a mismatched dim would fail loudly.
  */
 export interface TestEmbedder extends Embedder {
   readonly lexicon: ReadonlyMap<string, number>;
   calls: number;
 }
 
-/** Default 24-axis lexicon: synonym groups share an axis. */
+/** The 24-axis lexicon: synonym groups share an axis. */
 export const TEST_LEXICON: ReadonlyArray<readonly [string, number]> = [
   ['postgres', 0], ['postgresql', 0], ['pg', 0], ['database', 0], ['db', 0],
   ['node', 1], ['nodejs', 1],
@@ -48,7 +51,7 @@ export const TEST_LEXICON: ReadonlyArray<readonly [string, number]> = [
   ['git', 22], ['commits', 22],
 ];
 
-export function createTestEmbedder(dim = 24, extraLexicon: ReadonlyArray<readonly [string, number]> = []): TestEmbedder {
+export function createTestEmbedder(dim = 384, extraLexicon: ReadonlyArray<readonly [string, number]> = []): TestEmbedder {
   const lexicon = new Map<string, number>(TEST_LEXICON);
   for (const [word, axis] of extraLexicon) {
     if (axis < dim) lexicon.set(word, axis);

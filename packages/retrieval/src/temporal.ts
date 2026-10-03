@@ -44,7 +44,8 @@ const ALL_STATUSES: readonly MemoryStatus[] = ['active', 'stale', 'superseded', 
 export function policyAt(policy: TemporalPolicy, now: string): string {
   const { resolution } = policy;
   if (resolution.kind === 'overlap') {
-    return resolution.until ?? resolution.from ?? now;
+    // An open-ended window extends to the present, so its far edge is `now`.
+    return resolution.until ?? now;
   }
   return resolution.at;
 }

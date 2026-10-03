@@ -163,27 +163,34 @@ async function mapRows(db: Database, rows: readonly MemoryJoinRow[]): Promise<Me
 // ---------------------------------------------------------------------------
 
 export interface LexicalSearchOptions {
-  /** Raw query text — `plainto_tsquery('simple', …)` handles normalization PG-side. */
-  queryText: string;
+  /**
+   * Query terms. Each is normalized PG-side by `plainto_tsquery('simple', …)` and the per-term
+   * queries are OR-ed (`||`): plainto alone ANDs every word, which makes natural-language
+   * queries recall almost nothing. `ts_rank` still favors documents matching more terms.
+   */
+  terms: readonly string[];
   limit: number;
 }
 
-/** FTS channel: `search_text @@ plainto_tsquery('simple', …)` ranked by `ts_rank`, best first. */
+/** FTS channel: `search_text @@ (term₁ || term₂ || …)` ranked by `ts_rank`, best first. */
 export async function searchLexical(
   db: Database,
   opts: LexicalSearchOptions,
   filter: CandidateFilter,
 ): Promise<MemoryRecord[]> {
-  const plan = planFilter(filter, 2);
-  const limitIndex = 2 + plan.params.length;
+  const terms = opts.terms.map((term) => term.trim()).filter((term) => term.length > 0);
+  if (terms.length === 0) return [];
+  const tsquery = terms.map((_, index) => `plainto_tsquery('simple', $${index + 1})`).join(' || ');
+  const plan = planFilter(filter, terms.length + 1);
+  const limitIndex = terms.length + 1 + plan.params.length;
   const result = await db.query<MemoryJoinRow>(
     `${SEARCH_MEMORY_SELECT}
-      WHERE m.search_text @@ plainto_tsquery('simple', $1)
+      WHERE m.search_text @@ (${tsquery})
         AND ${plan.clauses.join(' AND ')}
-      ORDER BY ts_rank(m.search_text, plainto_tsquery('simple', $1)) DESC,
+      ORDER BY ts_rank(m.search_text, (${tsquery})) DESC,
                m.observed_at DESC, m.id DESC
       LIMIT $${limitIndex}`,
-    [opts.queryText, ...plan.params, opts.limit],
+    [...terms, ...plan.params, opts.limit],
   );
   return mapRows(db, result.rows);
 }
@@ -244,8 +251,8 @@ export async function memoriesForEntities(
 ): Promise<MemoryRecord[]> {
   const perEntity: string[][] = [];
   for (const entityId of opts.entityIds) {
-    const plan = planFilter(filter, 3);
-    const limitIndex = 3 + plan.params.length;
+    const plan = planFilter(filter, 2);
+    const limitIndex = 2 + plan.params.length;
     const result = await db.query<{ memory_id: string }>(
       `SELECT me.memory_id
          FROM memory_entities me
@@ -524,7 +531,8 @@ export async function listCurrentMemories(
   opts: TypeListOptions,
   filter: CandidateFilter,
 ): Promise<MemoryRecord[]> {
-  const plan = planFilter(filter, 1);
+  if (opts.types.length === 0) return [];
+  const plan = planFilter({ ...filter, types: opts.types }, 1);
   const limitIndex = 1 + plan.params.length;
   const order = opts.order === 'importance' ? 'm.importance DESC, m.observed_at DESC' : 'm.observed_at DESC';
   const result = await db.query<MemoryJoinRow>(

@@ -162,15 +162,63 @@ export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   },
 };
 
-/** Deep-merge a partial config over the defaults (nested sections merge key-by-key). */
-export function mergeConfig(partial?: Partial<RetrievalConfig>): RetrievalConfig {
+/**
+ * The config INPUT the engine accepts: every section merges key-by-key over the defaults, so a
+ * caller overrides exactly the weights it wants (`{ weights: { w_imp: 0.4 } }`) without
+ * restating the whole table.
+ */
+export interface RetrievalConfigInput {
+  weights?: Partial<RetrievalWeights>;
+  rrf?: { k?: number };
+  halfLifeDays?: Partial<Record<MemoryType, number>>;
+  typeAffinity?: Partial<Record<SearchIntent, Partial<Record<MemoryType, number>>>>;
+  lexical?: { limit?: number };
+  vector?: { limit?: number; minCosine?: number };
+  graph?: {
+    perEntityLimit?: number;
+    entityCap?: number;
+    hops?: number;
+    expansionCap?: number;
+    seedTopK?: number;
+    decay?: number;
+    shortcutDecisions?: number;
+    shortcutFailures?: number;
+  };
+  packing?: { defaultMaxTokens?: number; overflowLimit?: number };
+  rerank?: { enabled?: boolean; limit?: number };
+  nearDuplicate?: { cosineThreshold?: number };
+  summaryMaxChars?: number;
+  sessionContext?: {
+    budget?: number;
+    digestTokens?: number;
+    decisionTokens?: number;
+    failureTokens?: number;
+    procedureTokens?: number;
+    preferenceTokens?: number;
+    decisions?: number;
+    failures?: number;
+    procedures?: number;
+    preferences?: number;
+  };
+  caches?: {
+    embeddingTtlMs?: number;
+    embeddingMaxEntries?: number;
+    resultTtlMs?: number;
+    resultMaxEntries?: number;
+    entityTtlMs?: number;
+    entityMaxEntries?: number;
+  };
+}
+
+/** Merge a partial config input over the defaults (every section key-by-key). */
+export function mergeConfig(partial?: RetrievalConfigInput): RetrievalConfig {
   const base = DEFAULT_RETRIEVAL_CONFIG;
   if (!partial) return structuredClone(base);
-  return {
+  const merged: RetrievalConfig = {
     weights: { ...base.weights, ...partial.weights },
     rrf: { ...base.rrf, ...partial.rrf },
     halfLifeDays: { ...base.halfLifeDays, ...partial.halfLifeDays },
-    typeAffinity: { ...base.typeAffinity, ...partial.typeAffinity },
+    typeAffinity: mergeAffinity(base.typeAffinity, partial.typeAffinity),
     lexical: { ...base.lexical, ...partial.lexical },
     vector: { ...base.vector, ...partial.vector },
     graph: { ...base.graph, ...partial.graph },
@@ -181,4 +229,17 @@ export function mergeConfig(partial?: Partial<RetrievalConfig>): RetrievalConfig
     sessionContext: { ...base.sessionContext, ...partial.sessionContext },
     caches: { ...base.caches, ...partial.caches },
   };
+  return merged;
+}
+
+function mergeAffinity(
+  base: TypeAffinityMatrix,
+  overrides?: Partial<Record<SearchIntent, Partial<Record<MemoryType, number>>>>,
+): TypeAffinityMatrix {
+  const merged: TypeAffinityMatrix = { ...base };
+  if (overrides === undefined) return merged;
+  for (const [intent, row] of Object.entries(overrides) as Array<[SearchIntent, Partial<Record<MemoryType, number>>]>) {
+    merged[intent] = { ...base[intent], ...row };
+  }
+  return merged;
 }

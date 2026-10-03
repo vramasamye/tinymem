@@ -78,16 +78,17 @@ export async function dedupeCandidates(
       continue;
     }
     const keeper = betterKeeper(existing, candidate);
-    // Preserve the survivor's channel presence: the keeper keeps the best of both.
-    const merged: RetrievalCandidate = { ...keeper };
-    for (const [channel, rank] of Object.entries(candidate.channels)) {
+    const other = keeper === existing ? candidate : existing;
+    // The survivor inherits the best channel ranks and graph boost of both copies.
+    const merged: RetrievalCandidate = { ...keeper, channels: { ...keeper.channels } };
+    for (const [channel, rank] of Object.entries(other.channels)) {
       const key = channel as keyof typeof merged.channels;
       const current = merged.channels[key];
       if (current === undefined || rank < current) merged.channels[key] = rank;
     }
-    if (candidate.graphBoost > merged.graphBoost) {
-      merged.graphBoost = candidate.graphBoost;
-      merged.graphSource = candidate.graphSource;
+    if (other.graphBoost > merged.graphBoost) {
+      merged.graphBoost = other.graphBoost;
+      merged.graphSource = other.graphSource;
     }
     byHash.set(candidate.contentHash, merged);
     exactCollapsed += 1;
