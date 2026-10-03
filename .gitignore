@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+coverage/
+
+# Environment & secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Local databases
+*.db
+*.db-wal
+*.db-shm
+.pgdata/
+*.pglite/
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Temp
+tmp/
+tmpdir/
+.cache/
