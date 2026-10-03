@@ -1,0 +1,27 @@
+{
+  "name": "@onememory/llm",
+  "version": "0.1.0",
+  "description": "onememory model router: per-operation provider routing behind an internal ModelProvider interface (ADR-0006)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.108",
+    "@ai-sdk/google": "^2.0.101",
+    "@ai-sdk/openai": "^2.0.133",
+    "@ai-sdk/openai-compatible": "^1.0.58",
+    "ai": "^6.0.300",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}
