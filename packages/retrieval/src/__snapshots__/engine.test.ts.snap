@@ -1,0 +1,287 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`retrieval engine (embedded PGlite) explain snapshot for a fixed query 1`] = `
+{
+  "entities": [
+    "PostgreSQL",
+  ],
+  "intent": "decision",
+  "keywords": [
+    "choose",
+    "postgresql",
+    "database",
+  ],
+  "memories": [
+    {
+      "explain": [
+        {
+          "detail": "confidence 0.95",
+          "factor": "confidence",
+          "weight": 0.08,
+        },
+        {
+          "detail": "entity match: PostgreSQL (1/1 query entities)",
+          "factor": "entity_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "entity-bound (0-hop: query entity match)",
+          "factor": "graph_proximity",
+          "weight": 0.08,
+        },
+        {
+          "detail": "importance 0.90",
+          "factor": "importance",
+          "weight": 0.12,
+        },
+        {
+          "detail": "FTS rank #1",
+          "factor": "lexical_relevance",
+          "weight": 0.16,
+        },
+        {
+          "detail": "same project",
+          "factor": "project_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "observed 2025-05-01 (half-life 400d for decision)",
+          "factor": "recency",
+          "weight": 0.1,
+        },
+        {
+          "detail": "vector channel rank #1 (RRF k=60)",
+          "factor": "semantic_similarity",
+          "weight": 0.2,
+        },
+        {
+          "detail": "intent 'decision' favors type 'decision'",
+          "factor": "type_affinity",
+          "weight": 0.15,
+        },
+        {
+          "detail": "currently valid (temporal filter passed)",
+          "factor": "temporal_validity",
+          "weight": 0,
+        },
+      ],
+      "relevance": 0.8841,
+      "temporal": {
+        "status": "active",
+        "valid_from": "2025-05-01",
+        "valid_until": null,
+      },
+      "title": "Use PostgreSQL as the primary database",
+      "type": "decision",
+    },
+    {
+      "explain": [
+        {
+          "detail": "confidence 0.75",
+          "factor": "confidence",
+          "weight": 0.08,
+        },
+        {
+          "detail": "entity match: PostgreSQL (1/1 query entities)",
+          "factor": "entity_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "entity-bound (0-hop: query entity match)",
+          "factor": "graph_proximity",
+          "weight": 0.08,
+        },
+        {
+          "detail": "importance 0.60",
+          "factor": "importance",
+          "weight": 0.12,
+        },
+        {
+          "detail": "FTS rank #2",
+          "factor": "lexical_relevance",
+          "weight": 0.16,
+        },
+        {
+          "detail": "same project",
+          "factor": "project_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "observed 2025-03-10 (half-life 180d for failure)",
+          "factor": "recency",
+          "weight": 0.1,
+        },
+        {
+          "detail": "vector channel rank #3 (RRF k=60)",
+          "factor": "semantic_similarity",
+          "weight": 0.2,
+        },
+        {
+          "detail": "intent 'decision' favors type 'failure'",
+          "factor": "type_affinity",
+          "weight": 0.03,
+        },
+        {
+          "detail": "currently valid (temporal filter passed)",
+          "factor": "temporal_validity",
+          "weight": 0,
+        },
+      ],
+      "relevance": 0.7022,
+      "temporal": {
+        "status": "active",
+        "valid_from": "2025-03-10",
+        "valid_until": null,
+      },
+      "title": "PostgreSQL connection limit exhausted",
+      "type": "failure",
+    },
+    {
+      "explain": [
+        {
+          "detail": "confidence 0.60",
+          "factor": "confidence",
+          "weight": 0.08,
+        },
+        {
+          "detail": "importance 0.50",
+          "factor": "importance",
+          "weight": 0.12,
+        },
+        {
+          "detail": "FTS rank #3",
+          "factor": "lexical_relevance",
+          "weight": 0.16,
+        },
+        {
+          "detail": "cross-project memory",
+          "factor": "project_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "observed 2025-04-01 (half-life 400d for semantic)",
+          "factor": "recency",
+          "weight": 0.1,
+        },
+        {
+          "detail": "vector channel rank #2 (RRF k=60)",
+          "factor": "semantic_similarity",
+          "weight": 0.2,
+        },
+        {
+          "detail": "intent 'decision' favors type 'semantic'",
+          "factor": "type_affinity",
+          "weight": 0.06,
+        },
+        {
+          "detail": "currently valid (temporal filter passed)",
+          "factor": "temporal_validity",
+          "weight": 0,
+        },
+      ],
+      "relevance": 0.5455,
+      "temporal": {
+        "status": "active",
+        "valid_from": "2025-04-01",
+        "valid_until": null,
+      },
+      "title": null,
+      "type": "semantic",
+    },
+    {
+      "explain": [
+        {
+          "detail": "confidence 0.85",
+          "factor": "confidence",
+          "weight": 0.08,
+        },
+        {
+          "detail": "1-hop graph neighbor (edge valid at query time)",
+          "factor": "graph_proximity",
+          "weight": 0.08,
+        },
+        {
+          "detail": "importance 0.75",
+          "factor": "importance",
+          "weight": 0.12,
+        },
+        {
+          "detail": "same project",
+          "factor": "project_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "observed 2025-07-02 (half-life 180d for procedural)",
+          "factor": "recency",
+          "weight": 0.1,
+        },
+        {
+          "detail": "intent 'decision' favors type 'procedural'",
+          "factor": "type_affinity",
+          "weight": 0.03,
+        },
+        {
+          "detail": "currently valid (temporal filter passed)",
+          "factor": "temporal_validity",
+          "weight": 0,
+        },
+      ],
+      "relevance": 0.3188,
+      "temporal": {
+        "status": "active",
+        "valid_from": "2025-07-02",
+        "valid_until": null,
+      },
+      "title": "Deploy to Cloud Run",
+      "type": "procedural",
+    },
+    {
+      "explain": [
+        {
+          "detail": "confidence 0.80",
+          "factor": "confidence",
+          "weight": 0.08,
+        },
+        {
+          "detail": "1-hop graph neighbor (edge valid at query time)",
+          "factor": "graph_proximity",
+          "weight": 0.08,
+        },
+        {
+          "detail": "importance 0.70",
+          "factor": "importance",
+          "weight": 0.12,
+        },
+        {
+          "detail": "same project",
+          "factor": "project_match",
+          "weight": 0.1,
+        },
+        {
+          "detail": "observed 2025-08-01 (half-life 180d for failure)",
+          "factor": "recency",
+          "weight": 0.1,
+        },
+        {
+          "detail": "intent 'decision' favors type 'failure'",
+          "factor": "type_affinity",
+          "weight": 0.03,
+        },
+        {
+          "detail": "currently valid (temporal filter passed)",
+          "factor": "temporal_validity",
+          "weight": 0,
+        },
+      ],
+      "relevance": 0.3113,
+      "temporal": {
+        "status": "active",
+        "valid_from": "2025-08-01",
+        "valid_until": null,
+      },
+      "title": "Cloud Run deploys OOM",
+      "type": "failure",
+    },
+  ],
+}
+`;
