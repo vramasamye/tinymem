@@ -1,0 +1,25 @@
+{
+  "name": "@onememory/extraction",
+  "version": "0.1.0",
+  "description": "onememory EXTRACT + CLASSIFY stages: heuristic (no-LLM) baseline, LLM extractor via the model router, future-value gate, job handler factories",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@onememory/core": "workspace:*",
+    "@onememory/llm": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@onememory/storage": "workspace:*",
+    "@types/bun": "^1.4.2"
+  }
+}
