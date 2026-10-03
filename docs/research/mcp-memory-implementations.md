@@ -35,9 +35,10 @@ resource links) — https://modelcontextprotocol.io/specification/2026-07-28/cha
 - The planned 11-tool onememory surface is at the top of the range of what real servers ship
   (official demo: 9; OpenMemory: 4; claude-mem: 3–4 search tools). Two risks: description/token
   budgets (Claude Code truncates tool descriptions at 2,048 chars; Pi truncates tool text at
-  20 KB) and tool-selection dilution. Recommendation: keep the 6 core verbs, fold
-  decisions/failures/skills into `memory_search(kind=...)` filters, and ship `memory_project_context`
-  plus hooks/skills as the session-start channel. See "Recommended onememory MCP surface".
+  20 KB) and tool-selection dilution. Recommendation: keep the 8 non-kind tools, fold
+  decisions/failures/skills into `memory_search(kind=...)` filters, and ship
+  `memory_project_context` plus hooks/skills as the session-start channel. See
+  "Recommended onememory MCP surface".
 - Runtimes are converging on: tool search / deferred tool exposure (Claude Code ToolSearch on by
   default; Pi codemode/deferred), per-tool output budgets (Codex `output_token_limit`), hooks that
   mirror each other across runtimes (Claude Code ⇄ Codex ⇄ Cursor compatibility), and AGENTS.md

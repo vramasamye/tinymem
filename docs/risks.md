@@ -29,12 +29,12 @@ specific research report. Each risk carries its mitigation and owner-mission.
 | D1 | **Embedded-mode process model** | ✅ Resolved by ADR-0002: embedded storage has exactly ONE owner process — a local `onemem serve` daemon owns PGlite; CLI and MCP stdio speak HTTP to it. Concurrent multi-agent use routes to the `server` profile (documented limitation, not hidden). Driver: PGlite is single-owner-process (concurrent init SIGSEGV report); dep-research §1. |
 | D2 | **Default embedding model** | ✅ Resolved by ADR-0006: Ollama native `/api/embed` preferred when present; else transformers.js v4 + pinned `bge-small-en-v1.5` (384-d) behind a Bun×OS×backend matrix gate, with Node worker-process fallback; last resort = lexical+graph retrieval with explicit warning. Never silently degrades without reporting. |
 | D3 | **MCP tool surface finalization** | ✅ Resolved by ADR-0010: all 11 capabilities implemented; default exposure is 8 tools with `memory_search(kind=...)` covering decisions/failures/skills; full 11-tool exposure is a config profile. Progressive disclosure + token estimates on every read; `forget` (soft) vs `delete` (hard) stated in first sentence of each description. |
-| D4 | **Raw event payload retention** default before compaction to sources | Open at review. Leaning: 90 days, configurable, 0 = keep forever. |
+| D4 | **Raw event payload retention** default before compaction to sources | ✅ Resolved (user, 2026-10-03): default **30 days**, configurable, 0 = keep forever. Compaction job summarizes payloads into `sources` then purges raw events. |
 | D5 | **Phase 1 extractor default** | ✅ Resolved (ADR-0006): heuristic extractor is the shipped default (correctness baseline, zero network); LLM extractor activates via config when a provider is set. |
 | D6 | **FTS config**: `simple` vs `english` stemming | Open. Leaning: `simple` + query-side normalization; revisit on M11 recall results. |
 | D7 | **Skill auto-promotion** | ✅ Resolved by ADR-0009: `auto_promote_skills = false` default; candidates + `onemem skills review` flow. |
 | D8 | **Working memory MCP exposure** | Open for M5. Leaning: `memory_working` read-only tool, owning session only. |
-| D9 | **GitHub publication** (repo name/org/remote, issue import) | Needs user decision + auth. `docs/backlog/issues.md` is GitHub-issue-ready meanwhile. |
+| D9 | **GitHub publication** | ✅ Resolved (user, 2026-10-03): repo **`vramasamye/tinymem`**, pushed via the personal SSH alias (`github.com-personal` → `~/.ssh/id_ed25519_personal`). The `gh` CLI is authenticated as `vikirams` and must NOT be used for account-scoped operations on this repo (creation, issues, settings) — issue import needs vramasamye-authenticated gh or a PAT. |
 
 ## C. Process risks
 
