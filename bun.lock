@@ -48,6 +48,20 @@
         "@types/bun": "^1.4.2",
       },
     },
+    "packages/adapters/claude": {
+      "name": "@onememory/adapter-claude",
+      "version": "0.1.0",
+      "bin": {
+        "onemem-claude-hook": "./src/bin.ts",
+      },
+      "dependencies": {
+        "@onememory/core": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
     "packages/config": {
       "name": "@onememory/config",
       "version": "0.1.0",
@@ -277,6 +291,8 @@
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.3.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-09BHFaNVBe5pB2AhzCfLj0cqmsKLERvZQ4FblzP90UMGLaXVqdZPByFjURwsUYCmxonUW2yAwgTTvle+8O2/8w=="],
 
     "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.3.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.3.0", "zod": "^4.2.0" } }, "sha512-+6b0LdsQLmHsvS7J6sQJ4weTpzUn61fU1JKS+321/+IyDYoHW5CR2Tgqcs6GgAAQvlesCo6yX3xttgmx+XGtJw=="],
+
+    "@onememory/adapter-claude": ["@onememory/adapter-claude@workspace:packages/adapters/claude"],
 
     "@onememory/api": ["@onememory/api@workspace:apps/api"],
 
