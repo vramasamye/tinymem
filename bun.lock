@@ -19,6 +19,17 @@
         "@types/bun": "^1.4.2",
       },
     },
+    "packages/retrieval": {
+      "name": "@onememory/retrieval",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/core": "workspace:*",
+        "@onememory/storage": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
     "packages/storage": {
       "name": "@onememory/storage",
       "version": "0.1.0",
@@ -108,6 +119,8 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
     "@onememory/core": ["@onememory/core@workspace:packages/core"],
+
+    "@onememory/retrieval": ["@onememory/retrieval@workspace:packages/retrieval"],
 
     "@onememory/storage": ["@onememory/storage@workspace:packages/storage"],
 
