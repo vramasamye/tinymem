@@ -1,0 +1,25 @@
+{
+  "name": "@onememory/config",
+  "version": "0.1.0",
+  "description": "onememory configuration: discovery + strict Zod validation for .onememory/onememory.yaml (local-first defaults)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@onememory/llm": "workspace:*",
+    "@onememory/security": "workspace:*",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}
