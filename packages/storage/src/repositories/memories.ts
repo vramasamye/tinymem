@@ -239,7 +239,8 @@ export async function queryCurrent(db: Database, query: MemoryQuery): Promise<Me
 
 export async function queryAsOf(db: Database, at: string, query: MemoryQuery): Promise<MemoryRecord[]> {
   const input = parseInput(MemoryQuerySchema, query, 'queryAsOf');
-  const filters = planFilters(input, 3);
+  // $1 = `at`; scope/type filters start at $2.
+  const filters = planFilters(input, 2);
   const limit = input.limit ?? DEFAULT_QUERY_LIMIT;
   // Point-in-time: window match; superseded retained; disputed excluded (memory-model.md §5).
   const where = [

@@ -151,8 +151,9 @@ function createFloat8Index(db: Database, options: EmbeddingIndexOptions): Float8
   };
 }
 
+/** Postgres array literal (`{v1,v2,...}`) for a float8[] parameter. */
 function pgDoubleArray(values: readonly number[]): string {
-  return `[${values.join(',')}]`;
+  return `{${values.join(',')}}`;
 }
 
 /**
