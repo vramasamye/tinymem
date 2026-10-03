@@ -30,6 +30,7 @@
         "drizzle-orm": "^0.45.3",
         "pg": "^8.23.1",
         "pgvector": "^0.3.0",
+        "zod": "^4.6.5",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",

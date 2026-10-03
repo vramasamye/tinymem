@@ -1,0 +1,31 @@
+{
+  "name": "@onememory/storage",
+  "version": "0.1.0",
+  "description": "onememory storage: Postgres dialect (Drizzle schema + SQL) over PGlite (embedded) and Postgres+pgvector (server)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "generate-migrations": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-pgvector": "^0.0.9",
+    "@onememory/core": "workspace:*",
+    "drizzle-orm": "^0.45.3",
+    "drizzle-kit": "^0.31.11",
+    "pg": "^8.23.1",
+    "pgvector": "^0.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/pg": "^8.23.1"
+  }
+}
