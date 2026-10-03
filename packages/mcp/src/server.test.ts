@@ -148,21 +148,22 @@ describe('end-to-end over the MCP wire (default8 profile)', () => {
     );
     expect(wrongRevision.code).toBe('not_found');
 
-    // A REAL memory with the RIGHT revision: delete fails honestly (purge primitive follow-up).
+    // A REAL memory with the RIGHT revision: the purge is real, audited, and destructive.
     const seeded = await seedFixtureMemory(world, {
       type: 'semantic',
       content: 'A deletable fixture fact.',
       observedAt: '2026-06-01T00:00:00.000Z',
     });
     const record = (await world.storage.store.getMemory(seeded))!;
-    const purge = errorOf(
+    const purge = structuredOf(
       await client.callTool({
         name: 'memory_delete',
         arguments: { id: seeded, expected_revision: record.updated_at },
       }),
     );
-    expect(purge.code).toBe('purge_unavailable');
-    expect(purge.message).toContain('memory_forget');
+    expect(purge.purged).toBe(true);
+    expect((purge.audit as { action: string }).action).toBe('purged');
+    expect(await world.storage.store.getMemory(seeded)).toBeNull();
   });
 
   test('schema-invalid arguments never reach the handler: the SDK rejects them as isError results', async () => {

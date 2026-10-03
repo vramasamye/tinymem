@@ -18,7 +18,6 @@ export type ToolErrorCode =
   | 'metadata_only_update_unsupported' // content-identical edit: no storage primitive yet
   | 'invalid_window' // valid_from/valid_until would be empty or backwards
   | 'invalid_transition' // the status machine rejects the transition (core InvalidTransitionError)
-  | 'purge_unavailable' // hard purge awaits the storage primitive (coordinator follow-up)
   | 'internal'; // unexpected failure — message included, never a stack trace
 
 export class ToolError extends Error {

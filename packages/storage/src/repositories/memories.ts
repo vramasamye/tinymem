@@ -11,6 +11,7 @@
  */
 
 import {
+  DeleteMemoryOptionsSchema,
   NewMemorySchema,
   MemoryQuerySchema,
   StatusChangeOptionsSchema,
@@ -22,7 +23,9 @@ import {
   uuidv7,
 } from '@onememory/core';
 import type {
+  DeleteMemoryOptions,
   DurableMemoryType,
+  MemoryDeleteResult,
   MemoryQuery,
   MemoryRecord,
   MemoryStatus,
@@ -439,6 +442,59 @@ export async function supersede(db: Database, rawInput: {
     const loserRecord = await getMemory(tx, input.loser_id);
     if (!loserRecord) throw new NotFoundError('memory', input.loser_id);
     return { outcome: 'superseded' as const, winner, loser: loserRecord };
+  });
+}
+
+/**
+ * Hard purge — the destructive counterpart of a forget tombstone. Deletes the memories row in
+ * ONE transaction: vectors, entity bindings, edges, decisions/failures/code-ref rows cascade
+ * (schema `ON DELETE CASCADE`); the two NON-cascading references are cleared first so FKs never
+ * block the purge (losers of a supersession lose their forward pointer; promoted working rows
+ * are un-linked — their content survives and TTL sweeps resume). The 'purged' audit row is
+ * appended after the delete in the same transaction: `memory_events` is FK-less by design, so
+ * the trail survives the purge. Returns null when the id is unknown.
+ */
+export async function deleteMemory(
+  db: Database,
+  id: string,
+  rawOptions: DeleteMemoryOptions,
+): Promise<MemoryDeleteResult | null> {
+  const options = parseInput(DeleteMemoryOptionsSchema, rawOptions, 'deleteMemory');
+  return db.transaction(async (tx) => {
+    const locked = await tx.query<{ id: string; status: MemoryStatus } & Record<string, unknown>>(
+      'SELECT id, status FROM memories WHERE id = $1::uuid FOR UPDATE',
+      [id],
+    );
+    const current = locked.rows[0];
+    if (!current) return null;
+    const memory = await getMemory(tx, id);
+    if (!memory) throw new NotFoundError('memory', id);
+
+    // RETURNING keeps the counts portable across the PGlite and node-postgres drivers.
+    const clearedSupersededBy = await tx.query<{ id: string }>(
+      'UPDATE memories SET superseded_by = NULL, updated_at = now() WHERE superseded_by = $1::uuid RETURNING id',
+      [id],
+    );
+    const clearedPromotions = await tx.query<{ id: string }>(
+      'UPDATE working_memory SET promoted_memory_id = NULL WHERE promoted_memory_id = $1::uuid RETURNING id',
+      [id],
+    );
+
+    await tx.query('DELETE FROM memories WHERE id = $1::uuid', [id]);
+
+    const audit = await appendMemoryEvent(tx, {
+      memory_id: id,
+      action: 'purged',
+      from_status: current.status,
+      to_status: null,
+      actor: options.actor,
+      details: {
+        reason: options.reason,
+        cleared_superseded_by: clearedSupersededBy.rows.length,
+        cleared_promoted_links: clearedPromotions.rows.length,
+      },
+    });
+    return { purged: true as const, memory, audit };
   });
 }
 

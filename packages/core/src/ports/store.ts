@@ -18,6 +18,7 @@
 import type { OnememoryEvent } from '../schema/event';
 import type { MemoryRecord } from '../schema/memory';
 import type {
+  DeleteMemoryOptions,
   EnqueueJobInput,
   EntityBinding,
   MergeEntitiesInput,
@@ -40,6 +41,7 @@ import type {
   EdgeRecord,
   EntityRecord,
   EventIngestResult,
+  MemoryDeleteResult,
   MemoryEventRecord,
   MemoryWriteResult,
   ProjectRecord,
@@ -90,6 +92,14 @@ export interface Store {
   updateMemoryStatus(id: string, to: MemoryStatus, options: StatusChangeOptions): Promise<MemoryRecord>;
   /** The supersession transaction: winner insert + loser (superseded, valid_until, superseded_by) + audit rows. */
   supersede(input: SupersedeInput): Promise<SupersedeResult>;
+  /**
+   * Hard purge (destructive — the opposite of a forget tombstone): deletes the memories row in
+   * one transaction. Vectors, entity bindings, edges, decisions/failures/code-ref rows cascade
+   * (schema `ON DELETE CASCADE`); dangling `superseded_by`/`promoted_memory_id` pointers are
+   * cleared so FKs never block the purge. The `'purged'` audit row survives — `memory_events`
+   * is FK-less by design. Returns null when the id is unknown.
+   */
+  deleteMemory(id: string, options: DeleteMemoryOptions): Promise<MemoryDeleteResult | null>;
   /** Current-validity lookup: status IN (active, stale) AND valid_until IS NULL. */
   queryCurrent(query: MemoryQuery): Promise<MemoryRecord[]>;
   /** Point-in-time lookup at `at`: valid_from ≤ at < valid_until; superseded included, disputed excluded. */

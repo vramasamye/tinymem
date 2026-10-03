@@ -70,6 +70,7 @@ export function createStore(db: Database): Store {
     updateMemoryStatus: (id: string, to: MemoryStatus, options) =>
       memoriesRepo.updateMemoryStatus(db, id, to, options),
     supersede: (input) => memoriesRepo.supersede(db, input),
+    deleteMemory: (id, options) => memoriesRepo.deleteMemory(db, id, options),
     queryCurrent: (query: MemoryQuery) => memoriesRepo.queryCurrent(db, query),
     queryAsOf: (at: string, query: MemoryQuery) => memoriesRepo.queryAsOf(db, at, query),
     historyOf: (memoryId: string) => memoriesRepo.historyOf(db, memoryId),

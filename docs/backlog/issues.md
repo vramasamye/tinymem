@@ -186,3 +186,29 @@ Issues:
 2. `onemem doctor` checks as a shared library (used by CLI + adapters + MCP).
 3. Profile defaults: `local` (no external calls), `hybrid` (optional hosted LLM), `server`
    (Postgres + HTTP MCP).
+
+---
+
+## Cross-mission follow-ups (from merged mission reports)
+
+Raised by M5 (MCP) — storage-owned; none block M6/M7. Note: M13 shipped `packages/config` per the
+phased plan; M16's remaining unique scope is doctor-as-a-shared-library + profile-default
+formalization, to be folded rather than run as written.
+
+1. ~~**`Store.deleteMemory` (hard purge)**~~ ✅ Resolved (coordinator, 2026-10-03): the primitive landed —
+   one transaction deletes the memories row (vectors/bindings/edges/payload rows cascade), clears
+   the two non-cascading references (`superseded_by`, `promoted_memory_id`) so FKs never block, and
+   appends a surviving `'purged'` audit row. `packages/mcp` `memory_delete` now purges for real
+   against its pinned output schema; the `purge_unavailable` error code is retired. A purge scenario
+   runs in the both-profile integration matrix (embedded + env-gated Postgres).
+2. **Storage field-update primitive** (or a blessed metadata sidecar) [P2] — unlocks metadata-only
+   `memory_update` (today honestly rejected: identical-content supersede collides on
+   `content_hash`).
+3. **Project lookup by path** (`cwd` → project id) [P2] — lets `CLAUDE_PROJECT_DIR` scope
+   automatically instead of riding provenance metadata.
+4. **Injectable clock for `memory_events.at`** [P3] — audit rows are DB-clock-stamped; uniform
+   time-travel tests want the injected `now`.
+
+Raised by M3 (extraction): worker-process ONNX isolation (daemon event-loop) — folded into M13's
+brief as a documented decision; consolidation (M14) consumes `semantic_candidate`-tagged memories;
+LLM-prompt tuning belongs to M11 benchmarks.

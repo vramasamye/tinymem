@@ -596,6 +596,110 @@ export async function float8FallbackScenario(storage: OnememoryStorage): Promise
 }
 
 // ---------------------------------------------------------------------------
+// Hard purge (Store.deleteMemory) — delete ≠ forget: the 'purged' audit row survives
+// ---------------------------------------------------------------------------
+
+export async function purgeScenario(storage: OnememoryStorage): Promise<void> {
+  const ctx = await seedProjectAndSource(storage, 'purge');
+  const tag = uniqueId().slice(0, 6);
+
+  // A supersession pair: purging the WINNER must clear the loser's forward pointer, keep the loser.
+  const node20 = await storage.store.insertMemory(
+    makeMemory(ctx, {
+      content: `This project uses Node 20 for its runtime ${tag}.`,
+      observed_at: '2024-01-15T00:00:00.000Z',
+      valid_from: '2024-01-15T00:00:00.000Z',
+      title: 'Node 20',
+    }),
+  );
+  expect(node20.outcome).toBe('inserted');
+  const superseded = await storage.store.supersede({
+    winner: makeMemory(ctx, {
+      content: `This project uses Node 22 for its runtime ${tag}.`,
+      observed_at: '2025-06-01T00:00:00.000Z',
+      valid_from: '2025-06-01T00:00:00.000Z',
+      title: 'Node 22',
+    }),
+    loser_id: node20.memory.id,
+    actor: 'user:fixture',
+    reason: 'newer wins',
+  });
+  expect(superseded.outcome).toBe('superseded');
+  if (superseded.outcome !== 'superseded') return;
+  const winnerId = superseded.winner.id;
+
+  // The winner carries the full dependent payload: a vector, an entity binding, an edge.
+  await storage.vectors.upsert(winnerId, new Array(384).fill(0.05));
+  const entity = await storage.store.createEntity({
+    kind: 'service',
+    name: `node runtime ${tag}`,
+    project_id: ctx.projectId,
+  });
+  await storage.store.bindMemoryEntities(winnerId, [{ entity_id: entity.id, role: 'subject' }]);
+  const neighbour = (await storage.store.insertMemory(makeMemory(ctx, { content: `Edge target ${tag}.` }))).memory;
+  await storage.store.addEdge({ from_memory_id: winnerId, to_memory_id: neighbour.id, relation: 'related_to' });
+
+  // A promoted working row points at the winner: the purge un-links it; the row itself survives.
+  const session = await storage.store.createSession(makeSession({ project_id: ctx.projectId }));
+  const working = await storage.store.insertWorking(
+    makeWorking(session.id, { kind: 'task', content: 'promoted note', expires_at: '2099-01-01T00:00:00.000Z' }),
+  );
+  await storage.store.markWorkingPromoted(working.id, winnerId);
+
+  // Unknown id → null (never a throw).
+  expect(await storage.store.deleteMemory(uniqueId(), { actor: 'coordinator-test' })).toBeNull();
+
+  // Purge the winner.
+  const purged = await storage.store.deleteMemory(winnerId, { actor: 'agent:fixture', reason: 'gdpr-style removal' });
+  expect(purged).not.toBeNull();
+  if (!purged) return;
+  expect(purged.purged).toBe(true);
+  expect(purged.memory.id).toBe(winnerId);
+  expect(purged.memory.content).toContain(tag);
+
+  // The row is gone; the cascaded dependents are gone.
+  expect(await storage.store.getMemory(winnerId)).toBeNull();
+  const vectorCount = await storage.client.query<{ n: number }>(
+    'SELECT count(*)::int AS n FROM memory_vectors WHERE memory_id = $1::uuid',
+    [winnerId],
+  );
+  expect(vectorCount.rows[0]?.n).toBe(0);
+  const bindingCount = await storage.client.query<{ n: number }>(
+    'SELECT count(*)::int AS n FROM memory_entities WHERE memory_id = $1::uuid',
+    [winnerId],
+  );
+  expect(bindingCount.rows[0]?.n).toBe(0);
+  const edgeCount = await storage.client.query<{ n: number }>(
+    'SELECT count(*)::int AS n FROM edges WHERE from_memory_id = $1::uuid OR to_memory_id = $1::uuid',
+    [winnerId],
+  );
+  expect(edgeCount.rows[0]?.n).toBe(0);
+
+  // The 'purged' audit row survives (memory_events is FK-less by design).
+  const audit = await storage.store.listMemoryEvents(winnerId);
+  const purgeEntry = audit.find((entry) => entry.action === 'purged');
+  expect(purgeEntry).toBeDefined();
+  expect(purgeEntry?.from_status).toBe('active');
+  expect(purgeEntry?.actor).toBe('agent:fixture');
+  expect((purgeEntry?.details as { reason?: string } | undefined)?.reason).toBe('gdpr-style removal');
+
+  // The superseded loser survives; the purge cleared its forward pointer.
+  const loser = await storage.store.getMemory(node20.memory.id);
+  expect(loser).not.toBeNull();
+  expect(loser?.superseded_by).toBeUndefined();
+  expect(loser?.status).toBe('superseded');
+
+  // The promoted working row survives, un-linked.
+  const workingRow = (await storage.store.listWorking(session.id)).find((row) => row.id === working.id);
+  expect(workingRow).toBeDefined();
+  // (The working-memory mapper keeps SQL NULL as null; the memories mapper renders it undefined.)
+  expect(workingRow?.promoted_memory_id).toBeNull();
+
+  // Idempotent miss: purging again is a plain null.
+  expect(await storage.store.deleteMemory(winnerId, { actor: 'coordinator-test' })).toBeNull();
+}
+
+// ---------------------------------------------------------------------------
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
 
@@ -604,6 +708,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['store → get roundtrip preserves every field', storeGetRoundtripScenario],
   ['dedupe: same scope rejected, cross-scope + NULL-scope allowed', dedupeScenario],
   ['supersession: loser closed, winner current, PIT + history correct', supersessionScenario],
+  ['purge: row + cascaded dependents gone, audit survives, pointers cleared', purgeScenario],
   ['status transitions are audited; reinforce bumps counters', statusTransitionAuditScenario],
   ['events: dedupe by content_hash, redactions passthrough, pending pipeline', eventsIngestScenario],
   ['entity graph: scoped entities, idempotent binds/edges, merge', entityGraphScenario],

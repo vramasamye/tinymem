@@ -92,6 +92,15 @@ export interface SupersedeResult {
   existing?: import('../schema/memory').MemoryRecord;
 }
 
+/** Result of the hard-purge primitive (Store.deleteMemory). */
+export interface MemoryDeleteResult {
+  purged: true;
+  /** Snapshot of the row immediately before deletion — what was destroyed. */
+  memory: import('../schema/memory').MemoryRecord;
+  /** The `'purged'` audit row (memory_events is FK-less, so the trail survives the deletion). */
+  audit: MemoryEventRecord;
+}
+
 export type { MemoryQuery };
 
 /** One `memory_events` row (append-only audit trail). */

@@ -117,6 +117,17 @@ export const StatusChangeOptionsSchema = z.looseObject({
 });
 export type StatusChangeOptions = z.infer<typeof StatusChangeOptionsSchema>;
 
+/**
+ * Options for the hard-purge primitive (`Store.deleteMemory`) — the destructive counterpart of
+ * an archived tombstone. Purges are audited like every other lifecycle action.
+ */
+export const DeleteMemoryOptionsSchema = z.looseObject({
+  /** `system|user:<id>|agent:<id>|job:<kind>` — audited on the 'purged' row. */
+  actor: z.string().min(1),
+  reason: z.string().optional(),
+});
+export type DeleteMemoryOptions = z.infer<typeof DeleteMemoryOptionsSchema>;
+
 export const SupersedeInputSchema = z.looseObject({
   winner: NewMemorySchema,
   loser_id: z.uuid(),

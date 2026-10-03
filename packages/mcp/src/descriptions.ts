@@ -86,9 +86,8 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Hard delete: PERMANENTLY purges the memory row and its vectors — unrecoverable, no ' +
     'history, the opposite of memory_forget (a soft, recoverable tombstone). ' +
     'Requires expected_revision from your last read so a purge can never happen by accident. ' +
-    'NOTE: the hard-purge storage primitive is not merged yet, so this tool currently fails ' +
-    'loudly with isError "purge_unavailable" — use memory_forget meanwhile; once the primitive ' +
-    'lands, the same call purges for real.',
+    "A 'purged' audit entry survives, so the deletion itself stays on the record; superseded " +
+    'memories that pointed here keep their history with the forward link cleared.',
 
   memory_related:
     'List the memory\'s graph neighbors: full records of memories connected by typed edges ' +

@@ -293,10 +293,9 @@ export const MemoryDeleteInputSchema = z.looseObject({
 export type MemoryDeleteInput = z.infer<typeof MemoryDeleteInputSchema>;
 
 /**
- * The hard-purge result contract. NOTE (mission-5): the storage primitive behind it
- * (`Store.deleteMemory` — row + vectors + payload rows + 'purged' audit row) is not merged yet,
- * so the handler currently fails loudly with `purge_unavailable`; the schema pins the wire
- * shape the primitive will fill in (the ADR requires every tool to ship an outputSchema).
+ * The hard-purge result contract, backed by `Store.deleteMemory`: the memories row and its
+ * cascaded vectors/bindings/edges/payload rows are deleted, and a 'purged' audit row survives
+ * the deletion (memory_events is FK-less by design).
  */
 export const MemoryDeleteOutputSchema = z.looseObject({
   id: z.uuid(),

@@ -33,7 +33,7 @@ specific research report. Each risk carries its mitigation and owner-mission.
 | D5 | **Phase 1 extractor default** | ✅ Resolved (ADR-0006): heuristic extractor is the shipped default (correctness baseline, zero network); LLM extractor activates via config when a provider is set. |
 | D6 | **FTS config**: `simple` vs `english` stemming | Open. Leaning: `simple` + query-side normalization; revisit on M11 recall results. |
 | D7 | **Skill auto-promotion** | ✅ Resolved by ADR-0009: `auto_promote_skills = false` default; candidates + `onemem skills review` flow. |
-| D8 | **Working memory MCP exposure** | Open for M5. Leaning: `memory_working` read-only tool, owning session only. |
+| D8 | **Working memory MCP exposure** | ✅ Resolved by M5 (2026-10-03): no dedicated `memory_working` tool — working memory is reachable read-only through `memory_search { session_id }` (retrieval's session-scoped channel), which covers the need without a second surface. A dedicated list tool stays out until ingest adapters (M6/M7) define the session lifecycle it would list. |
 | D9 | **GitHub publication** | ✅ Resolved (user, 2026-10-03): repo **`vramasamye/tinymem`**, pushed via the personal SSH alias (`github.com-personal` → `~/.ssh/id_ed25519_personal`). The `gh` CLI is authenticated as `vikirams` and must NOT be used for account-scoped operations on this repo (creation, issues, settings) — issue import needs vramasamye-authenticated gh or a PAT. |
 
 ## C. Process risks

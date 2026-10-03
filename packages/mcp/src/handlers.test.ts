@@ -604,17 +604,23 @@ describe('memory_update', () => {
 // ---------------------------------------------------------------------------
 
 describe('memory_delete (hard purge)', () => {
-  test('delete ≠ forget: currently fails LOUDLY with purge_unavailable (storage primitive follow-up)', async () => {
+  test('purges for real: row gone, one surviving purged audit row, retrieval forgets it', async () => {
     const id = await storeOne();
     const record = (await world.storage.store.getMemory(id))!;
-    const structured = expectError(
-      await call('memory_delete', { id, expected_revision: record.updated_at }),
-      'purge_unavailable',
-    );
-    expect((structured.error as { message: string }).message).toContain('memory_forget');
+    const structured = expectOk(await call('memory_delete', { id, expected_revision: record.updated_at }));
+    expect(structured.purged).toBe(true);
+    const audit = structured.audit as { action: string; from_status: string | null };
+    expect(audit.action).toBe('purged');
+    expect(audit.from_status).toBe(record.status);
 
-    // NOTHING was deleted — the row is still there.
-    expect(await world.storage.store.getMemory(id)).not.toBeNull();
+    // The row is GONE (the destructive path) — the audit trail is all that remains.
+    expect(await world.storage.store.getMemory(id)).toBeNull();
+    const events = await world.storage.store.listMemoryEvents(id);
+    expect(events.some((event) => event.action === 'purged')).toBe(true);
+
+    // …and default retrieval no longer sees it.
+    const current = expectOk(await call('memory_search', { query: 'rate limit gateway' }));
+    expect((current.results as Array<{ id: string }>).map((entry) => entry.id)).not.toContain(id);
   });
 
   test('wrong revision → isError revision_conflict (a purge can never be accidental)', async () => {
@@ -623,6 +629,8 @@ describe('memory_delete (hard purge)', () => {
       await call('memory_delete', { id, expected_revision: '1999-01-01T00:00:00.000Z' }),
       'revision_conflict',
     );
+    // NOT purged on the revision conflict — the row is still there.
+    expect(await world.storage.store.getMemory(id)).not.toBeNull();
   });
 
   test('unknown id → isError not_found', async () => {

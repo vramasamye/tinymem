@@ -10,8 +10,8 @@
  * - `memory_update` is revision-checked (optimistic concurrency) and append-mostly: a corrected
  *   fact supersedes the old revision in ONE storage transaction (loser stays queryable);
  * - `memory_forget` = audited status tombstone (recoverable), `memory_delete` = hard purge —
- *   which currently fails loudly (`purge_unavailable`) because the storage primitive is a
- *   coordinator follow-up, never a silent fake;
+ *   the row and its cascaded vectors/bindings/edges/payload rows are gone, one 'purged' audit
+ *   row survives (memory_events is FK-less by design);
  * - failures throw `ToolError`; results.ts converts them to `isError: true` results.
  */
 
@@ -39,6 +39,7 @@ import {
   type MemoryDecisionsInput,
   type MemoryDecisionsOutput,
   type MemoryDeleteInput,
+  type MemoryDeleteOutput,
   type MemoryFailuresInput,
   type MemoryFailuresOutput,
   type MemoryForgetInput,
@@ -628,13 +629,13 @@ export async function handleMemoryUpdate(
 }
 
 // ---------------------------------------------------------------------------
-// memory_delete — hard purge (fails loudly until the storage primitive lands)
+// memory_delete — hard purge (destructive; the audit 'purged' row survives)
 // ---------------------------------------------------------------------------
 
 export async function handleMemoryDelete(
   ctx: OnememoryMcpContext,
   input: MemoryDeleteInput,
-): Promise<never> {
+): Promise<MemoryDeleteOutput> {
   const { store } = ctx.storage;
   const memory = await store.getMemory(input.id);
   if (memory === null) {
@@ -642,15 +643,28 @@ export async function handleMemoryDelete(
   }
   checkRevision(memory, input.expected_revision);
 
-  // The Store port has no hard-delete primitive for durable memories (working memory is the only
-  // deletable table, by design). Faking one is forbidden (AGENTS.md rule 3) and raw SQL outside
-  // packages/storage is forbidden (rule 5) — fail loudly and leave the recoverable path available.
-  throw new ToolError(
-    'purge_unavailable',
-    `hard purge of memory ${input.id} is not available yet: the storage layer has no deleteMemory primitive (coordinator follow-up — mission-5.md). `
-      + 'NOTHING was deleted. Use memory_forget for the recoverable tombstone (status → archived, audited), or re-run this call once the primitive is merged.',
-    { memory_id: input.id, revision: memory.updated_at },
-  );
+  // The reason is redacted BEFORE it can reach the audit trail (ADR-0007 applies to delete too).
+  const { fields } = redactWriteFields(ctx, { reason: input.reason });
+  const result = await store.deleteMemory(input.id, {
+    actor: ctx.actor,
+    ...(fields.reason !== undefined && fields.reason !== '' ? { reason: fields.reason } : {}),
+  });
+  if (result === null) {
+    // Raced between the read and the purge — the row is already gone.
+    throw new ToolError('not_found', `memory ${input.id} not found`, { memory_id: input.id });
+  }
+  ctx.invalidateSearchCache(memory.project_id);
+
+  return {
+    id: input.id,
+    purged: true,
+    audit: {
+      action: 'purged',
+      from_status: result.audit.from_status,
+      actor: result.audit.actor,
+      at: result.audit.at,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
