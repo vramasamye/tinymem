@@ -1,0 +1,26 @@
+# onememory local server stack (ADR-0002 `server` profile default).
+# memory-api / web / ollama services are added by their missions (M13 / M10).
+# Postgres parity target for the storage integration suite (ONEMEMORY_PG_URL).
+
+name: onememory
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: onememory
+      POSTGRES_PASSWORD: onememory
+      POSTGRES_DB: onememory
+    ports:
+      - "5433:5432" # avoid clashing with a local 5432 Postgres
+    volumes:
+      - ./.pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onememory -d onememory"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+# Test connection string for the storage suite:
+#   postgresql://onememory:onememory@localhost:5433/onememory
