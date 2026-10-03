@@ -1,0 +1,209 @@
+/**
+ * The shared contract between the CLI and the REST API.
+ *
+ * `onemem` needs the same behaviour whether it talks to storage directly (no daemon running) or to
+ * a running daemon over HTTP (ADR-0002: one owner process per embedded data dir). Both paths
+ * therefore implement exactly this interface:
+ *
+ * - `createLocalBackend(runtime)` — in-process calls into the composition root;
+ * - `createHttpBackend(baseUrl)` — the same calls over `/v1/*`.
+ *
+ * CLI commands depend on the interface, never on a concrete backend, which is what makes the
+ * per-command tests able to inject a fake.
+ */
+
+import type { MemorySearchRequest, MemorySearchResponse } from '@onememory/core';
+import type { LlmProfileSummary } from '@onememory/config';
+import type {
+  EntityRecord,
+  EdgeRecord,
+  MemoryEventRecord,
+  MemoryRecord,
+  ProjectRecord,
+  Redaction,
+} from '@onememory/core';
+import type { SessionContext } from '@onememory/retrieval';
+
+import type { DoctorOptions, DoctorReport } from './doctor';
+
+/** Machine-readable health summary (ADR-0010: the daemon is probed, not guessed). */
+export interface HealthReport {
+  status: 'ok' | 'degraded' | 'failed';
+  version: string;
+  uptime_ms: number;
+  pid: number;
+  config_path: string | null;
+  storage: { profile: 'embedded' | 'server'; vector_backend: string; vector_model: string; vector_dim: number };
+  llm: LlmProfileSummary;
+  embedder: { provider: string | null; model: string | null; dim: number | null };
+  network_guard: { enforced: boolean; attempts: number; reason: string };
+  warnings: string[];
+}
+
+export interface CreateProjectInput {
+  name: string;
+  root_path?: string;
+  git_remote?: string;
+  description?: string;
+}
+
+export interface ProjectListResult {
+  projects: ProjectRecord[];
+  warnings: string[];
+}
+
+export interface RememberInput {
+  project_id: string;
+  content: string;
+  /** Durable content type; explicit user statements may declare one (memory-model.md §4 rule 4). */
+  type?: 'episodic' | 'semantic' | 'procedural' | 'decision' | 'failure' | 'preference';
+  title?: string;
+  importance?: number;
+  confidence?: number;
+  tags?: string[];
+  entities?: string[];
+  subtype?: string;
+  /** Audit actor; defaults to `user:<local-user>` (CLI/REST are the user's own action). */
+  actor?: string;
+}
+
+export interface RememberOutcome {
+  outcome: 'inserted' | 'duplicate';
+  memory_id: string;
+  /** Redaction records from the write path — kind + location + length only, never values. */
+  redactions: Redaction[];
+  /** Set when the same (scope, type, content) already existed. */
+  duplicate_of?: string;
+  warnings: string[];
+}
+
+export interface ForgetInput {
+  project_id: string;
+  memory_id: string;
+  reason?: string;
+  actor?: string;
+}
+
+export interface ForgetOutcome {
+  memory_id: string;
+  from_status: string;
+  to_status: string;
+  /** The audited transition row id. */
+  audit_event_id: string;
+  /** How to undo it (restore) and how to hard-purge later. */
+  restore_hint: string;
+  purge_hint: string;
+  note: string;
+}
+
+export interface InspectResult {
+  memory: MemoryRecord;
+  /** Supersession chain, oldest first (includes `memory`). */
+  history: MemoryRecord[];
+  /** Append-only audit trail, oldest first. */
+  audit: MemoryEventRecord[];
+  entities: EntityRecord[];
+  edges: EdgeRecord[];
+  /** Redaction summaries recovered from the write-path audit rows: kinds + locations + lengths. */
+  redactions: Redaction[];
+  warnings: string[];
+}
+
+export type IngestOutcomeStatus = 'stored' | 'duplicate' | 'excluded' | 'dead-letter';
+
+export interface IngestOutcome {
+  index: number;
+  status: IngestOutcomeStatus;
+  event_id?: string;
+  duplicate_of?: string;
+  /** Why the event was excluded or dead-lettered (path exclusion / validation issues). */
+  reason?: string;
+  redactions?: Redaction[];
+}
+
+export interface IngestResult {
+  outcomes: IngestOutcome[];
+  stored: number;
+  duplicates: number;
+  excluded: number;
+  dead_lettered: number;
+  /** Id of the queued `normalize` job when at least one event was stored. */
+  normalize_job_id: string | null;
+  warnings: string[];
+}
+
+export interface StatsResult {
+  project_id: string;
+  storage: {
+    profile: 'embedded' | 'server';
+    vector_backend: string;
+    vector_model: string;
+    vector_dim: number;
+    data_dir: string | null;
+  };
+  memories: {
+    total: number;
+    by_status: Record<string, number>;
+    by_type: Record<string, number>;
+    /** True when a status hit the read cap — counts are a lower bound. */
+    truncated: boolean;
+  };
+  working_memory: { session_id: string; depth: number } | null;
+  /** `null` while `@onememory/storage` has no job-count API (see the M13 report follow-ups). */
+  jobs: { pending: number; running: number; dead: number } | null;
+  cache: { embeddings: number; results: number; entityScopes: number };
+  llm: LlmProfileSummary;
+  warnings: string[];
+}
+
+export interface ContextOptions {
+  budget?: number;
+  session_id?: string;
+}
+
+export interface ListOptions {
+  max_tokens?: number;
+  max_memories?: number;
+  /** Free-text override; the decisions/failures endpoints synthesize one for intent routing. */
+  query?: string;
+}
+
+/** Service-level failure carrying a stable code the HTTP layer maps onto a status. */
+export type BackendErrorCode = 'not_found' | 'invalid_request' | 'conflict' | 'unavailable' | 'internal';
+
+export class BackendError extends Error {
+  constructor(
+    message: string,
+    public readonly code: BackendErrorCode,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = 'BackendError';
+  }
+}
+
+/**
+ * Everything the CLI (and later adapters through the REST API) can ask onememory to do.
+ */
+export interface OnememoryBackend {
+  readonly kind: 'local' | 'remote';
+  /** HTTP base URL in remote mode; `null` when the backend owns storage in-process. */
+  readonly endpoint: string | null;
+  health(): Promise<HealthReport>;
+  doctor(options?: DoctorOptions): Promise<DoctorReport>;
+  createProject(input: CreateProjectInput): Promise<ProjectRecord>;
+  getProject(id: string): Promise<ProjectRecord>;
+  listProjects(): Promise<ProjectListResult>;
+  ingestEvents(projectId: string, events: unknown[]): Promise<IngestResult>;
+  search(request: MemorySearchRequest): Promise<MemorySearchResponse>;
+  remember(input: RememberInput): Promise<RememberOutcome>;
+  forget(input: ForgetInput): Promise<ForgetOutcome>;
+  /** Undo a soft forget (archived → active, audited) — what makes "recoverable" true. */
+  restore(input: ForgetInput): Promise<ForgetOutcome>;
+  inspect(projectId: string, memoryId: string): Promise<InspectResult>;
+  stats(projectId: string, options?: { session_id?: string }): Promise<StatsResult>;
+  context(projectId: string, options?: ContextOptions): Promise<SessionContext>;
+  decisions(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
+  failures(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
+  close(): Promise<void>;
+}
