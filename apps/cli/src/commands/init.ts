@@ -12,6 +12,10 @@
  * The config file is validated in memory *before* it is written, and the storage layer is opened
  * (migrations included) before the project row is created — so a successful init means the whole
  * default pipeline answered, not just that a file exists.
+ *
+ * After the project is registered, the scaffold phase (`wire-runtimes.ts`) wires the agent
+ * runtimes the user consented to — Claude Code and/or Codex — to the daemon's MCP surface. On an
+ * already-initialized project, `--with-claude` / `--with-codex` run that phase alone.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -24,15 +28,28 @@ import {
   CONFIG_FILE_NAME,
   CONFIG_FILE_NAME_ALT,
   ProjectStateSchema,
+  loadConfig,
+  loadProjectState,
   safeParseConfig,
   renderConfigForProject,
   saveProjectState,
   type ProjectState,
 } from '@onememory/config';
-import { BackendError, openRuntime, probeDaemon } from '@onememory/api/runtime';
+import { BackendError, daemonMcpUrl, openRuntime, probeDaemon } from '@onememory/api/runtime';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';
+import {
+  chooseRuntimes,
+  detectRuntimes,
+  printScaffoldPhase,
+  requiredReview,
+  runScaffoldPhase,
+  RUNTIME_TITLES,
+  type AgentRuntime,
+  type PathExists,
+  type ScaffoldPhaseResult,
+} from './wire-runtimes';
 
 export type InitPreset = 'local' | 'ollama' | 'server';
 
@@ -51,6 +68,12 @@ export interface InitOptions {
   ollamaModel?: string;
   /** `--embed-model` (ollama preset). */
   embedModel?: string;
+  /** `--with-claude`: wire Claude Code (consent for non-interactive runs). */
+  withClaude?: boolean;
+  /** `--with-codex`: wire Codex (consent for non-interactive runs). */
+  withCodex?: boolean;
+  /** Runtime-detection probe (tests inject one; default `existsSync`). */
+  pathExists?: PathExists;
 }
 
 export interface InitResult {
@@ -59,7 +82,20 @@ export interface InitResult {
   data_dir: string;
   project: { id: string; name: string; root_path: string; git_remote: string | null };
   project_state_path: string;
+  /** The scaffold phase: detected and wired runtimes, files written, notes. */
+  runtimes: ScaffoldPhaseResult;
+  /** Runtime-mandated review steps (trust prompts, hook approval, …) and merge-skip outcomes. */
+  required_review: string[];
   next_steps: string[];
+}
+
+/** `onemem init` on an existing configuration (with the runtime flags: the scaffold phase only). */
+export interface InitAlreadyResult {
+  status: 'already-initialized';
+  config_path: string;
+  config_dir: string;
+  runtimes?: ScaffoldPhaseResult;
+  required_review?: string[];
 }
 
 const ENV_NAME_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
@@ -179,13 +215,21 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
   const configDir = join(cwd, CONFIG_DIR_NAME);
   const configPath = join(configDir, CONFIG_FILE_NAME);
 
+  const env = options.env ?? process.env;
+  const wantsWiring = options.withClaude === true || options.withCodex === true;
+
   for (const name of [CONFIG_FILE_NAME, CONFIG_FILE_NAME_ALT]) {
     const existing = join(configDir, name);
     if (existsSync(existing)) {
       io.out(`onememory is already initialized here: ${existing}`);
-      io.out(`configuration lives in ${configDir}; run 'onemem doctor' to check the setup.`);
-      io.emit({ status: 'already-initialized', config_path: existing, config_dir: configDir });
-      return 0;
+      if (!wantsWiring) {
+        io.out(`configuration lives in ${configDir}; run 'onemem doctor' to check the setup.`);
+        io.out('to wire an agent runtime, re-run with --with-claude and/or --with-codex.');
+        const result: InitAlreadyResult = { status: 'already-initialized', config_path: existing, config_dir: configDir };
+        io.emit(result);
+        return 0;
+      }
+      return rewireExisting(options, io, { cwd, configDir, configPath: existing, env });
     }
   }
 
@@ -220,7 +264,6 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
       'local',
     ));
 
-  const env = options.env ?? process.env;
   let text: string;
   if (preset === 'local') {
     text = renderConfigForProject(name);
@@ -250,6 +293,9 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
   }
 
   validateGeneratedYaml(text, configPath);
+
+  const detection = detectRuntimes(cwd, env, options.pathExists);
+  const chosen = await chooseRuntimes(options, detection, io, prompt);
 
   // A daemon that owns this data directory would race the project creation below.
   const daemon = await probeDaemon(configDir);
@@ -283,6 +329,16 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
     });
     const projectStatePath = saveProjectState(configDir, state);
 
+    const phase = runScaffoldPhase({
+      root: cwd,
+      projectId: project.id,
+      projectName: project.name,
+      mcpUrl: daemonMcpUrl(runtime.config.daemon),
+      runtimes: chosen,
+      detected: detection.filter((entry) => entry.detected).map((entry) => entry.runtime),
+    });
+    const wiredRuntimes: AgentRuntime[] = phase.wired.map((wired) => wired.runtime);
+
     const result: InitResult = {
       preset,
       config_path: configPath,
@@ -294,11 +350,15 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
         git_remote: remote,
       },
       project_state_path: projectStatePath,
+      runtimes: phase,
+      required_review: requiredReview(phase),
       next_steps: [
-        "onemem doctor — verify the full pipeline (storage, vector backend, redaction, router)",
-        preset === 'server' || preset === 'ollama'
-          ? 'onemem serve — own storage and run the normalize/extract/re_embed job worker'
-          : 'onemem serve — own storage and run the job worker once you add providers (optional in fully-local mode)',
+        "onemem doctor — verify the full pipeline (storage, vector backend, redaction, router, wired runtimes)",
+        wiredRuntimes.length > 0
+          ? `onemem serve — start the daemon BEFORE launching ${wiredRuntimes.map((name) => RUNTIME_TITLES[name]).join(' / ')}: it serves their MCP at ${phase.mcp_url}, receives the capture hooks and runs the job worker`
+          : preset === 'server' || preset === 'ollama'
+            ? 'onemem serve — own storage and run the normalize/extract/re_embed job worker'
+            : 'onemem serve — own storage and run the job worker once you add providers (optional in fully-local mode)',
         "onemem remember '…' — store a durable memory explicitly",
         'onemem search "…" — token-budgeted retrieval',
       ],
@@ -309,6 +369,7 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
     io.out(`  config: ${result.config_path}`);
     io.out(`  data:   ${result.data_dir}`);
     if (remote !== null) io.out(`  git:    ${remote}`);
+    printScaffoldPhase(io, phase, cwd);
     io.out('next steps:');
     for (const step of result.next_steps) io.out(`  - ${step}`);
     prompt.outro('ready — run onemem doctor to check the setup.');
@@ -316,4 +377,45 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
   } finally {
     await runtime.close();
   }
+}
+
+/** The already-initialized path with runtime flags: load config + project state, wire, report. */
+async function rewireExisting(
+  options: InitOptions,
+  io: Io,
+  context: { cwd: string; configDir: string; configPath: string; env: Record<string, string | undefined> },
+): Promise<number> {
+  const loaded = loadConfig({ cwd: context.cwd, configPath: context.configPath, env: context.env });
+  const state = loadProjectState(context.configDir);
+  if (state === null) {
+    throw new BackendError(
+      `${context.configDir} has a configuration but no registered project (project.json is missing) — move the configuration aside and run onemem init again to register the project`,
+      'invalid_request',
+    );
+  }
+  const detection = detectRuntimes(loaded.paths.root, context.env, options.pathExists);
+  const phase = runScaffoldPhase({
+    root: loaded.paths.root,
+    projectId: state.project_id,
+    projectName: state.name,
+    mcpUrl: daemonMcpUrl(loaded.config.daemon),
+    runtimes: [
+      ...(options.withClaude === true ? (['claude-code'] as const) : []),
+      ...(options.withCodex === true ? (['codex'] as const) : []),
+    ],
+    detected: detection.filter((entry) => entry.detected).map((entry) => entry.runtime),
+  });
+  const result: InitAlreadyResult = {
+    status: 'already-initialized',
+    config_path: context.configPath,
+    config_dir: context.configDir,
+    runtimes: phase,
+    required_review: requiredReview(phase),
+  };
+  io.emit(result);
+  printScaffoldPhase(io, phase, loaded.paths.root);
+  if (phase.wired.length > 0) {
+    io.out(`next: onemem serve — start the daemon before launching the agent (MCP at ${phase.mcp_url}); onemem doctor checks the wiring.`);
+  }
+  return 0;
 }

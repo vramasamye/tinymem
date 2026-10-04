@@ -62,8 +62,17 @@ const doctor: DoctorReport = {
   version: 'test',
   config_path: '/tmp/demo/.onememory/onememory.yaml',
   config: null,
-  summary: { pass: 1, warn: 0, fail: 0 },
+  summary: { pass: 1, warn: 0, fail: 0, info: 1 },
   checks: [{ id: 'config', title: 'configuration', status: 'pass', detail: 'loaded' }],
+  runtimes: [
+    {
+      id: 'runtime-codex',
+      title: 'Codex',
+      status: 'info',
+      detail: 'not wired (opt-in)',
+      remediation: 'to wire it: onemem init --with-codex',
+    },
+  ],
 };
 
 const searchResponse: MemorySearchResponse = {

@@ -17,6 +17,8 @@ export interface Prompt {
   intro(text: string): void;
   outro(text: string): void;
   select<T extends string>(message: string, options: SelectOption<T>[], initial: T): Promise<T>;
+  /** Pick any subset (possibly none); `initial` is preselected. */
+  multiselect<T extends string>(message: string, options: SelectOption<T>[], initial: T[]): Promise<T[]>;
   text(message: string, options: { placeholder?: string; defaultValue?: string }): Promise<string>;
   note(text: string, title?: string): void;
 }
@@ -54,6 +56,26 @@ export function createClackPrompt(): Prompt {
       }
       return choice as T;
     },
+    multiselect: async <T extends string>(
+      message: string,
+      options: SelectOption<T>[],
+      initial: T[],
+    ): Promise<T[]> => {
+      const choice = await clack.multiselect<string>({
+        message,
+        options: options.map((option) => ({
+          value: option.value as string,
+          label: option.label,
+          ...(option.hint === undefined ? {} : { hint: option.hint }),
+        })),
+        initialValues: initial,
+        required: false,
+      });
+      if (clack.isCancel(choice)) {
+        throw new Error('cancelled');
+      }
+      return choice as T[];
+    },
     text: async (message: string, options: { placeholder?: string; defaultValue?: string }): Promise<string> => {
       const answer = await clack.text({
         message,
@@ -75,6 +97,11 @@ export function createNonInteractivePrompt(): Prompt {
     outro: () => {},
     note: () => {},
     select: async <T extends string>(_message: string, _options: SelectOption<T>[], initial: T): Promise<T> => {
+      void _message;
+      void _options;
+      return initial;
+    },
+    multiselect: async <T extends string>(_message: string, _options: SelectOption<T>[], initial: T[]): Promise<T[]> => {
       void _message;
       void _options;
       return initial;

@@ -15,6 +15,8 @@
       "dependencies": {
         "@hono/zod-openapi": "^1.6.3",
         "@modelcontextprotocol/server": "2.3.0",
+        "@onememory/adapter-claude": "workspace:*",
+        "@onememory/adapter-codex": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/embeddings": "workspace:*",
@@ -39,6 +41,8 @@
       },
       "dependencies": {
         "@clack/prompts": "^1.8.1",
+        "@onememory/adapter-claude": "workspace:*",
+        "@onememory/adapter-codex": "workspace:*",
         "@onememory/api": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
@@ -48,6 +52,7 @@
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
+        "smol-toml": "^1.9.0",
       },
     },
     "packages/adapters/claude": {

@@ -87,7 +87,7 @@ export const DoctorCheckSchema = z
   .strictObject({
     id: z.string(),
     title: z.string(),
-    status: z.enum(['pass', 'warn', 'fail']),
+    status: z.enum(['pass', 'warn', 'fail', 'info']),
     detail: z.string(),
     remediation: z.string().optional(),
   })
@@ -105,8 +105,11 @@ export const DoctorReportSchema = z
       pass: z.number().int().min(0),
       warn: z.number().int().min(0),
       fail: z.number().int().min(0),
+      info: z.number().int().min(0),
     }),
     checks: z.array(DoctorCheckSchema),
+    /** Agent-runtime wiring (Claude Code, Codex): scaffold presence + MCP URL vs daemon config. */
+    runtimes: z.array(DoctorCheckSchema),
   })
   .openapi('DoctorReport');
 

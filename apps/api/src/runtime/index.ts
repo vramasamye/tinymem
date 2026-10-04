@@ -28,6 +28,16 @@ export {
   type DoctorReport,
 } from './doctor';
 
+export {
+  daemonMcpUrl,
+  DAEMON_MCP_PATH,
+  evaluateRuntimeScaffold,
+  runtimeScaffoldChecks,
+  type RuntimeCheckContext,
+  type RuntimeScaffoldState,
+  type WiredRuntime,
+} from './runtime-scaffolds';
+
 export { computeStats, type StatsOptions } from './stats';
 
 export {

@@ -13,7 +13,21 @@ export { createIo, shortDate, type Io, type IoOptions } from './io';
 export { resolveBackend, resolveProjectId, describeResolution, type Resolved, type ResolveOptions } from './resolve';
 export { createClackPrompt, createNonInteractivePrompt, PromptRequiredError, type Prompt, type SelectOption } from './prompt';
 
-export { runInit, type InitOptions, type InitPreset, type InitResult } from './commands/init';
+export { runInit, type InitAlreadyResult, type InitOptions, type InitPreset, type InitResult } from './commands/init';
+export {
+  AGENT_RUNTIMES,
+  chooseRuntimes,
+  detectRuntimes,
+  runScaffoldPhase,
+  wireClaude,
+  wireCodex,
+  type AgentRuntime,
+  type PathExists,
+  type RuntimeDetection,
+  type ScaffoldPhaseResult,
+  type WiredFile,
+  type WiredRuntime,
+} from './commands/wire-runtimes';
 export { runDoctor, printReport, type DoctorOptions } from './commands/doctor';
 export { runSearch, printSearch, type SearchOptions } from './commands/search';
 export { runRemember, printRemember, type RememberOptions } from './commands/remember';

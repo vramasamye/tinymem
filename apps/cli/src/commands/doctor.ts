@@ -6,7 +6,7 @@
  */
 
 import { ConfigError, ConfigNotFoundError } from '@onememory/config';
-import { type DoctorReport } from '@onememory/api/runtime';
+import { type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
 
 import type { Io } from '../io';
 import { printConfigError, resolveBackend } from '../resolve';
@@ -54,16 +54,34 @@ export function printReport(io: Io, report: DoctorReport): void {
   io.out(`onemem doctor ${report.version} — ${report.status}`);
   io.out(`  config: ${report.config_path ?? '(built-in defaults)'}`);
   io.blank();
-  for (const check of report.checks) {
-    io.out(`[${check.status === 'pass' ? 'ok' : check.status === 'warn' ? 'warning' : 'FAIL'}] ${check.title}: ${check.detail}`);
-    if (check.remediation !== undefined) io.out(`       fix: ${check.remediation}`);
+  for (const check of report.checks) printCheck(io, check);
+  if (report.runtimes.length > 0) {
+    io.blank();
+    io.out('agent runtimes (opt-in wiring; MCP must point at the configured daemon):');
+    for (const check of report.runtimes) printCheck(io, check);
   }
   io.blank();
   io.out(
-    `${report.summary.pass} passed, ${report.summary.warn} warnings, ${report.summary.fail} failed — onememory is ${
+    `${report.summary.pass} passed, ${report.summary.warn} warnings, ${report.summary.fail} failed${
+      report.summary.info > 0 ? `, ${report.summary.info} informational` : ''
+    } — onememory is ${
       report.status === 'ok' ? 'fully operational' : report.status === 'degraded' ? 'usable but degraded' : 'not usable'
     }`,
   );
+}
+
+const STATUS_LABELS: Record<DoctorCheck['status'], string> = {
+  pass: 'ok',
+  warn: 'warning',
+  fail: 'FAIL',
+  info: 'info',
+};
+
+function printCheck(io: Io, check: DoctorCheck): void {
+  io.out(`[${STATUS_LABELS[check.status]}] ${check.title}: ${check.detail}`);
+  if (check.remediation !== undefined) {
+    io.out(`       ${check.status === 'info' ? 'hint' : 'fix'}: ${check.remediation}`);
+  }
 }
 
 /**

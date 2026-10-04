@@ -28,9 +28,14 @@ import { PATTERN_GROUPS } from '@onememory/security';
 import { DEFAULT_VECTOR_CONFIG } from '@onememory/storage';
 
 import type { OnememoryRuntime } from './composition';
+import { daemonMcpUrl, runtimeScaffoldChecks } from './runtime-scaffolds';
 import { ONEMEMORY_VERSION } from './version';
 
-export type DoctorCheckStatus = 'pass' | 'warn' | 'fail';
+/**
+ * `info` is reserved for facts that are neither healthy nor degraded — an opt-in feature left
+ * off (an agent runtime not wired). It never changes the report status or exit code.
+ */
+export type DoctorCheckStatus = 'pass' | 'warn' | 'fail' | 'info';
 
 export interface DoctorCheck {
   id: string;
@@ -49,8 +54,13 @@ export interface DoctorReport {
   config_path: string | null;
   /** `null` only when the configuration itself could not be loaded. */
   config: ConfigSummary | null;
-  summary: { pass: number; warn: number; fail: number };
+  summary: { pass: number; warn: number; fail: number; info: number };
   checks: DoctorCheck[];
+  /**
+   * The agent-runtime wiring group (Claude Code, Codex): project-scope scaffolds vs the configured
+   * daemon MCP URL. Counted in `summary` like `checks`.
+   */
+  runtimes: DoctorCheck[];
 }
 
 export interface DoctorOptions {
@@ -361,6 +371,7 @@ function summarise(checks: DoctorCheck[]): DoctorReport['summary'] {
     pass: checks.filter((entry) => entry.status === 'pass').length,
     warn: checks.filter((entry) => entry.status === 'warn').length,
     fail: checks.filter((entry) => entry.status === 'fail').length,
+    info: checks.filter((entry) => entry.status === 'info').length,
   };
 }
 
@@ -373,7 +384,8 @@ export async function inspectRuntime(
   checks.push(await configCheck(runtime.config, runtime.loaded));
   checks.push(await storageCheck(runtime));
   checks.push(vectorBackendCheck(runtime));
-  checks.push(...(await embedderChecks(runtime, options.probeEmbedder ?? true)));  checks.push(routerCheck(runtime));
+  checks.push(...(await embedderChecks(runtime, options.probeEmbedder ?? true)));
+  checks.push(routerCheck(runtime));
   checks.push(networkGuardCheck(runtime));
   checks.push(handlerCheck(runtime));
   checks.push(retentionCheck(runtime));
@@ -384,7 +396,14 @@ export async function inspectRuntime(
   const warnings = warningsCheck(runtime);
   if (warnings !== null) checks.push(warnings);
 
-  const summary = summarise(checks);
+  const projectId = runtime.loaded.project_state?.project_id;
+  const runtimes = runtimeScaffoldChecks(runtime.loaded.paths.root, {
+    expectedUrl: daemonMcpUrl(runtime.config.daemon),
+    storageProfile: runtime.storage.profile,
+    ...(projectId === undefined ? {} : { projectId }),
+  });
+
+  const summary = summarise([...checks, ...runtimes]);
   return {
     status: summary.fail > 0 ? 'failed' : summary.warn > 0 ? 'degraded' : 'ok',
     exit_code: summary.fail > 0 ? 1 : 0,
@@ -394,6 +413,7 @@ export async function inspectRuntime(
     config: configSummary(runtime.config, runtime.loaded.paths.config_path, runtime.loaded.paths.data_dir),
     summary,
     checks,
+    runtimes,
   };
 }
 
@@ -416,5 +436,6 @@ export function failedDoctorReport(
     config: null,
     summary: summarise(checks),
     checks,
+    runtimes: [],
   };
 }

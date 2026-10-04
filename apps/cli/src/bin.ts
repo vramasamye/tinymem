@@ -148,6 +148,8 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
     .option('--ollama-url <url>', 'ollama preset: base URL (default: http://127.0.0.1:11434)')
     .option('--ollama-model <model>', 'ollama preset: routed LLM model (default: qwen3:8b)')
     .option('--embed-model <model>', 'ollama preset: embedding model (default: nomic-embed-text)')
+    .option('--with-claude', 'wire Claude Code: .mcp.json (daemon MCP), .claude/settings.json hooks, CLAUDE.md pointer')
+    .option('--with-codex', 'wire Codex: .codex/config.toml (daemon MCP), .codex/hooks.json, AGENTS.md pointer')
     .action(async (options) => {
       const io = ioFor(options);
       const preset = options.preset === undefined ? undefined : String(options.preset);
@@ -169,6 +171,8 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.ollamaUrl === undefined ? {} : { ollamaUrl: String(options.ollamaUrl) }),
             ...(options.ollamaModel === undefined ? {} : { ollamaModel: String(options.ollamaModel) }),
             ...(options.embedModel === undefined ? {} : { embedModel: String(options.embedModel) }),
+            ...(options.withClaude === true ? { withClaude: true } : {}),
+            ...(options.withCodex === true ? { withCodex: true } : {}),
           },
           io,
           prompt,
