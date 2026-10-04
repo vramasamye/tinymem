@@ -208,6 +208,20 @@ interface ExtractedMemory {
   evidence: EvidenceSpan[];         // mandatory for durable; ≥ 1 span
   valid_from?: string; valid_until?: string;
   future_value_rationale?: string;  // one clause: why this is worth remembering (quality signal)
+  decision_payload?: {              // on `decision` candidates: input for the `decisions` payload table
+    decision: string;               // the chosen option, ≤ 300 chars
+    alternatives: Array<{ option: string; why_rejected?: string }>;  // ≤ 3 options, ≤ 200 chars each
+    rationale?: string;             // same-sentence rationale, ≤ 300 chars
+  };
+  failure_signature?: {             // on `failure` candidates: the recurrence fingerprint (ADR-0009)
+    type: string;                  // normalized error class from the ordered rule table
+    hash: string;                  // sha256("failure-v1" ␀ type ␀ normalized_message), 16 hex chars
+    normalized_message: string;     // noise-normalized message, ≤ 300 chars; digest covers this capped form
+    origin: 'error' | 'command' | 'test';
+    error_origin?: 'terminal' | 'test' | 'build' | 'runtime' | 'tool';
+    tool?: string;                  // recorded context, deliberately excluded from the digest
+    command?: string;              // recorded context, deliberately excluded from the digest
+  };
 }
 
 interface WorkingCandidate {
@@ -231,8 +245,19 @@ interface EvidenceSpan {
 The extractor's first decision is the spec's gate: **does this have future value?** Anything the
 extractor can't justify (no `future_value_rationale`, low importance) is discarded, not stored.
 In fully-local no-LLM mode the heuristic extractor recognizes: explicit preference/decision
-language, error+resolution pairs, recurring commands (procedure candidates), stack names, and
-versioned facts. Lower recall than an LLM, zero external calls, correct shape.
+language, error+resolution pairs and failing test runs, recurring commands (procedure
+candidates), stack names, and versioned facts. Lower recall than an LLM, zero external
+calls, correct shape.
+
+Both structured payloads are enrichment, never triggers: `decision_payload` exists only when
+the matched decision language actually carried alternatives and/or a rationale, and
+`failure_signature` only on candidates backed by a failure event (`error.raised`, a non-zero
+command exit, or a failing test run). The signature digest covers `type` and
+`normalized_message` only — the failing tool and command are recorded next to the digest so
+one root cause reached through different tools collapses to a single signature. The heuristic
+and LLM extractors emit byte-identical signatures: the model only cites events, the engine
+fingerprints them. Persisting these payloads into the `decisions`/`failures` payload tables is
+STORE-stage work; until it lands the fields live on the candidate and in durable `content`.
 
 ## 4. Memory wire representation
 
