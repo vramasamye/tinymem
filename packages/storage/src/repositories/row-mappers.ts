@@ -70,9 +70,14 @@ function asEnum<T extends string>(value: unknown, values: readonly T[], field: s
  * Map a joined memory row to the wire MemoryRecord (§4 of event-memory-schemas.md). Entity
  * bindings are batch-filled by the caller.
  */
-export function mapMemoryRow(row: MemoryJoinRow, entities: MemoryRecord['entities']): MemoryRecord {
+export function mapMemoryRow(
+  row: MemoryJoinRow,
+  entities: MemoryRecord['entities'],
+  payload?: MemoryRecord['payload'],
+): MemoryRecord {
   const extraction = asRecord(row.extraction, 'extraction');
   const record: MemoryRecord = {
+    ...(payload === undefined ? {} : { payload }),
     id: asString(row.id, 'id'),
     type: asEnum(row.type, MEMORY_TYPES, 'type'),
     status: asEnum(row.status, MEMORY_STATUSES, 'status'),

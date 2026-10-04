@@ -22,6 +22,7 @@ import {
 } from '../model/types';
 
 import { EvidenceSpanSchema } from './extraction';
+import { DecisionStorePayloadSchema, FailureStorePayloadSchema } from './memory';
 
 const isoTimestamp = z.iso.datetime();
 const optionalUuid = z.uuid().optional();
@@ -79,31 +80,74 @@ export const ExtractionMetaSchema = z.looseObject({
 });
 export type ExtractionMeta = z.infer<typeof ExtractionMetaSchema>;
 
-export const NewMemorySchema = z.looseObject({
-  id: optionalUuid,
-  type: z.enum(DURABLE_MEMORY_TYPES),
-  subtype: z.string().optional(),
-  title: z.string().max(80).optional(),
-  content: z.string().min(1),
-  content_summary: z.string().max(160).optional(),
-  status: z.enum(MEMORY_STATUSES).optional(),
-  importance: z.number().min(0).max(1),
-  confidence: z.number().min(0).max(1),
-  /** When the fact became true / was observed in the world. */
-  observed_at: isoTimestamp,
-  /** Defaults to `observed_at`. */
-  valid_from: isoTimestamp.optional(),
-  valid_until: isoTimestamp.optional(),
-  project_id: optionalUuid,
-  user_id: optionalUuid,
-  agent_id: z.string().optional(),
-  source_id: z.uuid(),
-  /** Provenance invariant (ADR-0003 rule 4): durable memories carry ≥ 1 evidence span. */
-  evidence: z.array(EvidenceSpanSchema).min(1),
-  extraction: ExtractionMetaSchema,
-  tags: z.array(z.string()).optional(),
-  token_estimate: z.number().int().min(0).optional(),
-});
+/**
+ * The persistable typed payloads (M3d): the projection of a `decisions` or `failures` row a
+ * `decision`/`failure` memory may carry at STORE time. The wire payload schemas are the field
+ * definitions (reuse, not a divergent model); the only difference is the decision `evidence`
+ * echo, which the table does not store (see `DecisionStorePayloadSchema`).
+ */
+export const NewMemoryPayloadSchema = z.union([DecisionStorePayloadSchema, FailureStorePayloadSchema]);
+export type NewMemoryPayload = z.infer<typeof NewMemoryPayloadSchema>;
+
+export const NewMemorySchema = z
+  .looseObject({
+    id: optionalUuid,
+    type: z.enum(DURABLE_MEMORY_TYPES),
+    subtype: z.string().optional(),
+    title: z.string().max(80).optional(),
+    content: z.string().min(1),
+    content_summary: z.string().max(160).optional(),
+    status: z.enum(MEMORY_STATUSES).optional(),
+    importance: z.number().min(0).max(1),
+    confidence: z.number().min(0).max(1),
+    /** When the fact became true / was observed in the world. */
+    observed_at: isoTimestamp,
+    /** Defaults to `observed_at`. */
+    valid_from: isoTimestamp.optional(),
+    valid_until: isoTimestamp.optional(),
+    project_id: optionalUuid,
+    user_id: optionalUuid,
+    agent_id: z.string().optional(),
+    source_id: z.uuid(),
+    /** Provenance invariant (ADR-0003 rule 4): durable memories carry ≥ 1 evidence span. */
+    evidence: z.array(EvidenceSpanSchema).min(1),
+    extraction: ExtractionMetaSchema,
+    tags: z.array(z.string()).optional(),
+    token_estimate: z.number().int().min(0).optional(),
+    /**
+     * Typed payload row input (M3d), keyed to the memory type by the refinement below: a
+     * `decision` memory carries a decision payload, a `failure` memory a failure payload, and
+     * every other type carries none (the `skills` table is not memory-keyed — no skill payload
+     * here). Absent = no payload row; existing callers are unaffected.
+     */
+    payload: NewMemoryPayloadSchema.optional(),
+  })
+  .superRefine((memory, ctx) => {
+    if (memory.payload === undefined) return;
+    if (memory.type === 'decision') {
+      if (!DecisionStorePayloadSchema.safeParse(memory.payload).success) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['payload'],
+          message: "a 'decision' memory may only carry a decision payload",
+        });
+      }
+    } else if (memory.type === 'failure') {
+      if (!FailureStorePayloadSchema.safeParse(memory.payload).success) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['payload'],
+          message: "a 'failure' memory may only carry a failure payload",
+        });
+      }
+    } else {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['payload'],
+        message: 'payload rows exist only for decision and failure memories',
+      });
+    }
+  });
 export type NewMemory = z.infer<typeof NewMemorySchema>;
 
 export const StatusChangeOptionsSchema = z.looseObject({

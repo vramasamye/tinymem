@@ -32,7 +32,8 @@ export const DecisionPayloadSchema = z.looseObject({
       why_rejected: z.string().optional(),
     }),
   ),
-  rationale: z.string(),
+  /** Optional like the `decisions.rationale` column: absent when the source stated none (M3d — never fabricated). */
+  rationale: z.string().optional(),
   /** Roles/names — never emails. */
   participants: z.array(z.string()),
   decided_at: isoTimestamp,
@@ -40,6 +41,15 @@ export const DecisionPayloadSchema = z.looseObject({
   evidence: z.array(EvidenceSpanSchema),
 });
 export type DecisionPayload = z.infer<typeof DecisionPayloadSchema>;
+
+/**
+ * The STORE-stage input projection of {@link DecisionPayloadSchema} (M3d): exactly the fields
+ * the `decisions` table persists. The wire payload's `evidence` is a read-time echo of the memory
+ * row's own evidence spans (the table has no evidence column), so it is deliberately not part of
+ * the store input. Readback always uses the owning memory's canonical evidence.
+ */
+export const DecisionStorePayloadSchema = DecisionPayloadSchema.omit({ evidence: true });
+export type DecisionStorePayload = z.infer<typeof DecisionStorePayloadSchema>;
 
 export const FailurePayloadSchema = z.looseObject({
   problem: z.string().min(1),
@@ -51,12 +61,24 @@ export const FailurePayloadSchema = z.looseObject({
   /** How the fix was proven (command output digest, test result). */
   verification: z.string().optional(),
   status: z.enum(FAILURE_STATUSES),
+  /**
+   * The recurrence fingerprint (ADR-0009 rule 1) — `failures.signature_hash`, the digest the
+   * extraction stage computed (`FailureSignatureSchema.hash`), stored exactly as received.
+   * Optional on the wire for pre-M3d records; required for new STORE payload writes.
+   */
+  signature_hash: z.string().min(1).optional(),
   first_seen_at: isoTimestamp,
   last_seen_at: isoTimestamp,
-  /** Incremented on signature match. */
+  /** Incremented on signature match (M14 — the STORE wiring records the initial 1). */
   occurrence_count: z.number().int().min(1),
 });
 export type FailurePayload = z.infer<typeof FailurePayloadSchema>;
+
+/** STORE cannot omit the NOT NULL signature column, unlike legacy wire records. */
+export const FailureStorePayloadSchema = FailurePayloadSchema.extend({
+  signature_hash: z.string().min(1),
+});
+export type FailureStorePayload = z.infer<typeof FailureStorePayloadSchema>;
 
 export const SkillPayloadSchema = z.looseObject({
   /** kebab-case, directory name. */
