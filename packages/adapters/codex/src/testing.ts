@@ -235,6 +235,66 @@ export function goldenRollout(options: RolloutFixtureOptions = {}): string {
   return `${lines.join('\n')}\n`;
 }
 
+/**
+ * MCP tool calls and results on the verified rollout wire shape (M7b). Current Codex serializes
+ * an MCP `CallToolResult` as a `function_call_output` whose `output` is a content-item array
+ * (text content becomes `input_text` items) or — when the tool returned `structuredContent` —
+ * the serialized-JSON string (`codex-rs/protocol/src/models.rs`
+ * `CallToolResult::as_function_call_output_payload`). The runtime failure status is NOT on the
+ * wire (the serializer drops the internal `success` flag), so the failing `read_file` result is
+ * byte-shape-identical to a success — exactly like a real rollout. Outputs arrive in reverse
+ * call order (parallel calls) to pin `call_id` correlation.
+ */
+export function mcpToolResultsRollout(): string {
+  const lines: string[] = [
+    line(0, 'session_meta', {
+      id: '019a7c0e-5b1f-7000-8000-00000000e002',
+      session_id: '019a7c0e-5b1f-7000-8000-00000000e002',
+      timestamp: rolloutTimestamp(0),
+      cwd: FIXTURE_CWD,
+      originator: 'codex_cli_rs',
+      cli_version: '0.134.0',
+      source: 'startup',
+    }),
+    line(2, 'response_item', {
+      type: 'function_call',
+      name: 'mcp__linter__lint',
+      call_id: 'call_a',
+      arguments: JSON.stringify({ path: 'src/index.ts' }),
+    }),
+    line(3, 'response_item', {
+      type: 'function_call',
+      name: 'mcp__files__read_file',
+      call_id: 'call_b',
+      arguments: JSON.stringify({ path: '../outside-root.txt' }),
+    }),
+    line(4, 'response_item', {
+      type: 'function_call',
+      name: 'mcp__search__query',
+      call_id: 'call_c',
+      arguments: JSON.stringify({ q: 'schema module' }),
+    }),
+    line(5, 'response_item', {
+      type: 'function_call_output',
+      call_id: 'call_c',
+      output: [
+        { type: 'input_text', text: "top match: error: Cannot find module './schema' was fixed in 0.9.0" },
+      ],
+    }),
+    line(6, 'response_item', {
+      type: 'function_call_output',
+      call_id: 'call_b',
+      output: [{ type: 'input_text', text: 'Error: path outside the allowed roots' }],
+    }),
+    line(7, 'response_item', {
+      type: 'function_call_output',
+      call_id: 'call_a',
+      output: [{ type: 'input_text', text: 'lint: 0 problems' }],
+    }),
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
 /** Rollout lines that must all be skipped or dropped, producing no events. */
 export function noiseRollout(): string {
   return [

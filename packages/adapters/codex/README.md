@@ -106,6 +106,16 @@ Sessions run before the hooks existed, wrapper-driven flows, and CI runs are all
 The translator mirrors the record selection Codex's own memory pipeline uses (skips
 `event_msg`, `turn_context`, harness-injected context, our own memory-tool calls).
 
+Generic tool results retain the preceding call's exact name by `call_id` correlation, when the
+name fits the canonical 80-character limit. Longer names are omitted with a counted
+`tool-result-name-overlength` diagnostic; the result and its bounded digest are still captured.
+**Generic failure status is unavailable in `function_call_output`.** Codex serializes only the
+output body, discarding its internal success flag (including MCP `isError`). The existing
+`ok: true` mapping remains for compatibility, **not as proof the tool succeeded**; error prose
+or JSON containing `isError` is never interpreted as runtime status. Shell exit-code handling is
+unchanged. The separate `event_msg` `mcp_tool_call_end` producer retains MCP status but is not
+consumed here. See [M7b's source evidence and bounded cut](../../../docs/plan/mission-reports/mission-7b-tool-result-emission.md).
+
 ---
 
 ## Division of labor with Codex native memories

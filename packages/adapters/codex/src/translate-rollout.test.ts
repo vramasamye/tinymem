@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { validateOnememoryEvent, type OnememoryEvent } from '@onememory/core';
 
 import { translateRolloutSession } from './translate-rollout';
-import { FIXTURE_PROJECT_ID, goldenRollout, noiseRollout } from './testing';
+import { FIXTURE_PROJECT_ID, goldenRollout, mcpToolResultsRollout, noiseRollout } from './testing';
 
 const CONTEXT = { projectId: FIXTURE_PROJECT_ID, now: new Date('2026-10-03T10:00:00.000Z') };
 
@@ -96,6 +96,7 @@ describe('translateRolloutSession — the golden rollout', () => {
     const toolResults = result.events.filter((event) => event.kind === 'conversation.tool_result');
     expect(toolResults).toHaveLength(1);
     expect((toolResults[0]!.payload as { output_digest: string }).output_digest).toContain('lint: 0 problems');
+    expect(toolResults[0]!.payload.tool).toBe('mcp__linter__lint');
 
     expect(result.dropped).toContainEqual({ reason: 'own-memory-tool', count: 1 });
   });
@@ -106,6 +107,117 @@ describe('translateRolloutSession — the golden rollout', () => {
     expect(result.dropped).toContainEqual({ reason: 'skipped:response_item:reasoning', count: 1 });
     expect(result.lines.read).toBe(17); // 16 records + the split() remainder of the final newline
     expect(result.lines.skipped).toBe(4); // turn_context + 2 event_msg + reasoning
+  });
+});
+
+describe('translateRolloutSession — named generic results (M7b bounded cut)', () => {
+  function record(payload: unknown): string {
+    return JSON.stringify({
+      timestamp: '2026-10-03T09:00:00.000Z',
+      type: 'response_item',
+      payload,
+    });
+  }
+
+  function paired(output: unknown, extra: Record<string, unknown> = {}, name = 'mcp__files__read_file') {
+    return translateRolloutSession([
+      record({ type: 'function_call', name, call_id: 'c1', arguments: '{}' }),
+      record({ type: 'function_call_output', call_id: 'c1', output, ...extra }),
+    ].join('\n'), CONTEXT);
+  }
+
+  test('parallel outputs retain their own correlated name, not the most recent call', () => {
+    const result = translateRolloutSession(mcpToolResultsRollout(), CONTEXT);
+    const results = result.events.filter((event) => event.kind === 'conversation.tool_result');
+    expect(results.map((event) => [event.payload.call_id, event.payload.tool])).toEqual([
+      ['call_c', 'mcp__search__query'],
+      ['call_b', 'mcp__files__read_file'],
+      ['call_a', 'mcp__linter__lint'],
+    ]);
+    expect(result.dropped).toEqual([]);
+    for (const event of results) {
+      expect(validateOnememoryEvent(event).ok).toBe(true);
+      expect(event.payload.ok).toBe(true);
+      expect(event.payload.error).toBeUndefined();
+    }
+  });
+
+  test.each([
+    'error: Cannot find module "./schema"',
+    'failed to find matches',
+    '{"content":[{"type":"text","text":"bad"}],"isError":true}',
+    '{"isError":false,"success":false,"ok":false}',
+    '{"isError":"true"}',
+    [{ type: 'input_text', text: '{"isError":true}' }],
+    { content: 'error: opaque wrapper', isError: true },
+  ])('opaque output never supplies a runtime failure status: %j', (output) => {
+    const result = paired(output);
+    const event = result.events.find((item) => item.kind === 'conversation.tool_result');
+    expect(event?.payload.tool).toBe('mcp__files__read_file');
+    expect(event?.payload.ok).toBe(true);
+    expect(event?.payload.error).toBeUndefined();
+    expect(result.events.some((item) => item.kind === 'error.raised')).toBe(false);
+  });
+
+  test.each([
+    { isError: true },
+    { isError: false },
+    { isError: 'true' },
+    { success: false, ok: false },
+  ])('unverified top-level status fields are ignored: %j', (extra) => {
+    const event = paired('done', extra).events.find((item) => item.kind === 'conversation.tool_result');
+    expect(event?.payload.ok).toBe(true);
+    expect(event?.payload.error).toBeUndefined();
+  });
+
+  test('an 80-character name is preserved; an 81-character name is omitted without losing the result', () => {
+    expect(paired('done', {}, 'a'.repeat(80)).events.at(-1)?.payload.tool).toBe('a'.repeat(80));
+    const result = paired('done', {}, 'a'.repeat(81));
+    expect(result.events.at(-1)?.kind).toBe('conversation.tool_result');
+    expect(result.events.at(-1)?.payload.tool).toBeUndefined();
+    expect(result.dropped).toContainEqual({ reason: 'tool-result-name-overlength', count: 1 });
+  });
+
+  test('empty name is not fabricated and missing name leaves the output orphaned', () => {
+    expect(paired('done', {}, '').events.at(-1)?.payload.tool).toBeUndefined();
+    const result = translateRolloutSession([
+      record({ type: 'function_call', call_id: 'c1', arguments: '{}' }),
+      record({ type: 'function_call_output', call_id: 'c1', name: 'invented', output: 'done' }),
+    ].join('\n'), CONTEXT);
+    expect(result.events).toEqual([]);
+    expect(result.dropped).toContainEqual({ reason: 'unmappable-function-call', count: 1 });
+    expect(result.dropped).toContainEqual({ reason: 'orphan-output', count: 1 });
+  });
+
+  test('duplicate and mismatched outputs cannot reuse a consumed name', () => {
+    const result = translateRolloutSession([
+      record({ type: 'function_call', name: 'Read', call_id: 'c1' }),
+      record({ type: 'function_call_output', call_id: 'other', output: 'wrong' }),
+      record({ type: 'function_call_output', call_id: 'c1', output: 'right' }),
+      record({ type: 'function_call_output', call_id: 'c1', output: 'duplicate' }),
+    ].join('\n'), CONTEXT);
+    const results = result.events.filter((event) => event.kind === 'conversation.tool_result');
+    expect(results).toHaveLength(1);
+    expect(results[0]!.payload.tool).toBe('Read');
+    expect(results[0]!.payload.output_digest).toBe('right');
+    expect(result.dropped).toContainEqual({ reason: 'orphan-output', count: 2 });
+  });
+
+  test('own-memory results remain excluded', () => {
+    const result = paired('secret-bearing result', {}, 'mcp__onememory__memory_store');
+    expect(result.events).toEqual([]);
+    expect(result.dropped).toContainEqual({ reason: 'own-memory-tool', count: 1 });
+    expect(result.dropped).toContainEqual({ reason: 'orphan-output', count: 1 });
+  });
+
+  test('named results keep bounded output and argument digests', () => {
+    const result = translateRolloutSession([
+      record({ type: 'function_call', name: 'Read', call_id: 'c1', arguments: 'a'.repeat(1000) }),
+      record({ type: 'function_call_output', call_id: 'c1', output: 'x'.repeat(5000) }),
+    ].join('\n'), CONTEXT);
+    expect(String(result.events[0]!.payload.arguments_digest).length).toBeLessThanOrEqual(400);
+    expect(String(result.events[1]!.payload.output_digest).length).toBeLessThanOrEqual(2000);
+    expect(result.events[1]!.payload.tool).toBe('Read');
   });
 });
 

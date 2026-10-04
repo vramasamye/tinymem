@@ -17,8 +17,13 @@
  * | `response_item` `function_call`       | `conversation.tool_call` (non-shell tools), or held |
  * |                                        | for shell/apply_patch handling below                |
  * | `response_item` `function_call_output`| `terminal.output` (+`error.raised`) for shell calls, |
- * |                                        | `conversation.tool_result` for other tools           |
+ * |                                        | `conversation.tool_result` for other tools — named |
+ * |                                        | from the correlated `function_call` (M7b)          |
  * | `event_msg`, `turn_context`, `compacted`, `token_usage_record`, … | skipped (counted) |
+ *
+ * Generic results retain the correlated call's name when it fits core's 80-character bound.
+ * `function_call_output` does not serialize runtime failure status; the legacy `ok: true`
+ * mapping is retained, not proof of success. See the emission site and the M7b mission report.
  *
  * The adapter never reads rollouts automatically — the format is explicitly NOT a stable hook
  * interface (Hooks docs); this path is invoked by `onemem-codex-capture --rollout <file>` (manual
@@ -52,6 +57,13 @@ const HARNESS_CONTEXT_PREFIXES = [
 ] as const;
 
 const SHELL_TOOL_NAMES = new Set(['shell', 'exec_command', 'container.exec']);
+
+/**
+ * Mirrors `ConversationToolResultPayloadSchema.tool`'s `.max(80)` in `@onememory/core` (M3c).
+ * The bound is not exported by core, so a longer name is omitted (counted, never silent) rather
+ * than letting core's validation dead-letter the whole result event.
+ */
+const MAX_TOOL_RESULT_TOOL_NAME = 80;
 
 const isoTimestamp = z.string();
 
@@ -391,12 +403,22 @@ function translateFunctionCallOutput(
     return;
   }
 
+  // Preserve legacy ok:true, not a verified success: Codex's models.rs serializer writes only
+  // FunctionCallOutputPayload.body and drops success (derived from MCP isError). Verified at
+  // rust-v0.134.0 and afb436df8b70bb5bc57b86d9a3e829968988cd21; citations in the M7b report.
+  // Never interpret output JSON/prose as a status envelope. The separate mcp_tool_call_end
+  // event_msg retains status, but consuming that producer seam is outside this bounded cut.
+  const tool = pendingCall.tool;
+  if (tool.length > MAX_TOOL_RESULT_TOOL_NAME) {
+    dropped.drop('tool-result-name-overlength');
+  }
   push(
     'conversation.tool_result',
     {
       kind: 'conversation.tool_result',
       call_id: callId ?? '',
       ok: true,
+      ...(tool.length >= 1 && tool.length <= MAX_TOOL_RESULT_TOOL_NAME ? { tool } : {}),
       output_digest: clampDigest(outputText ?? ''),
     },
     occurredAt,

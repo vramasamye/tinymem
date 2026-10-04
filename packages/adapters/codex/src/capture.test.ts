@@ -184,6 +184,37 @@ describe('captureHook — delivery outcomes', () => {
 });
 
 describe('captureRollout — backfill', () => {
+  test('a correlated result name adds no surface beyond its call; digests stay redacted', async () => {
+    const daemon = await startFakeDaemon();
+    try {
+      const text = [
+        { type: 'function_call', name: `Read_${SECRET}`, call_id: 'secret-test', arguments: SECRET },
+        { type: 'function_call_output', call_id: 'secret-test', output: SECRET },
+      ].map((payload) => JSON.stringify({
+        timestamp: '2026-10-03T09:00:00.000Z',
+        type: 'response_item',
+        payload,
+      })).join('\n');
+      const outcome = await captureRollout(text, {
+        env: { ONEMEMORY_DAEMON_URL: daemon.url, ONEMEMORY_PROJECT_ID: FIXTURE_PROJECT_ID },
+      });
+      expect(outcome.stored).toBe(2);
+      const call = outcome.delivered.find((event) => event.kind === 'conversation.tool_call');
+      const result = outcome.delivered.find((event) => event.kind === 'conversation.tool_result');
+      // `redactEvent` scans digest fields, not tool identifiers; the result may only repeat the
+      // name its call already carries, never a new or altered one.
+      expect(result?.payload.tool).toBe(call?.payload.tool);
+      expect(call?.payload.arguments_digest).toBe('[REDACTED:api-key]');
+      expect(result?.payload.output_digest).toBe('[REDACTED:api-key]');
+      expect(JSON.stringify(daemon.receivedEvents.map((event) => {
+        const payload = (event as { payload: Record<string, unknown> }).payload;
+        return { ...payload, tool: undefined };
+      }))).not.toContain(SECRET);
+    } finally {
+      await daemon.close();
+    }
+  });
+
   test('delivers the golden rollout through the same firewall', async () => {
     const daemon = await startFakeDaemon();
     try {
