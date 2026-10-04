@@ -52,23 +52,36 @@ upward from the hook's `cwd`, with `ONEMEMORY_PROJECT_ID` / `ONEMEMORY_DAEMON_UR
 
 ## Scaffolds (what `onemem init` writes)
 
-Pure builders, exported for the CLI to wire:
+Pure builders and merges; `onemem init --with-claude` (or the interactive runtime prompt)
+performs the writes, and `onemem doctor` reads them back through `inspectClaudeScaffold`:
 
-- **`.mcp.json`** — the stdio MCP server entry (mission-5's `onememory-mcp` bin) under
-  `mcpServers.onememory`, with `${CLAUDE_PROJECT_DIR:-.}`-relative paths and env passed **by name**
+- **`.mcp.json`** — `mcpServers.onememory = {"type": "http", "url": "http://<daemon.host>:<daemon.port>/mcp"}`,
+  the daemon's Streamable HTTP surface (ADR-0010 amendment 2026-10-04: the daemon is the single
+  owner of embedded storage). Loopback `http:` only, no headers (Phase 1 has no auth).
+  `mergeMcpJson` replaces only the `onememory` entry; every other server and top-level key is
+  preserved. The stdio form (`buildMcpJson()` without `transport`, for the standalone
+  `onememory-mcp` bin) is still exported for daemon-less / server-profile use, with
+  `${CLAUDE_PROJECT_DIR:-.}`-relative paths and env passed **by name**
   (`ONEMEMORY_PG_URL: "${ONEMEMORY_PG_URL}"`) so no URL or secret is ever committed.
 - **`.claude/settings.json` hooks** — the five subscriptions above; `PostToolUse` matcher
   `Bash|PowerShell|Edit|Write|NotebookEdit`, `PostToolUseFailure` matcher `*`, `SessionEnd`
   timeout raised to 5s (hook timeouts are in seconds); exec form (`command` + `args`, no shell).
-- **`AGENTS.md` / `MEMORY.md` pointer block** — a marker-delimited, idempotent paragraph stating
+  `mergeClaudeSettingsHooks` removes onememory's own handlers (by bin token or exact invocation)
+  and appends the generated groups — user handlers and settings are preserved, re-runs never
+  duplicate, and malformed JSON is reported and left untouched.
+- **`CLAUDE.md` pointer block** — a marker-delimited, idempotent paragraph stating
   that durable project memory lives in onememory (ADR-0010 §7: *interop, not competition* —
   Claude Code's MEMORY.md stays a valid ingest source, never a duplicate knowledge base).
 
+Claude Code asks you to approve project-scoped `.mcp.json` servers the first time you run
+`claude` in the project; until then the server shows as pending approval.
+
 ## Install
 
-`onemem init` (CLI) wires all three scaffolds; the hook needs no other setup. Manual wiring:
-`bun add @onememory/adapter-claude`, then register `onemem-claude-hook` under the hook events
-above and the stdio server under `mcpServers.onememory` in `.mcp.json`.
+`onemem init --with-claude` wires all three scaffolds; start the daemon (`onemem serve`) before
+launching Claude Code. Manual wiring: `bun add @onememory/adapter-claude`, then register
+`onemem-claude-hook` under the hook events above and the http server under
+`mcpServers.onememory` in `.mcp.json`.
 
 ## Package facts
 

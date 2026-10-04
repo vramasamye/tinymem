@@ -1,10 +1,13 @@
 /**
- * Runtime-native config scaffolds for `onemem init` (pure functions + tests; the coordinator owns
- * the actual writes — see the init-wiring seam in mission-6.md §6).
+ * Runtime-native config scaffolds for `onemem init` (pure functions + tests; the CLI owns the
+ * actual writes — merge helpers live in `scaffold-merge.ts`, doctor inspection in
+ * `scaffold-inspect.ts`).
  *
  * Every emitted document is validated against its Zod schema before it leaves (a scaffold bug is
  * a test failure, never a broken runtime config). Shapes follow the Claude Code references:
- * - `.mcp.json`: `{"mcpServers": {"onememory": {command, args, env}}}` — stdio needs no `type`
+ * - `.mcp.json`: `{"mcpServers": {"onememory": {"type": "http", "url": …}}}` for the daemon's
+ *   Streamable HTTP `/mcp` surface (what `onemem init` emits — ADR-0010 amendment 2026-10-04), or
+ *   the stdio `{command, args, env}` form, which needs no `type`
  *   (https://code.claude.com/docs/en/mcp). `${VAR}` expansion is used for values that must come
  *   from the user's environment (never committed); project-scoped entries referencing
  *   `CLAUDE_PROJECT_DIR` in command/args require the `${VAR:-default}` form, which Claude Code
@@ -24,6 +27,19 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export interface McpJsonOptions {
+  /**
+   * `stdio` (default — backward compatible) spawns the standalone `onemem-mcp` bin; `http`
+   * points Claude Code at the daemon's Streamable HTTP `/mcp` surface (ADR-0010 amendment
+   * 2026-10-04: the daemon is the single owner of embedded storage, so `onemem init` scaffolds
+   * this form). With `http`, only `url` is used; every stdio option below is ignored.
+   */
+  transport?: 'stdio' | 'http';
+  /**
+   * The daemon MCP URL (`http://<daemon.host>:<daemon.port>/mcp`). Required when `transport` is
+   * `http`; must be an `http:` loopback URL — Phase 1 has no authentication, so no headers are
+   * emitted and a non-loopback endpoint is refused.
+   */
+  url?: string;
   /**
    * Executable that launches the MCP server (stdio). Default `"bun"` — the onememory install
    * requires Bun; pass e.g. `"node"` with a compiled entry when the coordinator publishes JS.
@@ -48,11 +64,38 @@ export interface McpJsonOptions {
   agentId?: string;
 }
 
-export const McpServerEntrySchema = z.looseObject({
+export const McpStdioServerEntrySchema = z.looseObject({
   command: z.string().min(1),
   args: z.array(z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
+export type McpStdioServerEntry = z.infer<typeof McpStdioServerEntrySchema>;
+
+/** `true` for `localhost`, `::1` and `127.0.0.0/8` (brackets tolerated, as URLs carry them). */
+export function isLoopbackHostname(host: string): boolean {
+  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  if (normalized === 'localhost' || normalized === '::1') return true;
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized);
+}
+
+/** A loopback `http:` URL — the only daemon endpoint Phase 1 scaffolds (no auth, no headers). */
+export const LoopbackHttpUrlSchema = z
+  .url({ protocol: /^http$/ })
+  .refine((value) => isLoopbackHostname(new URL(value).hostname), {
+    message: 'the daemon MCP URL must be a loopback address (Phase 1 has no authentication)',
+  });
+
+/**
+ * Claude Code's remote-server entry: `{"type": "http", "url": …}` — a `url` without `type` is
+ * read as a (broken) stdio server, so `type` is mandatory (https://code.claude.com/docs/en/mcp).
+ */
+export const McpHttpServerEntrySchema = z.looseObject({
+  type: z.literal('http'),
+  url: LoopbackHttpUrlSchema,
+});
+export type McpHttpServerEntry = z.infer<typeof McpHttpServerEntrySchema>;
+
+export const McpServerEntrySchema = z.union([McpHttpServerEntrySchema, McpStdioServerEntrySchema]);
 export type McpServerEntry = z.infer<typeof McpServerEntrySchema>;
 
 export const McpJsonDocumentSchema = z.strictObject({
@@ -65,7 +108,27 @@ export function defaultMcpServerArgs(): string[] {
   return ['${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory/mcp/src/bin.ts'];
 }
 
+type StdioMcpJsonOptions = McpJsonOptions & { transport?: 'stdio' };
+type HttpMcpJsonOptions = McpJsonOptions & { transport: 'http'; url: string };
+
+export function buildMcpJson(options?: StdioMcpJsonOptions): { mcpServers: { onememory: McpStdioServerEntry } };
+export function buildMcpJson(options: HttpMcpJsonOptions): { mcpServers: { onememory: McpHttpServerEntry } };
+export function buildMcpJson(options?: McpJsonOptions): McpJsonDocument;
 export function buildMcpJson(options: McpJsonOptions = {}): McpJsonDocument {
+  return McpJsonDocumentSchema.parse({ mcpServers: { onememory: buildMcpServerEntry(options) } });
+}
+
+/** The `onememory` server entry alone (what `mergeMcpJson` splices into a user's file). */
+export function buildMcpServerEntry(options?: StdioMcpJsonOptions): McpStdioServerEntry;
+export function buildMcpServerEntry(options: HttpMcpJsonOptions): McpHttpServerEntry;
+export function buildMcpServerEntry(options?: McpJsonOptions): McpServerEntry;
+export function buildMcpServerEntry(options: McpJsonOptions = {}): McpServerEntry {
+  if (options.transport === 'http') {
+    if (options.url === undefined) {
+      throw new Error('buildMcpServerEntry: transport "http" requires the daemon MCP url');
+    }
+    return McpHttpServerEntrySchema.parse({ type: 'http', url: options.url });
+  }
   const storage = options.storage ?? { mode: 'embedded' as const };
   const env: Record<string, string> = {
     // Claude Code sets CLAUDE_PROJECT_DIR for stdio servers natively; making it explicit keeps the
@@ -80,16 +143,11 @@ export function buildMcpJson(options: McpJsonOptions = {}): McpJsonDocument {
       : { ONEMEMORY_DATA_DIR: storage.dataDir ?? '${CLAUDE_PROJECT_DIR:-.}/.onememory' }),
     ...options.env,
   };
-  const document: McpJsonDocument = {
-    mcpServers: {
-      onememory: {
-        command: options.command ?? 'bun',
-        args: options.args ?? defaultMcpServerArgs(),
-        env,
-      },
-    },
-  };
-  return McpJsonDocumentSchema.parse(document);
+  return McpStdioServerEntrySchema.parse({
+    command: options.command ?? 'bun',
+    args: options.args ?? defaultMcpServerArgs(),
+    env,
+  });
 }
 
 export function renderMcpJson(options: McpJsonOptions = {}): string {

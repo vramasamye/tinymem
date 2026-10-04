@@ -8,9 +8,10 @@
  *   (`src/bin.ts`) that settings.json invokes.
  * - Delivery (public surfaces only): `deliverEvents` against the daemon REST ingest endpoint,
  *   `fetchSessionContext` for the SessionStart context injection.
- * - Scaffolds (for `onemem init` wiring): `buildMcpJson`/`renderMcpJson`,
- *   `buildClaudeHooksConfig`/`renderClaudeSettingsHooks`, `buildMemoryPointerBlock`/
- *   `mergeMemoryPointerBlock`.
+ * - Scaffolds (for `onemem init` wiring): `buildMcpJson`/`renderMcpJson` (stdio or daemon
+ *   HTTP), `buildClaudeHooksConfig`/`renderClaudeSettingsHooks`, `buildMemoryPointerBlock`/
+ *   `mergeMemoryPointerBlock`, the idempotent file merges `mergeMcpJson`/
+ *   `mergeClaudeSettingsHooks`, and `inspectClaudeScaffold` for `onemem doctor`.
  */
 
 export {
@@ -103,8 +104,15 @@ export { runHook, type RunHookOptions, type HookRunResult } from './hook-bin';
 
 export {
   buildMcpJson,
+  buildMcpServerEntry,
   renderMcpJson,
   defaultMcpServerArgs,
+  isLoopbackHostname,
+  LoopbackHttpUrlSchema,
+  McpHttpServerEntrySchema,
+  McpStdioServerEntrySchema,
+  type McpHttpServerEntry,
+  type McpStdioServerEntry,
   buildClaudeHooksConfig,
   renderClaudeSettingsHooks,
   defaultHookArgs,
@@ -123,5 +131,26 @@ export {
   type HooksConfig,
   type PointerBlockOptions,
 } from './scaffolds';
+
+export {
+  mergeMcpJson,
+  mergeClaudeSettingsHooks,
+  onememoryHandlerPredicate,
+  MCP_SERVER_NAME,
+  CLAUDE_HOOK_BIN_TOKENS,
+  type ScaffoldMergeAction,
+  type ScaffoldMergeResult,
+} from './scaffold-merge';
+
+export {
+  inspectClaudeScaffold,
+  inspectMcpJsonContent,
+  inspectSettingsHooksContent,
+  hasMemoryPointerBlock,
+  claudeScaffoldPaths,
+  type ClaudeScaffoldInspection,
+  type ClaudeMcpInspection,
+  type ClaudeHooksInspection,
+} from './scaffold-inspect';
 
 export { ADAPTER_VERSION } from './version';
