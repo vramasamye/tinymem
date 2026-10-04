@@ -222,6 +222,26 @@ formalization, to be folded rather than run as written.
 7. **Doctor: adapter state + capture health** [P3] — surface `.onememory/adapters/*.json` cursor
    state with a reset offer (mission-6 §5.4) and a structured delivery ledger for capture hooks,
    which needs a small daemon-side counters endpoint (mission-7 §6).
+8. **Combined transcript-to-temporal acceptance** [P1 gate] — the Phase 1 DoD requires a transcript
+   fixture to be ingested, decisions/failures extracted with provenance, and current-vs-historical
+   retrieval checked end to end. Today extraction/storage and temporal retrieval are covered by
+   separate suites; M14 owns automatic supersession/consolidation. AC: add the combined fixture
+   workflow when supersession is available, or amend the Phase 1 DoD and phase gate before declaring
+   Phase 1 complete.
+9. **Published hook invocation contract** [P1] — generated Claude hooks assume a project-local
+   `node_modules` path and the Claude bin lacks a shebang; Codex capture assumes its executable is
+   on `PATH`. AC: a clean external project using the published package can run every generated
+   hook without repository-local paths.
+10. **Per-runtime identity over daemon MCP** [P2] — Phase 1 HTTP clients share the registered
+    project identity; decide whether later runtimes need a query parameter or authenticated
+    headers before multi-agent attribution is required. AC: ADR and transport tests define how
+    identity is conveyed and validated.
+11. **User-scope runtime wiring** [P2] — init/doctor currently write and inspect project scope
+    only, not `~/.claude.json` or `~/.codex/config.toml`. AC: add user scope only with explicit
+    consent and safe merge tests, or document project-scope-only support as the permanent contract.
+12. **Doctor summary includes daemon checks** [P2] — the CLI appends its daemon/worker result after
+    calculating `summary`, so the displayed counts omit that check. AC: compute summary after all
+    checks are assembled and cover daemon-present / daemon-absent cases.
 
 Raised by M3 (extraction): worker-process ONNX isolation (daemon event-loop) — folded into M13's
 brief as a documented decision; consolidation (M14) consumes `semantic_candidate`-tagged memories;

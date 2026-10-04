@@ -7,9 +7,9 @@ agents and AI assistants. It gives every agent — Claude Code, OpenAI Codex, Cu
 or any MCP-compatible runtime — a shared, low-token, continuously improving memory layer, so agents
 arrive knowing your project, its decisions, conventions, failures, and solutions.
 
-> **Status: architecture phase.** No production code yet, by design. The architecture review
-> (research, ADRs, schemas, retrieval design, phased plan) is being produced first in `docs/`.
-> See [docs/plan/](docs/plan/) for the roadmap.
+> **Status: Phase 1 implementation.** The local CLI, embedded and Postgres storage, retrieval,
+> MCP, and project-scope Claude Code/Codex wiring are implemented. See
+> [the phased plan](docs/plan/phased-plan.md) for verification evidence and remaining gates.
 
 ## Why
 
@@ -44,6 +44,29 @@ a different premise:
 | Runtime | TypeScript on Bun / Node LTS |
 | Storage | Postgres + pgvector (server) · PGlite embedded (local) |
 | Protocol | REST + MCP (stdio & Streamable HTTP) |
+
+## Quick start
+
+Initialize a project with the local-first defaults. Runtime wiring is opt-in:
+
+```sh
+npx onememory init --with-claude --with-codex
+onemem doctor
+onemem serve
+```
+
+`init` registers the project and writes project-scoped Claude Code and Codex configuration.
+`doctor` reports each runtime under **agent runtimes** and checks its MCP URL against the daemon
+configuration. Start the daemon before opening either agent.
+
+The generated MCP URL follows `daemon.host` and `daemon.port` in `.onememory/onememory.yaml`.
+If you run `onemem serve --port <n>`, that runtime override does not rewrite the generated agent
+configuration; doctor reports the mismatch. To keep the agent URL and daemon aligned, update
+`daemon.port` and rerun `onemem init --with-claude --with-codex`.
+
+The default local profile has no configured embedder or LLM provider. Doctor reports those as
+optional degraded capabilities; lexical and graph retrieval and heuristic extraction remain
+available without external calls.
 
 ## Documentation
 

@@ -32,11 +32,14 @@ Goal: Claude Code and Codex can store and retrieve memories, 100% locally, offli
 | M12 Security core | `mission/12-security` | `packages/security`: secret detection/redaction at ingest, path exclusions, privacy mode | M1 (ingest path) |
 
 Definition of done (Phase 1):
-- `npx onememory init` scaffolds config + embedded storage (or compose Postgres) and detects/configures Claude Code + Codex.
-- `onemem doctor` validates: storage, embedding model, detected runtimes, local-mode guarantees.
-- Roundtrip: explicit remember → MCP/CLI search returns it under token budget, with provenance and explain.
-- `bun test` green; integration tests pass on BOTH embedded (PGlite) and Postgres targets; e2e transcript fixture ingested → decisions/failures extracted → correct current-vs-historical answers.
-- 100% local: no network calls with default config (verified by a no-network integration test).
+- [x] `onemem init` scaffolds config + embedded storage and, with explicit consent, detects/configures Claude Code + Codex. Verified from a fresh project with both flags; all project-scoped files were created.
+- [x] `onemem doctor` validates storage, local-mode guard, and wired runtimes. Fresh-project and live-daemon checks reported both runtimes `pass`, the network guard `pass` with 0 attempts, and no failures. The default profile has no embedder, so doctor honestly warns that vector search is unavailable.
+- [x] Roundtrip: explicit CLI remember → token-budgeted CLI search returned the memory with provenance and explain; MCP `memory_store` without `project_id` → MCP search and CLI search returned the same project memory. Search stayed within a 120-token budget.
+- [x] `bun test` green; integration tests pass on BOTH embedded (PGlite) and Postgres targets. Full repo suite: 877 pass, 0 fail, 16 environment-gated skips; Postgres 17 storage parity: 35 pass, 0 fail.
+- [ ] Combined e2e: ingest a transcript fixture → extract decisions/failures → retrieve correct current-vs-historical answers. Extraction/provenance is covered in `packages/extraction/src/handlers/extract.test.ts`; temporal answers are covered separately in `packages/retrieval/src/engine.test.ts`. No combined pipeline test exists, and automatic supersession/consolidation is M14 scope.
+- [x] 100% local: default-profile remember/search passed with the enforced network guard recording 0 calls; the taint integration test also asserts zero outbound calls during the real redact/ingest/query path.
+
+**Gate status:** Phase 1 is not yet complete. The combined transcript-to-temporal acceptance criterion remains open; see the P1 cross-mission follow-up in `docs/backlog/issues.md`.
 
 ## Phase 2 — Coding memory
 

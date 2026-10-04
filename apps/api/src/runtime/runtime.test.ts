@@ -307,6 +307,33 @@ describe('the daemon lock', () => {
   });
 });
 
+describe('the default local profile stays offline', () => {
+  test('remember and search run under the enforced network guard with zero outbound calls', async () => {
+    const guard = runtime.networkGuard;
+    expect(guard).not.toBeNull();
+    if (guard === null) throw new Error('default local profile did not install the network guard');
+
+    const backend = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
+    const stored = await backend.remember({
+      project_id: projectId,
+      content: 'The default profile keeps memory operations on this machine.',
+      type: 'decision',
+    });
+    const result = await backend.search({
+      query: 'default profile local machine',
+      project_id: projectId,
+      explain: true,
+      max_tokens: 120,
+    });
+
+    expect(stored.outcome).toBe('inserted');
+    expect(result.memories.some((memory) => memory.id === stored.memory_id)).toBe(true);
+    expect(result.tokens.used).toBeLessThanOrEqual(result.tokens.budget);
+    guard.assertZeroCalls();
+    expect(guard.count).toBe(0);
+  });
+});
+
 describe('the daemon', () => {
   test('serves on loopback, refuses a second owner, and stops cleanly', async () => {
     const handle = await startDaemon({

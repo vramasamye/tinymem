@@ -118,16 +118,20 @@ engine-to-engine import; rule 4 still holds — SQL never leaves storage.
 | Adapters | `@onememory/adapter-claude`, `-codex`, `-cursor`, `-pi`, `-opencode` | yes |
 | Others | internal until stable | no |
 
-`npx onememory init` = fetch CLI → doctor → scaffold config + storage (embedded or compose) →
-install adapters for detected runtimes → write runtime-native config files
-(`.claude/settings.json` hooks, `.mcp.json`, `AGENTS.md` pointer, `.cursor/mcp.json`, …).
+`onemem init` scaffolds the config, embedded storage, and registered project. Claude Code and
+Codex wiring is project-scoped and opt-in: pass `--with-claude` and/or `--with-codex` to write
+their daemon-backed MCP entries, hooks, and project instruction pointers. The generated MCP URL
+comes from `daemon.host` / `daemon.port`; `onemem doctor` reports each runtime's wiring and warns
+if an explicit `onemem serve --port <n>` override differs from that configured URL. The Phase 1
+scaffolds only accept loopback HTTP URLs because the daemon has no authentication.
 
 ## Testing layout
 
 - Unit tests: co-located in each package (`*.test.ts`, `bun:test`).
 - Integration: `tests/integration/` — pipeline stages against real PGlite + real Postgres
   (docker), both dialect paths exercised (CI matrix: `embedded` / `postgres`).
-- E2E: `tests/e2e/` — CLI init → ingest fixture transcripts → search asserts quality + token
-  budget; MCP server over stdio + HTTP.
+- E2E: CLI init/doctor wiring tests and daemon HTTP MCP tests live beside their apps; the
+  extraction fixture pipeline and temporal retrieval fixtures are separate integration suites.
+  A combined transcript-ingest-to-temporal-answer acceptance test remains a Phase 1 gate.
 - Benchmarks: `benchmarks/` — token efficiency, retrieval precision/recall, ingestion latency;
   run in CI nightly and on demand; results checked into `benchmarks/results/` for regression diffing.
