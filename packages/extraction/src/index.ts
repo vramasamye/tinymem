@@ -64,12 +64,48 @@ export { createFutureValueGate, type FutureValueGate, type GateDecision } from '
 // Heuristic vocabulary (exported so M3b and the M11 benchmarks can extend it deliberately)
 export {
   COMMAND_DENYLIST,
+  DECISION_NOISE_PATTERNS,
+  DECISION_OPTION_NOISE,
   DECISION_PATTERNS,
+  DECISION_RATIONALE_CONNECTIVES,
+  DECISION_RATIONALE_PATTERNS,
+  DECISION_RATIONALE_SPLIT,
+  DECISION_REJECTION_PATTERNS,
   extractTechMentions,
+  firstMatch,
   isDeniedCommand,
+  matchAll,
   PREFERENCE_PATTERNS,
   VERSION_PATTERNS,
 } from './heuristic/patterns';
+
+// M3b enrichment: decision alternatives/rationale, stable failure signatures
+export {
+  decisionContent,
+  decisionPayloadFromText,
+  enrichDecision,
+  parseDecisionPayload,
+  splitDecisionRationale,
+  MAX_ALTERNATIVES,
+  MAX_DECISION_LENGTH,
+  MAX_OPTION_LENGTH,
+  MAX_RATIONALE_LENGTH,
+  REJECTION_WINDOW,
+  type DecisionEnrichmentInput,
+} from './enrichment/decision';
+export {
+  classifyFailure,
+  createFailureSignature,
+  failureIncidentOf,
+  failureSignatureForEvents,
+  failureSignatureHash,
+  failureSignatureOf,
+  failureStatement,
+  normalizeFailureMessage,
+  FAILURE_SIGNATURE_VERSION,
+  MAX_NORMALIZED_MESSAGE,
+  type FailureIncident,
+} from './enrichment/failure';
 
 // Job handler factories (M13 wiring)
 export {

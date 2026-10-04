@@ -108,6 +108,31 @@ export function firstMatch(text: string, patterns: readonly RegExp[]): PatternMa
   return null;
 }
 
+/**
+ * All matches of an ordered pattern list, up to `limit` (M3b uses it to collect several rejected
+ * options around one decision). Patterns are re-compiled with the global flag; a zero-length match
+ * cannot stall the loop.
+ */
+export function matchAll(
+  text: string,
+  patterns: readonly RegExp[],
+  limit: number,
+): PatternMatch[] {
+  const found: PatternMatch[] = [];
+  if (limit <= 0) return found;
+  for (const pattern of patterns) {
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+    const global = new RegExp(pattern.source, flags);
+    let match: RegExpExecArray | null;
+    while ((match = global.exec(text)) !== null) {
+      found.push({ match: match[0], captures: match.slice(1).filter((value) => value !== undefined) });
+      if (found.length >= limit) return found;
+      if (match.index === global.lastIndex) global.lastIndex += 1;
+    }
+  }
+  return found;
+}
+
 // ---------------------------------------------------------------------------
 // Decision language
 // ---------------------------------------------------------------------------
@@ -124,6 +149,75 @@ export const DECISION_PATTERNS: readonly RegExp[] = [
 /** Statements that look like decisions but are not (kept as noise). */
 export const DECISION_NOISE_PATTERNS: readonly RegExp[] = [
   /\bdecided\s+(?:to\s+)?(?:skip|stop|wait|sleep|eat|take\s+a\s+break)\b/i,
+];
+
+// ---------------------------------------------------------------------------
+// Decision enrichment (M3b): alternatives + rationale
+// ---------------------------------------------------------------------------
+
+/**
+ * Connectives that introduce a rationale. One list, two uses: `DECISION_RATIONALE_SPLIT` cuts an
+ * option phrase from its rationale when a `DECISION_PATTERNS` capture swallowed both
+ * ("chose X over Y because Z" → capture 2 is "Y because Z"), and `DECISION_RATIONALE_PATTERNS`
+ * finds the clause in the sentence that follows the decision.
+ */
+export const DECISION_RATIONALE_CONNECTIVES: readonly string[] = [
+  'because',
+  'since',
+  'due\\s+to',
+  'owing\\s+to',
+  'given\\s+that',
+  'so\\s+that',
+];
+
+const RATIONALE_CONNECTIVE_SOURCE = DECISION_RATIONALE_CONNECTIVES.join('|');
+
+/** Splits a decision/option phrase from its rationale (`"X because Y"` → `"X"` + `"Y"`). */
+export const DECISION_RATIONALE_SPLIT = new RegExp(
+  `\\s+(?:${RATIONALE_CONNECTIVE_SOURCE})\\s+`,
+  'i',
+);
+
+/**
+ * Where a decision/option phrase ends and the next clause begins. Used to keep a capture from
+ * swallowing a following clause ("chose X over Y, and we excluded Z because W") and to decide
+ * whether a rationale still belongs to the decision's own clause.
+ */
+export const DECISION_CLAUSE_BREAK = /[,;]\s+(?:and|but|so|then|while|plus)\b|[,;]|—/i;
+
+/**
+ * Rationale clauses. Matched against the remainder of the sentence carrying the decision, so the
+ * rationale is attributed to the decision it belongs to, never to an unrelated earlier "because".
+ */
+export const DECISION_RATIONALE_PATTERNS: readonly RegExp[] = [
+  new RegExp(`\\b(?:${RATIONALE_CONNECTIVE_SOURCE})\\s+([^.!?\\n]{3,200})`, 'i'),
+];
+
+/**
+ * Options explicitly ruled out next to a decision ("we ruled out SQLite because …"). The optional
+ * `because` clause becomes the alternative's `why_rejected` (the `decisions.alternatives` column
+ * pair).
+ */
+export const DECISION_REJECTION_PATTERNS: readonly RegExp[] = [
+  /\b(?:rejected|ruled\s+out|decided\s+against|dropped|excluded|avoided)\s+([^.!?\n]{2,120}?)(?:\s+because\s+([^.!?\n]{3,200}))?(?:[.!?\n]|$)/i,
+];
+
+/** Words that make an "option" a pronoun rather than a real alternative. */
+export const DECISION_OPTION_NOISE: readonly string[] = [
+  'it',
+  'this',
+  'that',
+  'them',
+  'those',
+  'these',
+  'both',
+  'either',
+  'neither',
+  'nothing',
+  'anything',
+  'the other',
+  'the alternative',
+  'something else',
 ];
 
 // ---------------------------------------------------------------------------

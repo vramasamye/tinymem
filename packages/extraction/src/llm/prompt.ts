@@ -13,7 +13,30 @@ import { z } from 'zod';
 
 import { normalizedDigestLine, type NormalizedEvent } from '../events';
 
-export const EXTRACTION_PROMPT_VERSION = 'extract-v1';
+export const EXTRACTION_PROMPT_VERSION = 'extract-v2';
+
+/**
+ * Tolerant mirror of `DecisionExtractionSchema` for model output (M3b): a model that returns
+ * `rationale: null` or an over-long option must not burn a retry, so the boundary tolerates it and
+ * `parseDecisionPayload()` normalizes the salvageable parts into the canonical payload.
+ *
+ * Failure signatures are deliberately NOT requested from the model: the digest is computed
+ * deterministically by the extractor from the evidence events, so both extractor paths produce the
+ * same signature for the same failure.
+ */
+export const LLM_DECISION_PAYLOAD_SCHEMA = z.object({
+  decision: z.string().min(1).max(300),
+  alternatives: z
+    .array(
+      z.object({
+        option: z.string().min(1).max(200),
+        why_rejected: z.string().max(200).nullish(),
+      }),
+    )
+    .max(6)
+    .default([]),
+  rationale: z.string().max(300).nullish(),
+});
 
 export const LLM_EXTRACTION_SCHEMA = z.object({
   memories: z.array(
@@ -30,6 +53,8 @@ export const LLM_EXTRACTION_SCHEMA = z.object({
       event_indexes: z.array(z.number().int().min(0)).min(1),
       /** One clause explaining why this is worth remembering (the future-value gate). */
       future_value_rationale: z.string().min(1),
+      /** Structured decision capture (M3b), for `decision` memories only. */
+      decision_payload: LLM_DECISION_PAYLOAD_SCHEMA.nullish(),
       valid_from: z.string().optional(),
       valid_until: z.string().optional(),
     }),
@@ -71,6 +96,9 @@ export const EXTRACTION_SYSTEM_PROMPT = [
   '"content":"canonical self-contained statement, max 500 chars","title":"optional, max 80 chars",',
   '"subtype":"optional free-form refinement","importance":0.0,"confidence":0.0,',
   '"entities":["mentioned names"],"event_indexes":[0],"future_value_rationale":"one clause",',
+  '"decision_payload":{"decision":"the chosen option","alternatives":[{"option":"the rejected',
+  ' option","why_rejected":"why, when stated"}],"rationale":"why the choice was made"}',
+  ' (decision memories only, omit otherwise),',
   '"valid_from":"optional ISO timestamp","valid_until":"optional ISO timestamp"}],',
   '"working":[{"kind":"task|hypothesis|current_file|current_error|temp_decision|open_question",',
   '"content":"session-scoped note, max 300 chars","event_indexes":[0]}],',
@@ -85,6 +113,10 @@ export const EXTRACTION_SYSTEM_PROMPT = [
   '- Use "decision" for settled choices (include alternatives in content when stated), "failure"',
   '  for errors with a resolution, "preference" for stated user/project preferences,',
   '  "procedural" for repeatable procedures, "episodic" for observations and stack mentions.',
+  '- For a "decision" memory, fill decision_payload from what the transcript actually says: the',
+  '  chosen option, the alternatives considered (with why_rejected only when stated), and the',
+  '  rationale. Never invent an alternative or a reason that is not in the events.',
+  '- Do NOT emit a failure signature or hash: the engine computes it from the cited events.',
   '- Put session-scoped scratch context (current task, open question, hypothesis, unresolved',
   '  error, file being edited) in "working", not in "memories".',
   '- Discard small talk, acknowledgements, and anything with no future value.',

@@ -16,8 +16,12 @@
 
 import type { ExtractedMemoryType } from '@onememory/core';
 
-/** `extraction_meta.prompt_version` for the heuristic extractor. */
-export const HEURISTIC_PROMPT_VERSION = 'heuristic-v1';
+/**
+ * `extraction_meta.prompt_version` for the heuristic extractor. Bumped to `heuristic-v2` when M3b
+ * added decision alternatives/rationale capture, failure signatures, and failing-test incidents —
+ * stored provenance must be able to tell which rule set produced a memory.
+ */
+export const HEURISTIC_PROMPT_VERSION = 'heuristic-v2';
 
 export interface ExtractionThresholds {
   /** Future-value gate: candidates below this importance are discarded. */

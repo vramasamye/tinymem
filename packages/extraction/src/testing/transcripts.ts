@@ -2,8 +2,10 @@
  * Test-only fixture builders (not exported from the package index).
  *
  * Synthetic but realistic agent-session transcripts: a golden session containing every pattern the
- * heuristic extractor recognizes, and a noise session containing none. Fixtures contain no secrets
- * and no real transcripts (AGENTS.md rule 6).
+ * heuristic extractor recognizes, a noise session containing none, and the M3b fixtures (chatter
+ * that only sounds like decisions/failures, a decision carrying alternatives + rationale, a
+ * red→green test run, and the same failure expressed with different noise). Fixtures contain no
+ * secrets and no real transcripts (AGENTS.md rule 6).
  */
 
 import {
@@ -179,6 +181,102 @@ export function noiseSession(): ExtractionInput[] {
     terminal('git status --short', 0, 30, 'clean'),
     terminal('ls', 0, 35, 'packages docs'),
     terminal('ls', 0, 40, 'packages docs'),
+  ];
+}
+
+/**
+ * M3b negative fixture: chatter that *sounds* like decisions and failures — a causal clause, a
+ * rejected option without a decision verb, a preference, a hypothetical, and a passing command
+ * whose output merely mentions an error. None of it may become a durable memory.
+ */
+export function chatterSession(): ExtractionInput[] {
+  return [
+    message('user', 'Thanks, that makes sense because it is simpler.', 0),
+    message('user', 'We ruled out Docker because the daemon is slow.', 5),
+    message('user', 'I prefer bun test over jest because it is faster.', 10),
+    message('assistant', 'The build failed yesterday, maybe it will pass now.', 15),
+    terminal('bun test', 0, 20, '87 pass, 0 fail — no "cannot find module" this time'),
+    message('user', 'Should we ship the embedded profile as experimental?', 25),
+  ];
+}
+
+/**
+ * M3b decision fixture: a decision that states its alternative, its rationale, and a rejected
+ * option in the same breath ("chose X over Y because Z; we ruled out W because V").
+ */
+export function decisionSession(): ExtractionInput[] {
+  return [
+    message(
+      'user',
+      'We chose Drizzle over Prisma because Drizzle generates plain SQL migrations; we ruled out Kysely because the team already knows Drizzle.',
+      0,
+    ),
+  ];
+}
+
+/** M3b failure fixture: a red test run resolved by a green one (the test-event failure path). */
+export function testFailureSession(): ExtractionInput[] {
+  return [
+    makeInput(
+      'test.results',
+      {
+        kind: 'test.results',
+        framework: 'bun',
+        passed: 3,
+        failed: 2,
+        failures: [
+          { name: 'saves rows', digest: 'expected 1 to equal 2' },
+          { name: 'reads rows', digest: 'expected undefined' },
+        ],
+      },
+      { offsetSeconds: 0 },
+    ),
+    makeInput(
+      'test.results',
+      { kind: 'test.results', framework: 'bun', passed: 5, failed: 0 },
+      { offsetSeconds: 10 },
+    ),
+  ];
+}
+
+/**
+ * M3b stability fixture: the *same* failure twice, differing only in path depth, timings, colour
+ * codes and a different session id. The signatures must be identical.
+ */
+export function failureNoiseVariants(): [ExtractionInput[], ExtractionInput[]] {
+  const context = 'bun test in packages/storage';
+  return [
+    [
+      makeInput(
+        'error.raised',
+        {
+          kind: 'error.raised',
+          origin: 'build',
+          message: 'Cannot find module "./schema" imported from src/store.ts',
+          context,
+        },
+        { offsetSeconds: 0 },
+      ),
+      terminal('bun test', 0, 10, '87 pass, 0 fail (1.2s)'),
+    ],
+    [
+      makeInput(
+        'error.raised',
+        {
+          kind: 'error.raised',
+          origin: 'build',
+          message:
+            '\u001b[31mCannot find module "./schema" imported from /Users/dev/proj/packages/storage/src/store.ts\u001b[0m',
+          context,
+        },
+        { sessionId: 'sess-m3b-noise', offsetSeconds: 0 },
+      ),
+      makeInput(
+        'terminal.output',
+        { kind: 'terminal.output', command: 'bun test', exit_code: 0, output_digest: '87 pass, 0 fail (3.7s)' },
+        { sessionId: 'sess-m3b-noise', offsetSeconds: 12 },
+      ),
+    ],
   ];
 }
 

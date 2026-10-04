@@ -23,6 +23,8 @@ import {
 import { RouterUnavailableError, type ModelOperation, type ModelRouter } from '@onememory/llm';
 
 import { buildEvidence, normalizeEvent, type NormalizedEvent } from '../events';
+import { parseDecisionPayload } from '../enrichment/decision';
+import { failureSignatureForEvents } from '../enrichment/failure';
 import { createFutureValueGate } from '../gate';
 import {
   DEFAULT_THRESHOLDS,
@@ -113,9 +115,11 @@ export function createLlmExtractor(options: LlmExtractorOptions): LlmExtractor {
       const memories: ExtractedMemory[] = [];
       for (const candidate of output.memories) {
         const evidence: EvidenceSpan[] = [];
+        const cited: NormalizedEvent[] = [];
         for (const index of candidate.event_indexes) {
           const event = included[index];
           if (!event) continue;
+          cited.push(event);
           evidence.push(
             buildEvidence(
               {
@@ -129,6 +133,12 @@ export function createLlmExtractor(options: LlmExtractorOptions): LlmExtractor {
           );
         }
         if (evidence.length === 0) continue; // provenance is mandatory — drop, never store
+        // M3b enrichment: the model supplies the decision payload (tolerantly normalized here);
+        // the failure signature is always computed by the engine from the cited events.
+        const decisionPayload =
+          candidate.type === 'decision' ? parseDecisionPayload(candidate.decision_payload) : undefined;
+        const failureSignature =
+          candidate.type === 'failure' ? failureSignatureForEvents(cited) : undefined;
         memories.push({
           type: candidate.type,
           ...(candidate.title === undefined ? {} : { title: candidate.title }),
@@ -141,6 +151,8 @@ export function createLlmExtractor(options: LlmExtractorOptions): LlmExtractor {
           ...(candidate.valid_from === undefined ? {} : { valid_from: candidate.valid_from }),
           ...(candidate.valid_until === undefined ? {} : { valid_until: candidate.valid_until }),
           future_value_rationale: candidate.future_value_rationale,
+          ...(decisionPayload === undefined ? {} : { decision_payload: decisionPayload }),
+          ...(failureSignature === undefined ? {} : { failure_signature: failureSignature }),
         });
       }
 

@@ -99,7 +99,7 @@ describe('createExtractHandler', () => {
     expect(decision?.status).toBe('active');
     expect(decision?.provenance.extraction).toEqual({
       method: 'heuristic',
-      prompt_version: 'heuristic-v1',
+      prompt_version: 'heuristic-v2',
     });
     expect(decision?.provenance.source.kind).toBe('conversation');
     expect(decision?.provenance.source.id).toMatch(/^[0-9a-f-]{36}$/);
