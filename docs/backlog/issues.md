@@ -238,9 +238,12 @@ formalization, to be folded rather than run as written.
 11. **User-scope runtime wiring** [P2] — init/doctor currently write and inspect project scope
     only, not `~/.claude.json` or `~/.codex/config.toml`. AC: add user scope only with explicit
     consent and safe merge tests, or document project-scope-only support as the permanent contract.
-12. **Doctor summary includes daemon checks** [P2] — the CLI appends its daemon/worker result after
-    calculating `summary`, so the displayed counts omit that check. AC: compute summary after all
-    checks are assembled and cover daemon-present / daemon-absent cases.
+12. ~~**Doctor summary includes daemon checks**~~ ✅ Resolved (coordinator, 2026-10-04): summary/
+    status/exit_code now derive in one place — `finalizeDoctorReport` in the apps/api runtime, which
+    `inspectRuntime` and the failed-to-open fallback also route through. The CLI appends its
+    daemon/worker mode check and finalizes before both output paths (JSON emit + printed report), so
+    counts always match the checks listed; exit-code semantics unchanged (`warn` stays degraded/0).
+    Landed as `mission/13b-doctor-summary` (`fa99f0f`), merged to main.
 
 Raised by M3 (extraction): worker-process ONNX isolation (daemon event-loop) — folded into M13's
 brief as a documented decision; consolidation (M14) consumes `semantic_candidate`-tagged memories;
