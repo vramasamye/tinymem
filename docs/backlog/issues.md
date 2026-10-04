@@ -261,7 +261,12 @@ Raised by M3b (decision/failure capture) — landed with the fields on candidate
    M15 skill-candidate generation need — and decision promotion beyond `proposed` (memory-model §9).
    AC: heuristic and LLM paths persist identical rows from the same transcript; scenario added to
    the storage integration matrix.
-2. **Tool-result failures as incidents** [P3] — `conversation.tool_result` failures are not
-   recognized as failure incidents because the normalized event carries no tool-name field;
-   recognizing them is a NORMALIZE-shape change (deliberately cut from M3b). AC: a failing tool
-   result yields a failure candidate with a signature whose `tool` is populated.
+2. ~~**Tool-result failures as incidents**~~ Resolved by M3c (`35bf338`): normalized tool results
+   preserve an optional validated tool name; `ok: false` produces a failure incident with
+   `origin: 'tool'`. Both extractors compute identical signatures, and same-tool successes can
+   resolve failures. Adapter production remains a separate follow-up below.
+3. **Adapter tool-result failure emission** [P2] — M3c supports failing tool results at the
+   extraction boundary, but current adapters do not emit named failing tool results. Preserve
+   the pending call's tool name and derive `ok` from runtime-provided failure signals, without
+   guessing from output text. AC: a captured runtime tool failure reaches extraction with its
+   tool name and `ok: false`, while successful results remain non-incidents.

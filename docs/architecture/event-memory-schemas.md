@@ -105,6 +105,7 @@ doc-shaped payloads on validation, but adapters SHOULD always set it explicitly.
 { call_id: string;
   ok: boolean;
   output_digest: string;        // ≤ 2000 chars, truncated with marker
+  tool?: string;                // ≤ 80 chars, when the adapter's shape names it (never inferred)
   error?: { code?: string; message: string };
 }
 ```
@@ -217,8 +218,8 @@ interface ExtractedMemory {
     type: string;                  // normalized error class from the ordered rule table
     hash: string;                  // sha256("failure-v1" ␀ type ␀ normalized_message), 16 hex chars
     normalized_message: string;     // noise-normalized message, ≤ 300 chars; digest covers this capped form
-    origin: 'error' | 'command' | 'test';
-    error_origin?: 'terminal' | 'test' | 'build' | 'runtime' | 'tool';
+    origin: 'error' | 'command' | 'test' | 'tool';
+    error_origin?: 'terminal' | 'test' | 'build' | 'runtime' | 'tool'; // only for origin: 'error'
     tool?: string;                  // recorded context, deliberately excluded from the digest
     command?: string;              // recorded context, deliberately excluded from the digest
   };
@@ -245,14 +246,18 @@ interface EvidenceSpan {
 The extractor's first decision is the spec's gate: **does this have future value?** Anything the
 extractor can't justify (no `future_value_rationale`, low importance) is discarded, not stored.
 In fully-local no-LLM mode the heuristic extractor recognizes: explicit preference/decision
-language, error+resolution pairs and failing test runs, recurring commands (procedure
+language, error+resolution pairs, failing test runs and failed tool results, recurring commands (procedure
 candidates), stack names, and versioned facts. Lower recall than an LLM, zero external
 calls, correct shape.
 
 Both structured payloads are enrichment, never triggers: `decision_payload` exists only when
 the matched decision language actually carried alternatives and/or a rationale, and
 `failure_signature` only on candidates backed by a failure event (`error.raised`, a non-zero
-command exit, or a failing test run). The signature digest covers `type` and
+command exit, a failing test run, or a `conversation.tool_result` with `ok: false`).
+Tool-result failures carry `origin: 'tool'`, not `error_origin: 'tool'`: the latter belongs
+only to a genuine `error.raised` event. A later successful result from the same named tool
+can resolve the incident; missing tool names are never fabricated.
+The signature digest covers `type` and
 `normalized_message` only — the failing tool and command are recorded next to the digest so
 one root cause reached through different tools collapses to a single signature. The heuristic
 and LLM extractors emit byte-identical signatures: the model only cites events, the engine
