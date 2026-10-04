@@ -3,10 +3,14 @@
  * the report itself prescribes: 0 when onememory is usable, 1 when a check failed. Warnings are
  * surfaced, not fatal — a usable-but-degraded setup (no embedder, heuristic extraction) is the
  * product's default state, not an error.
+ *
+ * The runtime computes summary/status/exit_code; the CLI adds one check of its own — how it
+ * resolved the backend — and hands the assembled report back to the runtime's `finalize` seam so
+ * the displayed counts cover every check shown (backlog #12).
  */
 
 import { ConfigError, ConfigNotFoundError } from '@onememory/config';
-import { type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
+import { finalizeDoctorReport, type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
 
 import type { Io } from '../io';
 import { printConfigError, resolveBackend } from '../resolve';
@@ -19,32 +23,43 @@ export interface DoctorOptions {
   probeEmbedder?: boolean;
 }
 
+/**
+ * The check the CLI contributes: it is the only layer that knows whether this invocation ran
+ * against a daemon or opened storage directly. Pass (the daemon owns storage and drains the job
+ * queue) or warn (direct mode leaves queued jobs waiting) — never a failure: direct mode is the
+ * supported default, not an error.
+ */
+export function modeCheck(mode: 'daemon' | 'local', daemonUrl: string | null): DoctorCheck {
+  if (mode === 'daemon') {
+    return {
+      id: 'daemon',
+      title: 'daemon',
+      status: 'pass',
+      detail: `this command ran against the daemon at ${daemonUrl}; storage and the job worker live there`,
+    };
+  }
+  return {
+    id: 'worker',
+    title: 'job worker',
+    status: 'warn',
+    detail:
+      'not running (direct mode) — normalize/extract/re_embed jobs stay queued until an onememory daemon runs',
+    remediation: 'start one with: onemem serve',
+  };
+}
+
 export async function runDoctor(options: DoctorOptions, io: Io): Promise<number> {
   const { backend, mode, daemonUrl } = await resolveBackend(options);
   try {
     const report = await backend.doctor({
       ...(options.probeEmbedder === undefined ? {} : { probeEmbedder: options.probeEmbedder }),
     });
-    if (mode === 'daemon') {
-      report.checks.push({
-        id: 'daemon',
-        title: 'daemon',
-        status: 'pass',
-        detail: `this command ran against the daemon at ${daemonUrl}; storage and the job worker live there`,
-      });
-    } else {
-      report.checks.push({
-        id: 'worker',
-        title: 'job worker',
-        status: 'warn',
-        detail:
-          'not running (direct mode) — normalize/extract/re_embed jobs stay queued until an onememory daemon runs',
-        remediation: 'start one with: onemem serve',
-      });
-    }
-    io.emit(report);
-    printReport(io, report);
-    return report.exit_code;
+    // Counts must be derived after the CLI's own check is appended, so both output paths (the JSON
+    // document and the printed report) agree with the checks they list.
+    const finalized = finalizeDoctorReport(report, [modeCheck(mode, daemonUrl)]);
+    io.emit(finalized);
+    printReport(io, finalized);
+    return finalized.exit_code;
   } finally {
     await backend.close();
   }

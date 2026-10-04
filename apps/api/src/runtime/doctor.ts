@@ -54,6 +54,7 @@ export interface DoctorReport {
   config_path: string | null;
   /** `null` only when the configuration itself could not be loaded. */
   config: ConfigSummary | null;
+  /** Counts over `checks` + `runtimes`; derived by {@link finalizeDoctorReport}, never by hand. */
   summary: { pass: number; warn: number; fail: number; info: number };
   checks: DoctorCheck[];
   /**
@@ -375,6 +376,46 @@ function summarise(checks: DoctorCheck[]): DoctorReport['summary'] {
   };
 }
 
+/**
+ * `status`/`exit_code` are a pure function of the summary: only a `fail` makes onememory unusable
+ * (exit 1). A `warn` is degraded-but-usable — the default state of a local install — so it never
+ * becomes an error.
+ */
+function outcome(summary: DoctorReport['summary']): Pick<DoctorReport, 'status' | 'exit_code'> {
+  return {
+    status: summary.fail > 0 ? 'failed' : summary.warn > 0 ? 'degraded' : 'ok',
+    exit_code: summary.fail > 0 ? 1 : 0,
+  };
+}
+
+/**
+ * A report whose derived fields (`summary`, `status`, `exit_code`) do not exist yet: what the
+ * assembly sites below build, and the input {@link finalizeDoctorReport} completes. A finished
+ * `DoctorReport` also satisfies it — its derived fields are simply replaced.
+ */
+export type DoctorDraft = Omit<DoctorReport, 'status' | 'exit_code' | 'summary'>;
+
+/**
+ * The ONE place `summary`, `status` and `exit_code` are derived. Every code path that assembles a
+ * report routes through here — the runtime inspection, the failed-to-open fallback, and any caller
+ * that appends checks of its own after inspecting (the CLI's daemon/worker mode check, which can
+ * only be chosen once the CLI knows how it resolved the backend).
+ *
+ * Deriving the counts from the fully assembled checks is the point: computing a summary before a
+ * caller appends its check leaves a report whose displayed counts disagree with the checks it
+ * lists. `extra` is appended to `report.checks` (never to the `runtimes` group, which the report
+ * carries separately), and the result is a new object — neither `report` nor its arrays are
+ * mutated.
+ */
+export function finalizeDoctorReport(
+  report: DoctorDraft,
+  extra: readonly DoctorCheck[] = [],
+): DoctorReport {
+  const checks = extra.length === 0 ? report.checks : [...report.checks, ...extra];
+  const summary = summarise([...checks, ...report.runtimes]);
+  return { ...report, checks, summary, ...outcome(summary) };
+}
+
 /** Run the checks against a live runtime (the daemon and the API reuse this). */
 export async function inspectRuntime(
   runtime: OnememoryRuntime,
@@ -403,18 +444,14 @@ export async function inspectRuntime(
     ...(projectId === undefined ? {} : { projectId }),
   });
 
-  const summary = summarise([...checks, ...runtimes]);
-  return {
-    status: summary.fail > 0 ? 'failed' : summary.warn > 0 ? 'degraded' : 'ok',
-    exit_code: summary.fail > 0 ? 1 : 0,
+  return finalizeDoctorReport({
     generated_at: new Date().toISOString(),
     version: ONEMEMORY_VERSION,
     config_path: runtime.loaded.paths.config_path,
     config: configSummary(runtime.config, runtime.loaded.paths.config_path, runtime.loaded.paths.data_dir),
-    summary,
     checks,
     runtimes,
-  };
+  });
 }
 
 /** A report for when the runtime could not even be opened (config or storage failure). */
@@ -427,15 +464,12 @@ export function failedDoctorReport(
   const checks = [
     check(checkId, checkId === 'config' ? 'configuration' : 'storage', 'fail', reason, remediation),
   ];
-  return {
-    status: 'failed',
-    exit_code: 1,
+  return finalizeDoctorReport({
     generated_at: new Date().toISOString(),
     version: ONEMEMORY_VERSION,
     config_path: configPath,
     config: null,
-    summary: summarise(checks),
     checks,
     runtimes: [],
-  };
+  });
 }

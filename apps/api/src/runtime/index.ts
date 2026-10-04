@@ -20,10 +20,12 @@ export {
 export { createEmbedder, type EmbedderFactoryOptions } from './embedder';
 
 export {
+  finalizeDoctorReport,
   inspectRuntime,
   failedDoctorReport,
   type DoctorCheck,
   type DoctorCheckStatus,
+  type DoctorDraft,
   type DoctorOptions,
   type DoctorReport,
 } from './doctor';
