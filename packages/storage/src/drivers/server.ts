@@ -88,7 +88,10 @@ export class ServerDatabase implements Database {
     const client = await this.pool.connect();
     const txDatabase = new ServerClientDatabase(client);
     try {
-      return await work(txDatabase);
+      // Delegate to the connection-bound wrapper: it issues BEGIN/COMMIT/ROLLBACK (or nested
+      // SAVEPOINTs) so a multi-statement repository write is atomic. Running `work` directly on
+      // the wrapper would execute every statement in autocommit — partial writes on failure.
+      return await txDatabase.transaction(work);
     } finally {
       await txDatabase.close();
     }
