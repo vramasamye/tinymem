@@ -142,7 +142,7 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
     kind: 'api-key',
     kinds: ['api-key'],
     patterns: [
-      { regex: /(?<![A-Za-z0-9_-])sk-ant-[A-Za-z0-9_-]{16,}(?![A-Za-z0-9_-])/gd },
+      { regex: /(?<![A-Za-z0-9])sk-ant-[A-Za-z0-9_-]{16,}(?![A-Za-z0-9_-])/gd },
     ],
   },
   {
@@ -151,7 +151,7 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
     kind: 'api-key',
     kinds: ['api-key'],
     patterns: [
-      { regex: /(?<![A-Za-z0-9_-])sk-(?!ant-)[A-Za-z0-9_-]{20,}(?![A-Za-z0-9_-])/gd },
+      { regex: /(?<![A-Za-z0-9])sk-(?!ant-)[A-Za-z0-9_-]{20,}(?![A-Za-z0-9_-])/gd },
     ],
   },
   {
@@ -160,8 +160,8 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
     kind: 'token',
     kinds: ['token'],
     patterns: [
-      { regex: /(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{36,}(?![A-Za-z0-9])/gd },
-      { regex: /(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_]{22,}(?![A-Za-z0-9_])/gd },
+      { regex: /(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{36,}(?![A-Za-z0-9])/gd },
+      { regex: /(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]{22,}(?![A-Za-z0-9_])/gd },
     ],
   },
   {
@@ -176,7 +176,7 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
     description: 'Google API keys (AIza…)',
     kind: 'api-key',
     kinds: ['api-key'],
-    patterns: [{ regex: /(?<![A-Za-z0-9_-])AIza[0-9A-Za-z_-]{35}(?![A-Za-z0-9_-])/gd }],
+    patterns: [{ regex: /(?<![A-Za-z0-9])AIza[0-9A-Za-z_-]{35}(?![A-Za-z0-9_-])/gd }],
   },
   {
     id: 'slack-token',
@@ -184,7 +184,7 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
     kind: 'token',
     kinds: ['token'],
     patterns: [
-      { regex: /(?<![A-Za-z0-9-])(?:xox[a-z]|xapp)-[0-9A-Za-z-]{10,}(?![0-9A-Za-z-])/gd },
+      { regex: /(?<![A-Za-z0-9])(?:xox[a-z]|xapp)-[0-9A-Za-z-]{10,}(?![0-9A-Za-z-])/gd },
     ],
   },
   {
@@ -196,7 +196,7 @@ export const PATTERN_GROUPS: readonly PatternGroup[] = [
       {
         // Greedy over the dot-separated segments so a trailing sentence period is NOT consumed
         // but additional segments ARE (never leave a partial signature behind).
-        regex: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2,}(?![A-Za-z0-9_-])/gd,
+        regex: /(?<![A-Za-z0-9])eyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2,}(?![A-Za-z0-9_-])/gd,
       },
     ],
   },

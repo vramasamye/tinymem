@@ -112,6 +112,37 @@ describe('pattern coverage table', () => {
 });
 
 describe('embedded secret contexts', () => {
+  test('provider credentials embedded after tool-name separators are redacted', () => {
+    const cases = [
+      {
+        text: `Read_sk-ant-${A(40, 'b')}`,
+        expected: 'Read_[REDACTED:api-key]',
+      },
+      {
+        text: `mcp__srv__sk-${A(40)}`,
+        expected: 'mcp__srv__[REDACTED:api-key]',
+      },
+      {
+        text: `x-sk-ant-${A(40, 'b')}`,
+        expected: 'x-[REDACTED:api-key]',
+      },
+      {
+        text: `mcp__srv__ghp_${A(36)}`,
+        expected: 'mcp__srv__[REDACTED:token]',
+      },
+    ];
+
+    for (const { text, expected } of cases) {
+      const { value, redactions } = redactValue(text);
+      expect(value).toBe(expected);
+      expect(redactions).toHaveLength(1);
+
+      const repeated = redactValue(value);
+      expect(repeated.value).toBe(expected);
+      expect(repeated.redactions).toHaveLength(0);
+    }
+  });
+
   test('secret inside a URL inside a terminal output digest', () => {
     const secret = `sk-${A(48)}`;
     const input = {
