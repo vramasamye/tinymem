@@ -245,3 +245,20 @@ formalization, to be folded rather than run as written.
 Raised by M3 (extraction): worker-process ONNX isolation (daemon event-loop) — folded into M13's
 brief as a documented decision; consolidation (M14) consumes `semantic_candidate`-tagged memories;
 LLM-prompt tuning belongs to M11 benchmarks.
+
+Raised by M3b (decision/failure capture) — landed with the fields on candidates and in durable
+`content`; the payload-row wiring below is what makes recurrence queryable.
+
+1. **STORE wiring of `decisions`/`failures` payload rows** [P2] — `insertMemory` writes only the
+   `memories` row, so `decision_payload`/`failure_signature` (validated at the EXTRACT→STORE
+   boundary since M3b) never reach the payload tables. Derive at STORE: `title`, `participants`,
+   `decided_at`, `status` (default `proposed`) from the memory row; `problem`/`context`/`solution`/
+   `verification` from the signature's label, `command`/`tool`, resolution, and evidence. Unblocks
+   failure recurrence counting (`occurrence_count`, `last_seen_at`) — the input ADR-0009 rule 1 and
+   M15 skill-candidate generation need — and decision promotion beyond `proposed` (memory-model §9).
+   AC: heuristic and LLM paths persist identical rows from the same transcript; scenario added to
+   the storage integration matrix.
+2. **Tool-result failures as incidents** [P3] — `conversation.tool_result` failures are not
+   recognized as failure incidents because the normalized event carries no tool-name field;
+   recognizing them is a NORMALIZE-shape change (deliberately cut from M3b). AC: a failing tool
+   result yields a failure candidate with a signature whose `tool` is populated.
