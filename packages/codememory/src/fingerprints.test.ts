@@ -85,6 +85,27 @@ describe('local fingerprint capture', () => {
     expect(report.changes[0]?.previous_path).toBe('original.ts');
   });
 
+  test('partial clones stay offline: inexact rename detection degrades to add/delete', async () => {
+    const root = await fixture();
+    await writeFile(join(root, 'original.ts'), Array.from({ length: 40 }, (_, n) => `export const value${n} = ${n};`).join('\n'));
+    await commit(root);
+    const before = await captureSnapshot(root);
+    await rename(join(root, 'original.ts'), join(root, 'renamed.ts'));
+    await writeFile(join(root, 'renamed.ts'), `${Array.from({ length: 40 }, (_, n) => `export const value${n} = ${n};`).join('\n')}\n// changed\n`);
+    await commit(root);
+    await command(root, 'config', 'remote.origin.promisor', 'true');
+    const guard = installNetworkGuard();
+    try {
+      const report = await detectChanges(before);
+      expect(report.changes.some((change) => change.kind === 'renamed')).toBe(false);
+      expect(new Set(report.changes.map((change) => change.kind))).toEqual(new Set(['added', 'deleted']));
+      expect(report.warnings.some((warning) => warning.includes('exact-only'))).toBe(true);
+      guard.assertZeroCalls();
+    } finally {
+      guard.restore();
+    }
+  });
+
   test('content hashes remain useful when a checkpoint is missing', async () => {
     const root = await fixture();
     await writeFile(join(root, 'a.ts'), 'export const a = 1;\n');

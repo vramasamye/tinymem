@@ -398,12 +398,26 @@ export async function detectChanges(
     if (baseline.code !== 0) {
       warnings.push('baseline checkpoint object is missing (shallow or rewritten history): per-file hashes are authoritative; modified renames may appear as add/delete');
     } else {
+      // Inexact rename detection (`--find-renames=50%`) reads blob contents for similarity
+      // scoring; in a partial clone a missing blob means a lazy network fetch mid-drift
+      // (drift-event-scan verification §6.3), which the offline invariant forbids. A promisor
+      // remote downgrades this scan to exact-only pairing (identical blob OIDs, no blob reads):
+      // modified renames then surface as add/delete and per-file hashes stay authoritative.
+      // Above diff.renameLimit, inexact pairs degrade the same way with exit 0 — the same
+      // conservative fallback, accepted.
+      const promisor = await runGit(before.root_path,
+        ['config', '--get-regexp', '^remote\\..*\\.promisor$']);
+      const partialClone = promisor.code === 0 && promisor.stdout.trim().length > 0;
+      if (partialClone) {
+        warnings.push('partial clone detected (promisor remote): rename detection is exact-only, so modified renames appear as add/delete');
+      }
       const diff = await runGit(before.root_path, [
-        'diff', '--no-ext-diff', '--no-textconv', '--name-status', '-z', '--find-renames=50%',
+        'diff', '--no-ext-diff', '--no-textconv', '--name-status', '-z',
+        partialClone ? '--find-renames=100%' : '--find-renames=50%',
         '--ignore-submodules=dirty', before.head_commit, snapshot.head_commit, '--',
       ]);
       if (diff.code === 0) renames = parseRenames(diff.stdout);
-      else warnings.push('Git checkpoint/rename diff unavailable: per-file hashes are authoritative; modified renames may appear as add/delete');
+      else warnings.push('Git checkpoint/rename diff unavailable (the baseline commit resolved but its tree may be missing: `rev-parse --verify <sha>^{commit}` proves the commit, not its tree): per-file hashes are authoritative; modified renames may appear as add/delete');
     }
   }
   return { snapshot, changes: compare(before, snapshot, renames), warnings };
