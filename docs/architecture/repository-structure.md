@@ -17,7 +17,8 @@ onememory/
 │   ├── core/                 # THE ENGINE. Memory model, lifecycle pipeline orchestration,
 │   │                         #   scoring, status transitions, Zod schemas (canonical),
 │   │                         #   ports (interfaces): Store, Searcher, Embedder, Extractor,
-│   │                         #   Reranker, EntityResolver, DriftWatcher, SecretRedactor.
+│   │                         #   Reranker, EntityResolver, DriftWatcher, CodeMemoryStore,
+│   │                         #   SecretRedactor.
 │   ├── storage/              # Port implementation: Postgres dialect (Drizzle ORM) — runs on
 │   │                         #   PGlite (embedded) and Postgres+pgvector (server/cloud/SaaS).
 │   │                         #   Owns migrations, jobs table, repositories. Only place with SQL.
@@ -92,10 +93,14 @@ storage      retrieval    extraction    consolidation   graph   codememory
 
 As-built (M2): retrieval → storage (read-only candidate fetchers). It is the one
 engine-to-engine import; rule 4 still holds — SQL never leaves storage.
+As-built (M4 foundation + M4b): packages/codememory exists (dual-tier snapshot capture/compare
+with primary-source-verified Git argv contracts), and storage binds the new CodeMemoryStore
+port behind migration 0001 — the sole writer of repositories/file_fingerprints, which never
+advances the ingestion checkpoint.
 ```
 
 1. **`core` declares ports, does not import implementations.** `Storage`, `Searcher`, `Embedder`,
-   `Extractor`, `Reranker`, `EntityResolver`, `DriftWatcher`, `Redactor` are interfaces in core;
+   `Extractor`, `Reranker`, `EntityResolver`, `DriftWatcher`, `CodeMemoryStore`, `Redactor` are interfaces in core;
    `sdk` wires implementations via a composition root. This is what makes every layer testable with
    fakes and keeps `core` runtime-free (works in Bun, Node, browsers via PGlite, edge runtimes).
 2. **`adapters/*` import `sdk` only.** Zero engine internals. An adapter is a translator:

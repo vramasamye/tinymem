@@ -335,7 +335,7 @@ CREATE TABLE system_state (
 );
 ```
 
-### Code memory (Phase 2 tables — defined now, exercised later)
+### Code memory (ADR-0008; sole writer: the `CodeMemoryStore` port — core-declared, storage-implemented)
 
 ```sql
 CREATE TABLE repositories (
@@ -344,22 +344,25 @@ CREATE TABLE repositories (
   root_path             text NOT NULL,
   remote_url            text,
   head_commit           text,                 -- fingerprint anchor (llm-wiki-loop style)
-  last_ingested_commit  text,                 -- checkpoint: diff last_ingested..HEAD only
+  last_ingested_commit  text,                 -- checkpoint: diff last_ingested..HEAD only; advanced
+                                              --   ONLY by the drift pipeline, never by persistence
   fingerprint           jsonb NOT NULL DEFAULT '{}',
   last_indexed_at       timestamptz,
   created_at            timestamptz NOT NULL DEFAULT now(),
   updated_at            timestamptz NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX repositories_project_root_idx ON repositories (project_id, root_path);
 
-CREATE TABLE file_fingerprints (              -- zero-token drift oracle
+CREATE TABLE file_fingerprints (              -- zero-token drift oracle (both tiers per path)
   repository_id   uuid NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
   path           text NOT NULL,
   blob_sha        text NOT NULL,              -- survives shallow clones (content-addressed)
   tier           text NOT NULL DEFAULT 'committed' CHECK (tier IN ('committed','worktree')),
+  file_mode      text,                        -- '100644' | '100755'; null = pre-column rows
   last_seen_commit text,
   symbols_hash   text,                        -- hash of the symbol table for this file
-  updated_at     timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (repository_id, path)
+  updated_at     timestamptz NOT NULL DEFAULT now(),  -- last VALUE change, not last observation
+  PRIMARY KEY (repository_id, tier, path)     -- ADR-0008: committed and worktree coexist per path
 );
 
 CREATE TABLE code_symbols (
@@ -432,10 +435,12 @@ SELECT m2.* FROM edges e
   JOIN memories m2 ON m2.id = e.to_memory_id
   WHERE e.from_memory_id = ANY($seed_ids) AND e.relation NOT IN ('contradicts');
 
--- Drift: memories whose code evidence changed (worktree tier)
+-- Drift: memories whose code evidence changed. Refs record worktree-tier evidence blobs (what
+-- the agent actually saw), so the join must pin the tier now that both tiers coexist per path.
 SELECT r.id AS repo, mcr.memory_id, mcr.path FROM memory_code_refs mcr
   JOIN repositories r ON r.id = mcr.repository_id
   JOIN file_fingerprints ff ON ff.repository_id = mcr.repository_id AND ff.path = mcr.path
+    AND ff.tier = 'worktree'
   WHERE r.id = $repo AND ff.blob_sha <> mcr.blob_sha;
 ```
 
