@@ -50,8 +50,44 @@ It is a pure read over PERSISTED state — the pipeline captures and persists a 
   the successor is reported alongside the stale path (the same conservative one-to-one evidence
   `compareSnapshots` uses for exact moves). Ambiguous matches, modified renames, and unreadable
   captures never resolve — the stale path is reported rather than a guess.
-- `detectDrift` writes nothing: applying `stale`, retargeting `memory_code_refs`, re-indexing, and
-  advancing `last_ingested_commit` are the pipeline's later steps.
+- `detectDrift` writes nothing: applying `stale`, retargeting `memory_code_refs`, and advancing
+  `last_ingested_commit` are the drift applier's job (below); re-indexing is a later step.
+
+## Drift apply (the write side)
+
+`createDriftApplier({ store, codeMemory })` turns drift into durable state through the `Store`
+and `CodeMemoryStore` ports (M4e). Persist the latest capture with `saveSnapshot`, then:
+
+```ts
+const applier = createDriftApplier({ store: storage.store, codeMemory: storage.codeMemory });
+const result = await applier.apply({ project_id }); // reads checkpoint basis, detects, applies
+// or, with a report you already hold:
+const basis = await readCheckpointBasis(storage.codeMemory, project_id); // BEFORE detecting
+const report = await createDriftWatcher(storage.codeMemory).detectDrift({ project_id });
+await applier.applyReport({ report, checkpoints: basis });
+```
+
+- A ref with a `successor_path` is an exact move (content unchanged), so its evidence is intact:
+  the ref is retargeted (`retargetCodeRef`) and does not stale the memory. Persistence
+  re-verifies the move — from_path has no worktree fingerprint, to_path has a readable worktree
+  fingerprint with the ref's exact blob, and the memory has no ref at to_path yet. A refused
+  retarget (`source_present`, `successor_mismatch`, `conflict`) leaves the ref drifted.
+- Any other drifted ref (`content_changed`, `path_missing` without a successor,
+  `capture_unavailable`) marks the memory `stale` through the audited `updateMemoryStatus`
+  (actor `job:drift_scan` by default, reason `code_drift`, the drifted refs in the audit details).
+  A mixed memory is stale AND has its successor refs retargeted.
+- Already-stale memories are `already_stale` (including a concurrent transition that surfaces as
+  `InvalidTransitionError`); superseded/archived memories are `not_current` (no longer current,
+  so staleness does not apply); memories deleted since detection are `gone` with a warning. All
+  of these count as processed. Unexpected errors are `failed` and reported, never thrown.
+- Each repository's `last_ingested_commit` advances to the head the report describes ONLY when
+  every drifted memory was processed. `advanceCheckpoint` is a transactional compare-and-set: it
+  writes only when the target equals the repository's current persisted `head_commit` (so an old
+  report can never move the checkpoint behind a newer capture) and the stored checkpoint equals
+  the expected prior value. Re-applying is idempotent (`unchanged`). Repositories without a head
+  commit (unborn, non-Git) report `no_head`.
+- Nothing is deleted: stale memories stay retrievable (`queryCurrent` returns active + stale) and
+  keep drifting on later passes until re-indexing (a later slice) refreshes them.
 
 ## Symbol extraction (tree-sitter, WASM, offline)
 

@@ -96,6 +96,54 @@ export const DetectDriftInputSchema = z.strictObject({ project_id: z.uuid() });
 export type DetectDriftInput = z.infer<typeof DetectDriftInputSchema>;
 
 // ---------------------------------------------------------------------------
+// Drift apply (M4e — the write side over Store + CodeMemoryStore)
+// ---------------------------------------------------------------------------
+
+/** `system|user:<id>|agent:<id>|job:<kind>` — recorded on every audited stale transition. */
+const DriftActorSchema = z.string().min(1).max(256).default('job:drift_scan');
+
+export const DriftedRefSchema = z.strictObject({
+  repository_id: z.uuid(),
+  path: RepositoryPathSchema,
+  reason: z.enum(['content_changed', 'path_missing', 'capture_unavailable']),
+  successor_path: RepositoryPathSchema.optional(),
+});
+
+export const DriftReportSchema = z.strictObject({
+  drifted: z.array(
+    z.strictObject({
+      memory_id: z.uuid(),
+      changed_paths: z.array(RepositoryPathSchema),
+      refs: z.array(DriftedRefSchema).min(1),
+    }),
+  ),
+});
+
+/**
+ * The checkpoint basis of one repository, read BEFORE drift detection: where the checkpoint
+ * stood and which persisted head the processed report describes.
+ */
+export const CheckpointBasisSchema = z.strictObject({
+  repository_id: z.uuid(),
+  head_commit: ObjectIdSchema.nullable(),
+  last_ingested_commit: ObjectIdSchema.nullable(),
+});
+export type CheckpointBasis = z.infer<typeof CheckpointBasisSchema>;
+
+export const ApplyDriftReportInputSchema = z.strictObject({
+  report: DriftReportSchema,
+  checkpoints: z.array(CheckpointBasisSchema),
+  actor: DriftActorSchema,
+});
+export type ApplyDriftReportInput = z.input<typeof ApplyDriftReportInputSchema>;
+
+export const ApplyDriftInputSchema = z.strictObject({
+  project_id: z.uuid(),
+  actor: DriftActorSchema,
+});
+export type ApplyDriftInput = z.input<typeof ApplyDriftInputSchema>;
+
+// ---------------------------------------------------------------------------
 // Symbol extraction (tree-sitter — ADR-0008 "Symbol tables re-extract only changed files")
 // ---------------------------------------------------------------------------
 

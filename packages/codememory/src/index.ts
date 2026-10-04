@@ -10,6 +10,19 @@ export {
   type WorktreeScan,
 } from './fingerprints';
 export { createDriftWatcher } from './drift';
+export {
+  createDriftApplier,
+  readCheckpointBasis,
+  type AppliedCheckpoint,
+  type AppliedDriftMemory,
+  type AppliedRetarget,
+  type CheckpointStepOutcome,
+  type DriftApplier,
+  type DriftApplierDeps,
+  type DriftApplyResult,
+  type DriftApplyStore,
+  type DriftMemoryOutcome,
+} from './apply-drift';
 export { computeSymbolsHash, extractSymbolTable } from './symbols';
 export { languageForPath, SOURCE_EXTENSIONS } from './grammar';
 export {
@@ -18,6 +31,10 @@ export {
   RepositorySnapshotSchema,
   RepositoryPathSchema,
   DetectDriftInputSchema,
+  ApplyDriftInputSchema,
+  ApplyDriftReportInputSchema,
+  CheckpointBasisSchema,
+  DriftReportSchema,
   SymbolFileSchema,
   SymbolKindSchema,
   SymbolLanguageSchema,
@@ -33,6 +50,9 @@ export {
   type FingerprintChangeReport,
   type SkippedPath,
   type DetectDriftInput,
+  type ApplyDriftInput,
+  type ApplyDriftReportInput,
+  type CheckpointBasis,
   type SymbolFile,
   type SymbolKind,
   type SymbolLanguage,
