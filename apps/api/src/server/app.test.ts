@@ -500,3 +500,31 @@ describe('the response contract is enforced', () => {
 beforeEach(() => {
   // Each test builds its own app; nothing to reset. Kept explicit for future shared state.
 });
+
+describe('/mcp mount — the daemon MCP surface', () => {
+  test('without mcpHandler, /mcp 404s like any other unknown route', async () => {
+    const response = await createApiApp({ backend: fakeBackend(), version: 'test' }).request('/mcp', {
+      method: 'POST',
+    });
+    expect(response.status).toBe(404);
+    expect(((await response.json()) as Record<string, unknown>).error).toBeDefined();
+  });
+
+  test('a mounted handler receives the raw request; its response passes through untouched', async () => {
+    const seen: string[] = [];
+    const app = createApiApp({
+      backend: fakeBackend(),
+      version: 'test',
+      mcpHandler: {
+        fetch: async (request: Request) => {
+          seen.push(`${request.method} ${new URL(request.url).pathname}`);
+          return new Response('the mcp handler owns this body', { status: 200 });
+        },
+      },
+    });
+    const response = await app.request('/mcp', { method: 'POST', body: '{}' });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('the mcp handler owns this body');
+    expect(seen).toEqual(['POST /mcp']);
+  });
+});

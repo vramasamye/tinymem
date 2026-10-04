@@ -49,6 +49,12 @@ export interface ApiDeps {
   version: string;
   /** Extra process metadata for `/v1/health` (daemon) — optional. */
   meta?: { started_at?: number; pid?: number; lock_path?: string };
+  /**
+   * Stateless MCP handler mounted verbatim at `/mcp` (the daemon's MCP surface — ADR-0010
+   * amendment 2026-10-04). Absent → `/mcp` 404s. Structural on purpose: the app layer needs no
+   * SDK types, just a fetch-shaped handler.
+   */
+  mcpHandler?: { fetch(request: Request): Response | Promise<Response> };
 }
 
 type ErrorCode = 'not_found' | 'invalid_request' | 'conflict' | 'unavailable' | 'internal';
@@ -532,6 +538,15 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
         200,
       ),
   );
+
+  // ---------------------------------------------------------------- mcp (daemon)
+  // The daemon's MCP surface rides the SAME app as /v1 (ADR-0010 amendment 2026-10-04): the
+  // stateless handler gets the raw request — MCP is its own protocol with its own JSON-RPC
+  // contract, deliberately NOT part of the OpenAPI document.
+  if (deps.mcpHandler !== undefined) {
+    const mcpHandler = deps.mcpHandler;
+    app.all('/mcp', (c) => mcpHandler.fetch(c.req.raw));
+  }
 
   app.get('/v1', (c) => jsonBody(c, { name: 'onememory', version: deps.version, docs: '/openapi.json' }, 200));
 

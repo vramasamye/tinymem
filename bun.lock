@@ -14,11 +14,13 @@
       "version": "0.1.0",
       "dependencies": {
         "@hono/zod-openapi": "^1.6.3",
+        "@modelcontextprotocol/server": "2.3.0",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/embeddings": "workspace:*",
         "@onememory/extraction": "workspace:*",
         "@onememory/llm": "workspace:*",
+        "@onememory/mcp": "workspace:*",
         "@onememory/retrieval": "workspace:*",
         "@onememory/security": "workspace:*",
         "@onememory/storage": "workspace:*",

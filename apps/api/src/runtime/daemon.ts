@@ -13,6 +13,7 @@
  */
 
 import { loadConfig, type LoadedConfig } from '@onememory/config';
+import { createOnememoryMcpContext, createOnememoryStreamableHttpHandler } from '@onememory/mcp';
 
 import { createApiApp } from '../server/app';
 import { openRuntime, type OnememoryRuntime, type OpenRuntimeOptions } from './composition';
@@ -116,10 +117,25 @@ export async function startDaemon(options: ServeOptions = {}): Promise<DaemonHan
   });
 
   const backend = createLocalBackend(runtime, { adapter: 'api', closeRuntime: false });
+
+  // The daemon's MCP surface (ADR-0010 amendment 2026-10-04): ONE context built from the same
+  // runtime pieces — storage, retrieval engine (one result-cache domain with /v1), redaction
+  // config, embedder. The stateless handler is created once at boot; every request gets a fresh
+  // McpServer against this shared context (embedded profile: the daemon is the single owner).
+  const mcpHandler = createOnememoryStreamableHttpHandler(
+    await createOnememoryMcpContext({
+      storage: runtime.storage,
+      engine: runtime.engine,
+      embedder: runtime.embedder === null ? undefined : runtime.embedder,
+      redactor: runtime.redaction,
+    }),
+  );
+
   const app = createApiApp({
     backend,
     version: ONEMEMORY_VERSION,
     meta: { started_at: runtime.started_at, pid: process.pid },
+    mcpHandler,
   });
 
   if (typeof Bun === 'undefined') {
@@ -186,6 +202,11 @@ export async function startDaemon(options: ServeOptions = {}): Promise<DaemonHan
       await server.stop(true);
     } catch (error) {
       log(options, `server stop failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    try {
+      await mcpHandler.close();
+    } catch (error) {
+      log(options, `mcp handler close failed: ${error instanceof Error ? error.message : String(error)}`);
     }
     await runtime.close();
     clearDaemonLock(loaded.paths.config_dir);
