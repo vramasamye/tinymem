@@ -131,3 +131,29 @@ describe('scaffoldCodex — writes', () => {
     expect(result.warnings.some((warning) => warning.includes('AGENTS.override.md'))).toBe(true);
   });
 });
+
+describe('scaffoldCodex — daemon-backed http transport', () => {
+  const URL_7331 = 'http://127.0.0.1:7331/mcp';
+
+  test('writes the url form and is an idempotent no-op on re-run', () => {
+    const root = tempDir();
+    const options = { ...OPTIONS, root, transport: 'http' as const, url: URL_7331 };
+    const first = scaffoldCodex(options);
+    expect(first.files.map((file) => file.action)).toEqual(['created', 'created', 'created']);
+    const toml = parseToml(readFileSync(join(root, '.codex', 'config.toml'), 'utf8')) as Record<string, unknown>;
+    expect((toml['mcp_servers'] as Record<string, unknown>)['onememory']).toEqual({ url: URL_7331 });
+
+    const second = scaffoldCodex(options);
+    expect(second.files.map((file) => file.action)).toEqual(['unchanged', 'unchanged', 'unchanged']);
+  });
+
+  test('a stdio scaffold upgrades in place to http (patched), hooks + AGENTS.md unchanged', () => {
+    const root = tempDir();
+    scaffoldCodex({ ...OPTIONS, root });
+    const upgraded = scaffoldCodex({ ...OPTIONS, root, transport: 'http', url: URL_7331 });
+    expect(upgraded.files.map((file) => file.action)).toEqual(['patched', 'unchanged', 'unchanged']);
+    const text = readFileSync(join(root, '.codex', 'config.toml'), 'utf8');
+    expect(text).not.toContain('command =');
+    expect(text.match(/^\[mcp_servers\.onememory\]$/gm)).toHaveLength(1);
+  });
+});

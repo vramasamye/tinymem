@@ -13,8 +13,9 @@ One install gives Codex three things:
 2. **Context injection** — a `SessionStart` hook fetches the packed project context from the
    daemon and injects it as `additionalContext`, so a fresh Codex session already knows the
    project's decisions, conventions, past failures, and solutions.
-3. **MCP tools** — a `[mcp_servers.onememory]` block in `config.toml` exposes
-   `memory_search` / `memory_get` / `memory_store` (mission-5 server, `default8` profile) for
+3. **MCP tools** — a `[mcp_servers.onememory]` block in `config.toml` points Codex at the
+   daemon's Streamable HTTP surface (`url = "http://127.0.0.1:<daemon.port>/mcp"`, ADR-0010
+   amendment 2026-10-04) and exposes `memory_search` / `memory_get` / `memory_store` for
    explicit recall and writes during the session.
 
 AGENTS.md gets a compact, generated pointer block telling the agent to *use those tools* — never
@@ -25,11 +26,17 @@ a hand-maintained knowledge base.
 ## Setup
 
 ```sh
-onemem init          # scaffolds .codex/config.toml, .codex/hooks.json, AGENTS.md (project scope)
-onemem serve         # the local daemon capture delivers to (keep it running)
+onemem init --with-codex   # scaffolds .codex/config.toml, .codex/hooks.json, AGENTS.md (project scope)
+onemem serve               # the daemon: MCP at /mcp + the REST API capture delivers to (keep it running)
 ```
 
-`onemem init` calls this package's `scaffoldCodex()`. To set up by hand instead:
+`onemem init` calls this package's `scaffoldCodex({ transport: 'http', url })` with the URL
+derived from `daemon.host`/`daemon.port`, and prints every returned warning as a required review
+step. Interactive `onemem init` preselects Codex when `~/.codex` or `.codex/` exists;
+non-interactive runs wire it only with `--with-codex`. `onemem doctor` reports whether the three
+artifacts exist and whether the `url` matches the configured daemon. The stdio form
+(`transport` omitted) is still available for daemon-less or server-profile setups. To set up by
+hand instead:
 
 ```sh
 npx onemem-codex-capture --help
@@ -37,7 +44,7 @@ npx onemem-codex-capture --help
 
 | Artifact | What lands there | Idempotency |
 | --- | --- | --- |
-| `.codex/config.toml` | `[mcp_servers.onememory]` stdio block (marker-fenced) | re-running replaces only the fenced block; your comments and tables stay byte-identical |
+| `.codex/config.toml` | `[mcp_servers.onememory]` `url` block (marker-fenced; stdio form when `transport` is omitted) | re-running replaces only the fenced block; your comments and tables stay byte-identical |
 | `.codex/hooks.json` | capture handlers for `SessionStart` (sync, injects context), `UserPromptSubmit`, `PostToolUse` (`^Bash$`, `^(apply_patch\|Edit\|Write)$`), `Stop` (async), `SessionEnd` (sync, 3s) | our entries are replaced, foreign hooks preserved |
 | `AGENTS.md` | ~0.7 KiB pointer block (comment-fenced) | re-running replaces only the block |
 
@@ -164,7 +171,8 @@ hook events, and config keys above follow the current published contracts.
   no engine internals.
 - TOML is rendered and patched as **text** (never parse→stringify, which would destroy user
   comments); generated TOML is round-trip-verified against [`smol-toml`](https://www.npmjs.com/package/smol-toml)
-  (BSD-3-Clause, zero dependencies) in the test suite.
+  (BSD-3-Clause, zero dependencies) in the test suite, and `inspectCodexScaffold` (doctor) reads
+  `config.toml` back with it — so it is a runtime dependency.
 - The wire schemas for every hook event are Zod mirrors of the generated schemas published in
   the [Codex repository](https://github.com/openai/codex/tree/main/codex-rs/hooks/schema/generated);
   unknown fields pass through so Codex can add fields without breaking capture.
@@ -173,7 +181,8 @@ hook events, and config keys above follow the current published contracts.
 
 ```ts
 import {
-  scaffoldCodex,                    // onemem init wiring (writes/paches the three artifacts)
+  scaffoldCodex,                    // onemem init wiring (writes/patches the three artifacts)
+  inspectCodexScaffold,             // onemem doctor: read-only state of the three artifacts
   captureHook, captureRollout,      // translate → exclude → redact → deliver (never throws)
   buildSessionStartOutput,          // context injection payload for SessionStart
   translateCodexHook,

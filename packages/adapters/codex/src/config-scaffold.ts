@@ -2,7 +2,9 @@
  * The Codex `config.toml` MCP scaffold (deliverable 1).
  *
  * Every field emitted is verified against the Codex MCP documentation
- * (https://developers.openai.com/codex/mcp, read 2026-10-03): stdio servers take `command`
+ * (https://developers.openai.com/codex/mcp, read 2026-10-03; Streamable HTTP re-read 2026-10-04):
+ * Streamable HTTP servers take `url` (required) — the form `onemem init` emits, pointing at the
+ * daemon's `/mcp` surface (ADR-0010 amendment 2026-10-04); stdio servers take `command`
  * (required), `args`, `env` (a name→value table), `env_vars` (names forwarded from Codex's own
  * environment), `cwd`, `startup_timeout_sec`; per-server knobs `enabled`/`required`/
  * `enabled_tools`/`default_tools_approval_mode`; and the per-tool
@@ -23,6 +25,17 @@ export const ONEMEMORY_MCP_SERVER_NAME = 'onememory';
 export interface CodexMcpScaffoldOptions {
   /** UUIDv7 project id (`scope.project_id` for the server). */
   projectId: string;
+  /**
+   * `stdio` (default — backward compatible) launches the standalone `onemem-mcp` bin; `http`
+   * emits `url = "<daemon MCP url>"` for the daemon's Streamable HTTP surface. With `http`, the
+   * stdio-only options (`mcpCommand`, `args`, `cwd`, `dataDir`, `profile`, `agentId`) are ignored.
+   */
+  transport?: 'stdio' | 'http';
+  /**
+   * The daemon MCP URL (`http://<daemon.host>:<daemon.port>/mcp`), required for `http`. Loopback
+   * `http:` only — Phase 1 has no authentication, so no bearer token or headers are emitted.
+   */
+  url?: string;
   /** stdio command that starts `onemem-mcp` (default `onemem-mcp`, the published bin name). */
   mcpCommand?: string;
   /** Arguments for the command (rarely needed; the bin is env-configured). */
@@ -39,12 +52,51 @@ export interface CodexMcpScaffoldOptions {
   dataDir?: string;
   /** Working directory for the stdio server process (user-scope installs pass an absolute path). */
   cwd?: string;
-  /** Startup ceiling (default 20s — cold PGlite boot can exceed Codex's 10s default). */
+  /**
+   * Startup ceiling. stdio default 20s (cold PGlite boot can exceed Codex's 10s default); http
+   * emits the field only when set (the daemon is already running, so Codex's default applies).
+   */
   startupTimeoutSec?: number;
 }
 
+/** `true` for `localhost`, `::1` and `127.0.0.0/8` (brackets tolerated, as URLs carry them). */
+export function isLoopbackHostname(host: string): boolean {
+  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  if (normalized === 'localhost' || normalized === '::1') return true;
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized);
+}
+
+/** Throws unless `url` is a loopback `http:` URL (the only daemon endpoint Phase 1 scaffolds). */
+export function assertLoopbackHttpUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`the daemon MCP url is not a valid URL: ${url}`);
+  }
+  if (parsed.protocol !== 'http:') {
+    throw new Error(`the daemon MCP url must use http: (got ${parsed.protocol})`);
+  }
+  if (!isLoopbackHostname(parsed.hostname)) {
+    throw new Error(
+      `the daemon MCP url must be a loopback address (Phase 1 has no authentication); got ${parsed.hostname}`,
+    );
+  }
+}
+
+const TOOL_BUDGET_COMMENT: readonly string[] = [
+  '# Codex enforces a per-tool output budget: tools.<tool>.output_token_limit (a positive',
+  '# token count before the standard 20% serialization allowance). onememory results are',
+  '# already budgeted — memory_search honors max_tokens and returns a token_estimate per',
+  '# row — so leave the default unless you want a tighter cap, e.g.:',
+  '#',
+  '# [mcp_servers.onememory.tools.memory_search]',
+  '# output_token_limit = 1200',
+];
+
 /** Render the marked `[mcp_servers.onememory]` block. */
 export function renderCodexMcpServerToml(options: CodexMcpScaffoldOptions): string {
+  if (options.transport === 'http') return renderHttpBlock(options);
   const command = options.mcpCommand ?? 'onemem-mcp';
   const profile = options.profile ?? 'default8';
   const agentId = options.agentId ?? 'codex';
@@ -76,13 +128,30 @@ export function renderCodexMcpServerToml(options: CodexMcpScaffoldOptions): stri
     lines.push(`ONEMEMORY_DATA_DIR = ${tomlString(options.dataDir)}`);
   }
   lines.push('');
-  lines.push('# Codex enforces a per-tool output budget: tools.<tool>.output_token_limit (a positive');
-  lines.push('# token count before the standard 20% serialization allowance). onememory results are');
-  lines.push('# already budgeted — memory_search honors max_tokens and returns a token_estimate per');
-  lines.push('# row — so leave the default unless you want a tighter cap, e.g.:');
-  lines.push('#');
-  lines.push('# [mcp_servers.onememory.tools.memory_search]');
-  lines.push('# output_token_limit = 1200');
+  lines.push(...TOOL_BUDGET_COMMENT);
+  lines.push(CODEX_TOML_END_MARKER);
+  return lines.join('\n');
+}
+
+function renderHttpBlock(options: CodexMcpScaffoldOptions): string {
+  if (options.url === undefined) {
+    throw new Error('renderCodexMcpServerToml: transport "http" requires the daemon MCP url');
+  }
+  assertLoopbackHttpUrl(options.url);
+  const lines: string[] = [
+    CODEX_TOML_BEGIN_MARKER,
+    '# onememory — persistent project memory for Codex (Streamable HTTP, served by the onememory',
+    '# daemon). Start it before launching Codex: `onemem serve` (it is the single owner of the',
+    "# project's storage). The URL follows daemon.host / daemon.port in .onememory/onememory.yaml;",
+    '# re-run `onemem init --with-codex` after changing them.',
+    `[mcp_servers.${ONEMEMORY_MCP_SERVER_NAME}]`,
+    `url = ${tomlString(options.url)}`,
+  ];
+  if (options.startupTimeoutSec !== undefined) {
+    lines.push(`startup_timeout_sec = ${options.startupTimeoutSec}`);
+  }
+  lines.push('');
+  lines.push(...TOOL_BUDGET_COMMENT);
   lines.push(CODEX_TOML_END_MARKER);
   return lines.join('\n');
 }

@@ -132,3 +132,65 @@ command = "npx"
     expect(parse(second)).toBeDefined();
   });
 });
+
+/** The daemon-backed Streamable HTTP form (ADR-0010 amendment 2026-10-04). */
+describe('renderCodexMcpServerToml — http transport', () => {
+  const URL_7331 = 'http://127.0.0.1:7331/mcp';
+  const http = (options: Partial<Parameters<typeof renderCodexMcpServerToml>[0]> = {}) =>
+    render({ transport: 'http', url: URL_7331, ...options });
+
+  test('emits only url (no command/env/env_vars/startup timeout) and parses as TOML', () => {
+    const text = http();
+    const server = ((parse(text) as Record<string, unknown>)['mcp_servers'] as Record<string, unknown>)[
+      'onememory'
+    ] as Record<string, unknown>;
+    expect(server).toEqual({ url: URL_7331 });
+    expect(text.startsWith(CODEX_TOML_BEGIN_MARKER)).toBe(true);
+    expect(text.endsWith(CODEX_TOML_END_MARKER)).toBe(true);
+    expect(text).toContain('onemem serve');
+  });
+
+  test('stdio-only options are ignored; an explicit startup timeout is honored', () => {
+    const server = ((parse(http({ mcpCommand: 'node', dataDir: '/x', startupTimeoutSec: 15 })) as Record<string, unknown>)[
+      'mcp_servers'
+    ] as Record<string, unknown>)['onememory'];
+    expect(server).toEqual({ url: URL_7331, startup_timeout_sec: 15 });
+  });
+
+  test('refuses a missing, non-http or non-loopback url', () => {
+    expect(() => render({ transport: 'http' })).toThrow(/requires the daemon MCP url/);
+    expect(() => http({ url: 'https://127.0.0.1:7331/mcp' })).toThrow(/http:/);
+    expect(() => http({ url: 'http://192.168.1.4:7331/mcp' })).toThrow(/loopback/);
+    expect(() => http({ url: '::nope' })).toThrow(/not a valid URL/);
+    expect(() => http({ url: 'http://localhost:7331/mcp' })).not.toThrow();
+  });
+
+  test('patching into an existing config is byte-idempotent and preserves user content', () => {
+    const userConfig = `# mine\nmodel = "gpt-6.1-sol"\n\n[mcp_servers.context7]\ncommand = "npx"\n`;
+    const first = patchCodexConfigToml(userConfig, http());
+    expect(first.startsWith(userConfig)).toBe(true);
+    expect(patchCodexConfigToml(first, http())).toBe(first);
+    const servers = (parse(first) as Record<string, unknown>)['mcp_servers'] as Record<string, Record<string, unknown>>;
+    expect(servers['context7']!['command']).toBe('npx');
+    expect(servers['onememory']).toEqual({ url: URL_7331 });
+  });
+
+  test('switching a stdio block to http (and the port) replaces it in place', () => {
+    const stdio = patchCodexConfigToml('model = "m"\n', render());
+    const switched = patchCodexConfigToml(stdio, http());
+    expect(switched).not.toContain('command = "onemem-mcp"');
+    expect(switched.match(/^\[mcp_servers\.onememory\]$/gm)).toHaveLength(1);
+    const moved = patchCodexConfigToml(switched, http({ url: 'http://127.0.0.1:9100/mcp' }));
+    const servers = (parse(moved) as Record<string, unknown>)['mcp_servers'] as Record<string, unknown>;
+    expect(servers['onememory']).toEqual({ url: 'http://127.0.0.1:9100/mcp' });
+    expect(moved.startsWith('model = "m"\n')).toBe(true);
+  });
+
+  test('a hand-added stdio table is replaced by the http block, never duplicated', () => {
+    const handAdded = `[mcp_servers.onememory]\ncommand = "old"\n\n[mcp_servers.other]\ncommand = "x"\n`;
+    const patched = patchCodexConfigToml(handAdded, http());
+    const servers = (parse(patched) as Record<string, unknown>)['mcp_servers'] as Record<string, unknown>;
+    expect(servers['onememory']).toEqual({ url: URL_7331 });
+    expect(servers['other']).toEqual({ command: 'x' });
+  });
+});

@@ -94,6 +94,8 @@ export {
   CODEX_TOML_BEGIN_MARKER,
   CODEX_TOML_END_MARKER,
   ONEMEMORY_MCP_SERVER_NAME,
+  isLoopbackHostname,
+  assertLoopbackHttpUrl,
   type CodexMcpScaffoldOptions,
 } from './config-scaffold';
 export {
@@ -121,6 +123,18 @@ export {
   type ScaffoldedFile,
   type CodexScaffoldScope,
 } from './scaffold';
+
+// Read-only inspection for onemem doctor
+export {
+  inspectCodexScaffold,
+  inspectCodexConfigContent,
+  inspectCodexHooksContent,
+  hasCodexAgentsBlock,
+  codexScaffoldPaths,
+  type CodexScaffoldInspection,
+  type CodexConfigInspection,
+  type CodexHooksInspection,
+} from './scaffold-inspect';
 
 // The hook bin's testable entry points
 export { main as runCaptureBin, parseBinArgs, type BinArgs } from './bin';

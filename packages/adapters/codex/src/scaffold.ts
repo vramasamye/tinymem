@@ -1,6 +1,5 @@
 /**
- * `scaffoldCodex` — the one function `onemem init` calls after this package merges (the
- * init-wiring seam; the CLI is owned by mission-13/the coordinating session).
+ * `scaffoldCodex` — the one function `onemem init` calls to wire Codex (the init-wiring seam).
  *
  * What it writes (project scope, from the project root):
  *   `.codex/config.toml`  — the `[mcp_servers.onememory]` block (marker-fenced, idempotent)
@@ -10,6 +9,10 @@
  * User scope writes the same three artifacts under `$CODEX_HOME` (config.toml, hooks.json,
  * AGENTS.md — Codex reads the global layer from exactly those paths; verified:
  * https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+ *
+ * The MCP block is the daemon-backed Streamable HTTP form when `transport: 'http'` + `url` are
+ * passed (what `onemem init` does), else the stdio form. An invalid http `url` throws before any
+ * file is touched; every other problem is reported through `warnings` / `skipped`.
  *
  * The function is deliberately filesystem-thin: all content decisions live in the pure
  * renderers, so `dryRun` returns the exact bytes without touching disk, and every artifact is

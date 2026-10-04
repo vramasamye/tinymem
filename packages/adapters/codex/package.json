@@ -21,10 +21,10 @@
     "@onememory/config": "workspace:*",
     "@onememory/core": "workspace:*",
     "@onememory/security": "workspace:*",
+    "smol-toml": "^1.9.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "smol-toml": "^1.9.0"
+    "@types/bun": "^1.4.2"
   }
 }
