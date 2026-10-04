@@ -15,10 +15,12 @@
     "bench": "bun run src/fingerprints.bench.ts"
   },
   "dependencies": {
+    "@onememory/core": "workspace:*",
     "@onememory/security": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@onememory/storage": "workspace:*",
     "@types/bun": "^1.4.2"
   }
 }

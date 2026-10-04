@@ -89,6 +89,10 @@ export interface FingerprintChangeReport {
   warnings: string[];
 }
 
+/** `DriftWatcher.detectDrift` input (the core port this package implements). */
+export const DetectDriftInputSchema = z.strictObject({ project_id: z.uuid() });
+export type DetectDriftInput = z.infer<typeof DetectDriftInputSchema>;
+
 export class FingerprintError extends Error {
   constructor(
     public readonly code: 'invalid_root' | 'unsupported_path' | 'git_failed' | 'invalid_git_output' | 'scan_limit' | 'snapshot_mismatch',

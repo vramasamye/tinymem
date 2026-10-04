@@ -1,11 +1,11 @@
 # @onememory/codememory
 
-The first M4 slice implements a local fingerprint foundation under ADR-0008. It uses system Git
-through argument-safe subprocesses and hashes file bytes locally. It never calls a model, fetches
-a remote, writes Git state, or returns source-file contents.
+The M4 slices implement the local fingerprint foundation and drift detection under ADR-0008. It
+uses system Git through argument-safe subprocesses and hashes file bytes locally. It never calls
+a model, fetches a remote, writes Git state, or returns source-file contents.
 
 ```ts
-import { captureSnapshot, detectChanges } from '@onememory/codememory';
+import { captureSnapshot, detectChanges, createDriftWatcher } from '@onememory/codememory';
 
 const baseline = await captureSnapshot('/absolute/project/root');
 const report = await detectChanges(baseline);
@@ -26,6 +26,25 @@ const report = await detectChanges(baseline);
   be matched without history; ambiguous identical files remain add/delete, not guessed renames.
 - Snapshots never advance an ingestion checkpoint. Processing/acknowledging changed knowledge is
   a later orchestration step.
+
+## Drift detection (zero-token oracle)
+
+`createDriftWatcher(store)` implements the core `DriftWatcher` port over a `CodeMemoryStore` (M4c).
+It is a pure read over PERSISTED state — the pipeline captures and persists a snapshot with
+`saveSnapshot` first, then calls `detectDrift({ project_id })`:
+
+- A ref drifted when the current persisted **worktree-tier** fingerprint blob differs from the
+  blob the memory was extracted against (`content_changed`). Committed-tier differences never
+  drift: refs record worktree-tier evidence, the bytes the agent actually saw.
+- A ref whose path has no current worktree fingerprint (`path_missing`), or whose bytes the latest
+  capture could not read (`capture_unavailable` — the snapshot metadata's unreadable set), is a
+  suspect, never fresh — even when a retained last-known blob happens to match the ref exactly.
+- When a ref's path disappeared but its exact blob is found at exactly one other current path,
+  the successor is reported alongside the stale path (the same conservative one-to-one evidence
+  `compareSnapshots` uses for exact moves). Ambiguous matches, modified renames, and unreadable
+  captures never resolve — the stale path is reported rather than a guess.
+- `detectDrift` writes nothing: applying `stale`, retargeting `memory_code_refs`, re-indexing, and
+  advancing `last_ingested_commit` are the pipeline's later steps.
 
 ## Safety and completeness
 
@@ -62,6 +81,7 @@ hardware-independent latency promise.
 
 ## Remaining M4 scope
 
-This package does not yet implement `DriftWatcher`, persist snapshots, update `memory_code_refs`,
-mark memories stale, enqueue re-index work, parse symbols, or assemble a project digest. Those
-are the next M4 slices, not placeholder implementations in this one.
+This package does not yet persist snapshots itself (the `CodeMemoryStore` port in
+`@onememory/storage` does), mark memories stale, retarget `memory_code_refs`, enqueue re-index
+work, advance the ingestion checkpoint, parse symbols, or assemble a project digest. Those are
+the next M4 slices, not placeholder implementations in this one.
