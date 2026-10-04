@@ -190,10 +190,11 @@ Interrupt; handler types command and mcp_tool; trust review via `/hooks`; async 
 `session-*.jsonl` / `rollout.jsonl`.
 
 Native memories (https://learn.chatgpt.com/docs/memories): **off by default**
-(`[features] memories = true`), stored in `~/.codex/memories/`, extracted in the background, and
-— critically — `memories.disable_on_external_context` excludes chats that used MCP/web search from
-memory generation **by default**. If onememory tools are in the loop, Codex's native memory
-extraction will likely skip those turns unless the user overrides this. `.rules` Starlark
+(`[features] memories = true`), stored in `~/.codex/memories/`, and extracted in the background.
+`memories.disable_on_external_context` — which would exclude MCP/web-search chats from memory
+generation — **defaults to false** (verified against the Codex source in mission 7): chats are
+not skipped unless the user opts in, so onememory tools in the loop do not by themselves suppress
+Codex's native extraction. `.rules` Starlark
 `prefix_rule()` files are sandbox-escalation policy, unrelated to memory
 (https://learn.chatgpt.com/docs/rules).
 
@@ -457,7 +458,7 @@ The planned 11 tools: `memory_search`, `memory_get`, `memory_store`, `memory_upd
 | Runtime | MCP config (file/CLI) | Transports | Scopes / trust | Tool exposure & budgets | Hooks for capture/injection | Native memory surface | Gotchas for onemem |
 |---|---|---|---|---|---|---|---|
 | Claude Code | `claude mcp add*`, `.mcp.json` (project), `~/.claude.json` (user) | stdio, http, sse, ws, sdk | workspace trust + per-project server approval | ToolSearch default ON; `alwaysLoad`; descriptions truncated 2,048 chars; prompts `/mcp__s__p`; `@s:uri` | Richest set (SessionStart/PreToolUse/PostToolUse/Stop/…); `transcript_path` JSONL; `additionalContext` injection | CLAUDE.md/rules hierarchy + **auto memory** `MEMORY.md` (200 lines/25KB auto-loaded) + skills (1% listing budget) | `${VAR}` expansion; `CLAUDE_PROJECT_DIR` for stdio; tool names `mcp__server__tool` |
-| Codex CLI | `~/.codex/config.toml` `[mcp_servers.n]`; `codex mcp add` | stdio, Streamable HTTP (+`oauth|chatgpt`) | per-project `.codex/config.toml` for trusted projects | `enabled_tools`/`disabled_tools`; per-tool `approval_mode`; **per-tool `output_token_limit`**; 10s startup/60s tool timeouts | Claude Code-mirrored hooks (hooks.json / `[hooks]`); ~2,500-token `additionalContextLimit`; `rollout.jsonl` transcripts | AGENTS.md (root→cwd, 32 KiB cap); memories **off by default**; `disable_on_external_context` skips MCP chats by default | instructions: first 512 chars self-contained; TOML env tables; native-memory/MCP exclusion must be documented |
+| Codex CLI | `~/.codex/config.toml` `[mcp_servers.n]`; `codex mcp add` | stdio, Streamable HTTP (+`oauth|chatgpt`) | per-project `.codex/config.toml` for trusted projects | `enabled_tools`/`disabled_tools`; per-tool `approval_mode`; **per-tool `output_token_limit`**; 10s startup/60s tool timeouts | Claude Code-mirrored hooks (hooks.json / `[hooks]`); ~2,500-token `additionalContextLimit`; `rollout.jsonl` transcripts | AGENTS.md (root→cwd, 32 KiB cap); memories **off by default**; `disable_on_external_context` defaults **false** | instructions: first 512 chars self-contained; TOML env tables; native-memory/MCP exclusion is opt-in, not default |
 | Cursor | `.cursor/mcp.json` + `~/.cursor/mcp.json` | stdio, SSE, Streamable HTTP | enterprise allowlists + network controls | MCP Apps, Elicitation supported; Run Modes/tool approval | `.cursor/hooks.json`; **`beforeMCPExecution`/`afterMCPExecution`**; `sessionStart` additional_context; `stop` loop (limit 5) | `.cursor/rules/*.mdc` (plain .md ignored), AGENTS.md; Memories 2.x `[UNVERIFIED details]` | `${env:VAR}` syntax; static-OAuth only (no DCR/CIMD) for remote servers |
 | OpenCode | `opencode.json` `"mcp"` key; `opencode mcp auth/list/logout` | local (stdio), remote (HTTP) | precedence chain incl. managed MDM config | `enabled`, `timeout` (5s default) | plugins (`.opencode/plugins/`) + agent `instructions` option | SKILL.md skills, agents, commands, permissions; AGENTS.md via instructions | `{env:NAME}`/`{file:path}` substitution; DCR-era OAuth (token store `mcp-auth.json`) |
 | Pi | `~/.pi/agent/mcp.json` + `.pi/mcp.json` (project trust); `pi mcp add/list/login` | stdio, **Streamable HTTP only (SSE rejected)** | project `.pi/mcp.json` requires trust approval | codemode default; `deferred` via tool_search; `direct`; `hidden`; `toolExposure` patterns; 20 KB tool-text truncation; annotations honored | **Extensions API** (`pi.on()` session/tool lifecycle, `registerTool`, `registerCommand`, `registerMcpServer`) — deepest integration surface | none built in (harness is minimal); basic-memory ships a Pi package as precedent | CIMD OAuth; `mcp__server__tool` + hash suffix on collision; per-server description in system prompt |
@@ -478,9 +479,10 @@ Pi (https://github.com/earendil-works/pi, docs/extensions.md, docs/mcp.md).
 2. **Cursor Memories**: is there an official doc page? Secondary sources only (flagged above);
    if Cursor auto-writes account-level memories, onemem's dedup/entity-resolution should treat
    them as just another ingest source.
-3. **Codex native memories vs. MCP memory**: `memories.disable_on_external_context` (default)
-   means chats using onememory tools may be excluded from Codex's own memory extraction. Is
-   that the intended division of labor, or should onemem docs recommend flipping the flag?
+3. **Codex native memories vs. MCP memory**: RESOLVED (mission 7, verified against the Codex
+   source): `memories.disable_on_external_context` defaults to **false**, so chats using onememory
+   tools are not excluded from Codex's own memory extraction unless the user opts in. No default
+   division of labor exists and no flag flip needs recommending.
 4. **doobidoo/mcp-memory-service fork lineage** (vlastimil-zim → doobidoo) unverified from
    primary sources; harmless for onemem but worth a footnote correction if resolved.
 5. **Pi Durable** (shipped with Pi 1.0, Oct 2026): does it persist session state in a way

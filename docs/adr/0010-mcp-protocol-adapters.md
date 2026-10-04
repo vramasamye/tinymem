@@ -53,8 +53,9 @@ hook-based capture + progressive disclosure (~10× token savings), not on tool c
 7. **Interop, not competition**: Claude Code's auto-memory (`MEMORY.md`) and AGENTS.md
    convergence are treated as ingest sources and pointer targets — onememory writes a compact
    generated index, never a hand-maintained duplicate. Codex's `memories.disable_on_external_context`
-   (MCP chats excluded from native extraction, by default) is documented in the adapter README
-   with the recommended division of labor.
+   — which excludes MCP chats from native extraction only when the user enables it; it **defaults
+   to false** (corrected 2026-10-04: verified against the Codex source in mission 7) — is
+   documented in the adapter README with the recommended division of labor.
 8. **Defer 2026-07-28-only features** (MRTR `input_required`, `server/discover`, `ttlMs`
    caching, per-request `_meta`) until runtime adoption is verified — noted as the natural fit
    for a future `memory_resolve` clarification loop; not shipped first.
@@ -75,3 +76,26 @@ hook-based capture + progressive disclosure (~10× token savings), not on tool c
 `docs/research/mcp-memory-implementations.md` (protocol facts, per-runtime matrix, server
 survey, recommended surface); spec §15/§16; `docs/architecture/event-memory-schemas.md` §6;
 backlog M5–M9.
+
+## Amendment (2026-10-04): daemon-backed MCP for the embedded profile
+
+ADR-0002's process model gives embedded storage exactly one owner process — `onemem serve` — and
+already states that MCP stdio servers should "speak HTTP to it". Made concrete:
+
+- **The daemon mounts the MCP surface.** `onemem serve` builds ONE `OnememoryMcpContext` from its
+  runtime — the same storage, the same retrieval engine, the same redaction config, the same
+  embedder — and mounts the stateless Streamable HTTP handler (§1) at `/mcp` on its loopback
+  port. Per §1's stateless design the handler is created once at boot; each request gets a fresh
+  `McpServer` against the shared context.
+- **One cache domain.** REST `/v1` and MCP `/mcp` are two views of one memory and one result
+  cache: `createOnememoryMcpContext` accepts an injected engine alongside injected storage
+  (engine injection requires storage injection — the shared engine must ride the storage the
+  context writes through). An MCP `memory_store` invalidates the same cache a REST search reads
+  (retrieval.md §5), and REST writes invalidate it for MCP searches.
+- **Embedded-profile scaffolds point at the daemon.** `onemem init` emits HTTP-transport entries
+  (Claude `.mcp.json` `type: "http"`, Codex `config.toml` `url`) targeting
+  `http://127.0.0.1:<daemon-port>/mcp`. The standalone stdio bin remains the surface for the
+  `server` profile (multi-process Postgres is safe there) and for daemon-less direct use.
+- **Known gap (backlog):** the stdio bin opening embedded storage while a daemon is alive would be
+  a second owner of the same data dir. `onemem init` never scaffolds that combination; a
+  lock/probe guard in the bin closes the hazard.
