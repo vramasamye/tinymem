@@ -214,6 +214,16 @@ returned empty (content compared, not just stat); with a real change they return
 never contends on `.git/index.lock` with a concurrent editor/agent Git process; keep `GIT_OPTIONAL_LOCKS=0`
 on every spawn as insurance.
 
+> **Correction (2026-10-04, `mission-4-drift-event-scan-verification.md` §3.2):** the "returned empty"
+> observation above is wrong for plumbing — likely probe-order contamination, since this table's porcelain
+> control ran first and its opportunistic stat-cache refresh clears exactly that state. On 2.39.5,
+> `git diff-files`/`git diff-index` report a stat-only change as `M` with an **all-zero destination sha**
+> (`new_oid = changed ? null_oid() : &ce->oid`, diff-lib.c) and `--quiet` exits 1. The no-write contract
+> in this section still holds. Consequence for the event scan: output must be `--raw` (not
+> `--name-status`, which discards the zero-sha signal), and an all-zero-dst row means "possibly changed" —
+> confirm by re-hashing with `hash-object --no-filters` (#10) against the stored worktree-tier hash before
+> declaring drift.
+
 ## 8. SHA-1 vs SHA-256 object formats
 
 Verified on 2.39.5 with `git init --object-format=sha256`: `--show-object-format` → `sha256`; `rev-parse HEAD`,
