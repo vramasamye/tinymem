@@ -105,6 +105,68 @@ describe('failureIncidentOf — what counts as a failure', () => {
     expect(found?.tool).toBeUndefined();
   });
 
+  test('a tool result the runtime marked ok:false is a tool incident naming the tool', () => {
+    const found = failureIncidentOf(
+      normalized('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'call-edit-1',
+        ok: false,
+        tool: 'Edit',
+        output_digest: 'string to replace not found in file',
+        error: { message: 'String to replace not found in file src/store.ts' },
+      }),
+    );
+    expect(found).toEqual({
+      origin: 'tool',
+      tool: 'Edit',
+      message: 'String to replace not found in file src/store.ts',
+      label: 'Edit failed: String to replace not found in file src/store.ts',
+    });
+  });
+
+  test('a successful tool result is never a failure', () => {
+    expect(
+      failureIncidentOf(
+        normalized('conversation.tool_result', {
+          kind: 'conversation.tool_result',
+          call_id: 'call-edit-2',
+          ok: true,
+          tool: 'Edit',
+          output_digest: 'edited src/store.ts',
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
+  test('a failing tool result without a tool name still yields an incident, name unset', () => {
+    const found = failureIncidentOf(
+      normalized('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'call-1',
+        ok: false,
+        output_digest: 'command exited with status 1',
+      }),
+    );
+    expect(found?.origin).toBe('tool');
+    expect(found?.tool).toBeUndefined();
+    // The digest input falls back to the result text, never to a fabricated tool name.
+    expect(found?.message).toBe('command exited with status 1');
+  });
+
+  test('a tool result is a failure only via ok:false, not via a result that mentions an error', () => {
+    expect(
+      failureIncidentOf(
+        normalized('conversation.tool_result', {
+          kind: 'conversation.tool_result',
+          call_id: 'call-1',
+          ok: true,
+          tool: 'Bash',
+          output_digest: 'error: Cannot find module "./schema"',
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   test('successes, chatter, and unknown exit codes are not failures', () => {
     expect(
       failureIncidentOf(
@@ -216,6 +278,9 @@ describe('classifyFailure — normalized error classes', () => {
     expect(
       classifyFailure({ origin: 'command', label: '`bun run x` failed', message: 'something went sideways' }),
     ).toBe('NONZERO_EXIT');
+    expect(
+      classifyFailure({ origin: 'tool', label: 'Edit call failed', message: 'something went sideways' }),
+    ).toBe('TOOL_ERROR');
   });
 });
 
@@ -315,6 +380,32 @@ describe('createFailureSignature — stability is the point', () => {
       }),
     );
     expect(otherTool.hash).toBe(signature.hash);
+  });
+
+  test('a tool-result failure records origin "tool" and keeps the tool out of the digest', () => {
+    const event = normalized('conversation.tool_result', {
+      kind: 'conversation.tool_result',
+      call_id: 'call-edit-1',
+      ok: false,
+      tool: 'Edit',
+      output_digest: 'string to replace not found in file',
+      error: { message: 'String to replace not found in file src/store.ts' },
+    });
+    const signature = failureSignatureOf(event)!;
+    expect(signature).toEqual({
+      type: 'TOOL_ERROR',
+      hash: failureSignatureHash('TOOL_ERROR', 'string to replace not found in file <path>'),
+      normalized_message: 'string to replace not found in file <path>',
+      origin: 'tool',
+      tool: 'Edit',
+    });
+    // The digest covers type + normalized_message only: the same failure through another tool
+    // collapses to one signature.
+    const otherTool = createFailureSignature(
+      incident({ origin: 'tool', tool: 'Write', message: event.tool_result!.error_message! }),
+    );
+    expect(otherTool.hash).toBe(signature.hash);
+    expect(otherTool.error_origin).toBeUndefined();
   });
 
   test('every emitted signature is schema-valid and bounded', () => {

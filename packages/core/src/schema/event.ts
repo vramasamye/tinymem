@@ -119,6 +119,12 @@ export const ConversationToolResultPayloadSchema = z.looseObject({
   call_id: z.string().min(1),
   ok: z.boolean(),
   output_digest: z.string().max(2000),
+  /**
+   * The tool that produced the result, when the adapter's own shape names it (M3c). Optional and
+   * never inferred: several runtimes report a result keyed only by `call_id`, and a name derived
+   * from the digest would be fabricated provenance.
+   */
+  tool: z.string().min(1).max(80).optional(),
   error: z
     .looseObject({
       code: z.string().optional(),

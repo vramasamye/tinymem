@@ -55,7 +55,7 @@ export const DecisionExtractionSchema = z.looseObject({
 export type DecisionExtraction = z.infer<typeof DecisionExtractionSchema>;
 
 /** What produced a failure signature: the event kind the signature was normalized from. */
-export const FAILURE_SIGNATURE_ORIGINS = ['error', 'command', 'test'] as const;
+export const FAILURE_SIGNATURE_ORIGINS = ['error', 'command', 'test', 'tool'] as const;
 export type FailureSignatureOrigin = (typeof FAILURE_SIGNATURE_ORIGINS)[number];
 
 /**
@@ -67,6 +67,12 @@ export type FailureSignatureOrigin = (typeof FAILURE_SIGNATURE_ORIGINS)[number];
  * the signature), `normalized_message` → the normalization of `problem`, `command`/`tool` →
  * `context`. `hash` covers `type` + `normalized_message` only, so the same failure reached
  * through a different tool collapses to one signature; `command`/`tool` are recorded context.
+ *
+ * `origin` names the event kind the signature came from: `error` (`error.raised`), `command`
+ * (a non-zero `terminal.output`), `test` (`test.results` with failures), or `tool` (a failing
+ * `conversation.tool_result`). `error_origin` is only ever populated for `origin: 'error'` — a
+ * tool-result failure is not an `error.raised`, so it carries `origin: 'tool'` and no
+ * `error_origin`.
  */
 export const FAILURE_ERROR_ORIGINS = ['terminal', 'test', 'build', 'runtime', 'tool'] as const;
 

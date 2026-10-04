@@ -92,6 +92,21 @@ const NormalizedErrorSchema = z.object({
   context: z.string().optional(),
 });
 
+/**
+ * Structured `conversation.tool_result` (M3c). `tool` is carried through only when the raw
+ * adapter payload named one (core's `ConversationToolResultPayloadSchema`); a runtime whose shape
+ * reports results keyed only by `call_id` leaves it unset — it is never inferred.
+ */
+const NormalizedToolResultSchema = z.object({
+  call_id: z.string(),
+  ok: z.boolean(),
+  tool: z.string().optional(),
+  /** The tool's own error message, when the payload carried one. */
+  error_message: z.string().optional(),
+  /** The bounded result text the payload carried — the failure signature's fallback message. */
+  output_digest: z.string(),
+});
+
 const NormalizedFileSchema = z.object({
   path: z.string(),
   change: z.string(),
@@ -149,6 +164,7 @@ export const NormalizedEventSchema = z.object({
   text: z.string(),
   command: NormalizedCommandSchema.optional(),
   error: NormalizedErrorSchema.optional(),
+  tool_result: NormalizedToolResultSchema.optional(),
   file: NormalizedFileSchema.optional(),
   tests: NormalizedTestsSchema.optional(),
   commit: NormalizedCommitSchema.optional(),
@@ -293,6 +309,19 @@ export function normalizeEvent(input: ExtractionInput): NormalizedEvent {
         origin: String(value.origin ?? 'runtime'),
         message: String(value.message ?? ''),
         ...(value.context === undefined ? {} : { context: String(value.context) }),
+      };
+      break;
+    }
+    case 'conversation.tool_result': {
+      const toolError = value.error as { message?: unknown } | undefined;
+      const tool =
+        typeof value.tool === 'string' && value.tool.length > 0 ? value.tool : undefined;
+      normalized.tool_result = {
+        call_id: String(value.call_id ?? ''),
+        ok: value.ok === true,
+        ...(tool === undefined ? {} : { tool }),
+        ...(toolError?.message === undefined ? {} : { error_message: String(toolError.message) }),
+        output_digest: String(value.output_digest ?? ''),
       };
       break;
     }

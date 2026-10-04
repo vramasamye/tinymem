@@ -240,6 +240,39 @@ export function testFailureSession(): ExtractionInput[] {
 }
 
 /**
+ * M3c failure fixture: a failing tool result resolved by a later successful result of the *same*
+ * tool. The tool name rides the raw `conversation.tool_result` payload (`tool`); a runtime that
+ * cannot name the tool leaves it unset and the pairing then does not fire.
+ */
+export function toolFailureSession(): ExtractionInput[] {
+  return [
+    makeInput(
+      'conversation.tool_result',
+      {
+        kind: 'conversation.tool_result',
+        call_id: 'call-edit-1',
+        ok: false,
+        tool: 'Edit',
+        output_digest: 'string to replace not found in file',
+        error: { message: 'String to replace not found in file src/store.ts' },
+      },
+      { offsetSeconds: 0 },
+    ),
+    makeInput(
+      'conversation.tool_result',
+      {
+        kind: 'conversation.tool_result',
+        call_id: 'call-edit-2',
+        ok: true,
+        tool: 'Edit',
+        output_digest: 'edited src/store.ts',
+      },
+      { offsetSeconds: 10 },
+    ),
+  ];
+}
+
+/**
  * M3b stability fixture: the *same* failure twice, differing only in path depth, timings, colour
  * codes and a different session id. The signatures must be identical.
  */
