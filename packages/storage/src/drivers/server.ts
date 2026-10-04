@@ -6,7 +6,7 @@
 
 import pg from 'pg';
 
-import { createJobQueue, createStore } from '../store';
+import { createCodeMemoryStore, createJobQueue, createStore } from '../store';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import type { Database, QueryResult } from './client';
@@ -130,6 +130,7 @@ export async function createServerDb(
     client,
     store: createStore(client),
     jobs: createJobQueue(client),
+    codeMemory: createCodeMemoryStore(client),
     vectors,
     migrate: () => migrateServer(client.pool),
     close: () => client.close(),

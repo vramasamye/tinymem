@@ -4,7 +4,13 @@
  * structurally implements them, so `sdk` can wire storage behind the interfaces with zero glue.
  */
 
-import type { DurableMemoryType, JobQueue, MemoryStatus, Store } from '@onememory/core';
+import type {
+  CodeMemoryStore,
+  DurableMemoryType,
+  JobQueue,
+  MemoryStatus,
+  Store,
+} from '@onememory/core';
 import type {
   EntityBinding,
   EnqueueJobResult,
@@ -38,6 +44,7 @@ import type {
 
 import type { Database } from './drivers/client';
 
+import * as codeMemoryRepo from './repositories/code-memory';
 import * as edgesRepo from './repositories/edges';
 import * as entitiesRepo from './repositories/entities';
 import * as eventsRepo from './repositories/events';
@@ -108,6 +115,20 @@ export function createJobQueue(db: Database, options?: { backoffBaseSeconds?: nu
     fail: (jobId: string, error: string, options?: { now?: string }): Promise<JobRecord> =>
       jobsRepo.failJob(db, jobId, error, { backoffBaseSeconds, now: options?.now }),
     getJob: (jobId: string): Promise<JobRecord | null> => jobsRepo.getJob(db, jobId),
+  };
+}
+
+/** Build the core `CodeMemoryStore` port over a Database (M4 persistence — ADR-0008). */
+export function createCodeMemoryStore(db: Database): CodeMemoryStore {
+  return {
+    ensureRepository: (input) => codeMemoryRepo.ensureRepository(db, input),
+    getRepository: (id) => codeMemoryRepo.getRepository(db, id),
+    listRepositories: (projectId) => codeMemoryRepo.listRepositories(db, projectId),
+    saveSnapshot: (repositoryId, snapshot) =>
+      codeMemoryRepo.saveSnapshot(db, repositoryId, snapshot),
+    loadFingerprints: (repositoryId, filter) =>
+      codeMemoryRepo.loadFingerprints(db, repositoryId, filter),
+    loadSnapshotMetadata: (repositoryId) => codeMemoryRepo.loadSnapshotMetadata(db, repositoryId),
   };
 }
 

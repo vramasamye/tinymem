@@ -11,4 +11,10 @@ export type {
   ResolvedEntity,
 } from './entity-resolver';
 export type { DriftWatcher, DriftReport, DriftedMemory } from './drift-watcher';
+export type {
+  CodeMemoryStore,
+  CodeRepositoryRecord,
+  SnapshotSaveResult,
+  StoredFingerprint,
+} from './code-memory-store';
 export type { Redactor, RedactionResult, SecretRedactor } from './redactor';

@@ -11,6 +11,7 @@ import { memoryContentHash } from '@onememory/core';
 import type { OnememoryEvent, SupersedeInput } from '@onememory/core';
 
 import { JobKindNotImplemented, createHandlerRegistry, createJobWorker } from '../jobs/worker';
+import { ValidationError } from '../repositories/util';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import { makeEvent, makeMemory, makeSession, makeWorking, seedProjectAndSource, uniqueId } from './harness';
@@ -700,6 +701,144 @@ export async function purgeScenario(storage: OnememoryStorage): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Code memory (M4 persistence — ADR-0008)
+// ---------------------------------------------------------------------------
+
+const hex40 = (char: string): string => char.repeat(40);
+const sha = (value: number): string => value.toString(16).padStart(40, '0');
+
+export async function codeMemoryPersistenceScenario(storage: OnememoryStorage): Promise<void> {
+  const { projectId } = await seedProjectAndSource(storage, 'code-memory-project');
+  const root = `/tmp/onemem-code-${uniqueId()}`;
+  const repository = await storage.codeMemory.ensureRepository({ project_id: projectId, root_path: root });
+  expect((await storage.codeMemory.ensureRepository({ project_id: projectId, root_path: root })).id).toBe(repository.id);
+  expect((await storage.codeMemory.listRepositories(projectId)).map((row) => row.id)).toEqual([repository.id]);
+
+  // A different project may register the same root; uniqueness is per (project, root).
+  const otherProject = await storage.store.createProject({
+    name: `code-memory-parallel-${uniqueId().slice(0, 8)}`,
+    root_path: '/tmp/fixture',
+  });
+  const parallel = await storage.codeMemory.ensureRepository({ project_id: otherProject.id, root_path: root });
+  expect(parallel.id).not.toBe(repository.id);
+
+  const head1 = hex40('a');
+  const first = await storage.codeMemory.saveSnapshot(repository.id, {
+    root_path: root,
+    head_commit: head1,
+    hash_algorithm: 'git-sha1',
+    mode: 'git',
+    exclusion_globs: [],
+    captured_at: '2026-10-04T00:00:00.000Z',
+    files: [
+      { path: 'src/a.ts', tier: 'committed', blob_sha: sha(1), mode: '100644' },
+      { path: 'src/a.ts', tier: 'worktree', blob_sha: sha(2), mode: '100644' },
+      { path: 'src/b.ts', tier: 'worktree', blob_sha: sha(3), mode: '100755' },
+      { path: 'src/d.ts', tier: 'worktree', blob_sha: sha(5), mode: '100644' },
+    ],
+    skipped: [],
+  });
+  expect(first.rewritten).toBe(4);
+  expect(first.deleted).toBe(0);
+  expect(first.retained_unavailable).toBe(0);
+  expect(first.repository.head_commit).toBe(head1);
+  // Persistence never advances the ingestion checkpoint (ADR-0008) — that is the drift
+  // pipeline's exclusive right, exercised only when changed knowledge is fully processed.
+  expect(first.repository.last_ingested_commit).toBeNull();
+
+  // Both tiers of one path coexist — the dual-tier primary key is the point of the migration.
+  expect(
+    (await storage.codeMemory.loadFingerprints(repository.id)).map((f) => `${f.tier}:${f.path}`),
+  ).toEqual(['committed:src/a.ts', 'worktree:src/a.ts', 'worktree:src/b.ts', 'worktree:src/d.ts']);
+  expect(
+    (await storage.codeMemory.loadFingerprints(repository.id, { tier: 'committed' })).map((f) => f.blob_sha),
+  ).toEqual([sha(1)]);
+  expect(
+    (await storage.codeMemory.loadFingerprints(repository.id, { paths: ['src/b.ts', 'missing.ts'] })).map((f) => f.file_mode),
+  ).toEqual(['100755']);
+
+  const metadata = await storage.codeMemory.loadSnapshotMetadata(repository.id);
+  expect(metadata?.hash_algorithm).toBe('git-sha1');
+  expect(metadata?.head_commit).toBe(head1);
+  expect(metadata?.file_count).toBe(4);
+
+  // Second capture: a.ts worktree bytes changed; b.ts went unavailable (retained with its
+  // last-known hash); d.ts disappeared entirely (deleted); c.ts is new; HEAD moved.
+  const secondSnapshot = {
+    root_path: root,
+    head_commit: hex40('b'),
+    hash_algorithm: 'git-sha1' as const,
+    mode: 'git' as const,
+    exclusion_globs: [] as string[],
+    captured_at: '2026-10-04T00:01:00.000Z',
+    files: [
+      { path: 'src/a.ts', tier: 'committed' as const, blob_sha: sha(1), mode: '100644' as const },
+      { path: 'src/a.ts', tier: 'worktree' as const, blob_sha: sha(9), mode: '100644' as const },
+      { path: 'src/c.ts', tier: 'worktree' as const, blob_sha: sha(4), mode: '100644' as const },
+    ],
+    skipped: [{ path: 'src/b.ts', tier: 'worktree' as const }],
+  };
+  const second = await storage.codeMemory.saveSnapshot(repository.id, secondSnapshot);
+  expect(second.rewritten).toBe(3);
+  expect(second.deleted).toBe(1);
+  expect(second.retained_unavailable).toBe(1);
+  expect(second.repository.head_commit).toBe(secondSnapshot.head_commit);
+  expect(second.repository.last_ingested_commit).toBeNull();
+
+  expect(
+    (await storage.codeMemory.loadFingerprints(repository.id)).map((f) => `${f.tier}:${f.path}@${f.blob_sha}`),
+  ).toEqual([
+    `committed:src/a.ts@${sha(1)}`,
+    `worktree:src/a.ts@${sha(9)}`,
+    `worktree:src/b.ts@${sha(3)}`,
+    `worktree:src/c.ts@${sha(4)}`,
+  ]);
+
+  // Saving the very same snapshot again rewrites nothing: already-current rows are untouched
+  // (the conflict guard), so their updated_at stays the last-value-change timestamp.
+  const aWorktree = (await storage.codeMemory.loadFingerprints(repository.id, {
+    tier: 'worktree',
+    paths: ['src/a.ts'],
+  }))[0]!;
+  const third = await storage.codeMemory.saveSnapshot(repository.id, secondSnapshot);
+  expect(third.rewritten).toBe(0);
+  expect(third.deleted).toBe(0);
+  const aWorktreeAgain = (await storage.codeMemory.loadFingerprints(repository.id, {
+    tier: 'worktree',
+    paths: ['src/a.ts'],
+  }))[0]!;
+  expect(aWorktreeAgain.updated_at).toBe(aWorktree.updated_at);
+
+  // Boundary checks: a snapshot from another root, an unknown repository, a malformed hash.
+  await expect(
+    storage.codeMemory.saveSnapshot(repository.id, {
+      root_path: '/tmp/elsewhere', head_commit: null, hash_algorithm: 'git-sha1', mode: 'git',
+      exclusion_globs: [], captured_at: '2026-10-04T00:02:00.000Z', files: [], skipped: [],
+    }),
+  ).rejects.toThrow(/invalid input for saveSnapshot root_path mismatch/);
+  await expect(
+    storage.codeMemory.saveSnapshot(uniqueId(), {
+      root_path: root, head_commit: null, hash_algorithm: 'git-sha1', mode: 'git',
+      exclusion_globs: [], captured_at: '2026-10-04T00:02:00.000Z', files: [], skipped: [],
+    }),
+  ).rejects.toThrow(/not found/);
+  await expect(storage.codeMemory.loadSnapshotMetadata(uniqueId())).rejects.toThrow(/not found/);
+  await expect(
+    storage.codeMemory.saveSnapshot(repository.id, {
+      root_path: root, head_commit: null, hash_algorithm: 'git-sha1', mode: 'git',
+      exclusion_globs: [], captured_at: '2026-10-04T00:02:00.000Z',
+      files: [{ path: 'x.ts', tier: 'worktree', blob_sha: 'not-hex', mode: '100644' }],
+      skipped: [],
+    }),
+  ).rejects.toThrow(ValidationError);
+
+  // Removing the repository cascades its fingerprint rows (schema ON DELETE CASCADE).
+  await storage.client.query('DELETE FROM repositories WHERE id = $1::uuid', [repository.id]);
+  expect(await storage.codeMemory.getRepository(repository.id)).toBeNull();
+  expect(await storage.codeMemory.loadFingerprints(repository.id)).toEqual([]);
+}
+
+// ---------------------------------------------------------------------------
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
 
@@ -717,6 +856,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['jobs worker: registry execution, JobKindNotImplemented, graceful loop', jobWorkerScenario],
   ['embedding index: pgvector KNN, upsert/replace, remove, minCosine', vectorIndexScenario],
   ['embedding index: float8 fallback end-to-end', float8FallbackScenario],
+  ['code memory: dual-tier fingerprints persist; unavailable paths retained; checkpoint never advances', codeMemoryPersistenceScenario],
 ];
 
 /**

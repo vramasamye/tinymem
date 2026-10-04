@@ -38,7 +38,7 @@ export type { OnememoryStorage, VectorConfig } from './drivers/types';
 export { DEFAULT_VECTOR_CONFIG } from './drivers/types';
 
 // Ports implemented here (core declares them; storage binds them)
-export { createStore, createJobQueue } from './store';
+export { createCodeMemoryStore, createJobQueue, createStore } from './store';
 
 // Vector index (GATE-1 seam: pgvector | float8 fallback)
 export {
@@ -71,5 +71,6 @@ export * as eventsRepo from './repositories/events';
 export * as sourcesRepo from './repositories/projects';
 export * as workingMemoryRepo from './repositories/working-memory';
 export * as memoryEventsRepo from './repositories/memory-events';
+export * as codeMemoryRepo from './repositories/code-memory';
 export * as jobsRepo from './repositories/jobs';
 export { ValidationError, NotFoundError } from './repositories/util';

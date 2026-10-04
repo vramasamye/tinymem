@@ -260,3 +260,78 @@ export const ClaimJobsSchema = z.looseObject({
   now: isoTimestamp.optional(),
 });
 export type ClaimJobsInput = z.infer<typeof ClaimJobsSchema>;
+
+// ---------------------------------------------------------------------------
+// Code memory (M4 — ADR-0008 persistence port inputs)
+// ---------------------------------------------------------------------------
+
+/** A Git blob id (40 hex) or plain SHA-256 content hash (64 hex). */
+const objectHash = z
+  .string()
+  .regex(/^[0-9a-f]{40}$|^[0-9a-f]{64}$/, 'a 40- or 64-character lowercase hex object id');
+
+/** A safe repository-relative path: relative, no parent traversal, no NUL. */
+const repositoryPath = z
+  .string()
+  .min(1)
+  .refine(
+    (value) => !value.startsWith('/') && !value.includes('\0') && !value.split('/').includes('..'),
+    'a safe repository-relative path',
+  );
+
+export const FingerprintTierSchema = z.enum(['committed', 'worktree']);
+export type FingerprintTier = z.infer<typeof FingerprintTierSchema>;
+
+export const EnsureCodeRepositorySchema = z.looseObject({
+  project_id: z.uuid(),
+  /** Canonical absolute filesystem root; snapshots saved to this repository must match it. */
+  root_path: z.string().min(1),
+});
+export type EnsureCodeRepository = z.infer<typeof EnsureCodeRepositorySchema>;
+
+export const SnapshotFileSchema = z.looseObject({
+  path: repositoryPath,
+  tier: FingerprintTierSchema,
+  /** Git blob id, or a plain SHA-256 content hash on non-Git roots. */
+  blob_sha: objectHash,
+  mode: z.enum(['100644', '100755']),
+});
+export type SnapshotFile = z.infer<typeof SnapshotFileSchema>;
+
+/** A (path, tier) whose bytes could not be captured (conflict, unreadable, oversized, …). */
+export const UnavailablePathSchema = z.looseObject({
+  path: repositoryPath,
+  tier: FingerprintTierSchema,
+});
+export type UnavailablePath = z.infer<typeof UnavailablePathSchema>;
+
+/**
+ * One captured snapshot (structurally compatible with a codememory `RepositorySnapshot`, so the
+ * pipeline can pass captures straight through; extra keys like per-file algorithms pass).
+ */
+export const SnapshotInputSchema = z.looseObject({
+  /** Must equal the repository row's root_path (checked at the storage boundary). */
+  root_path: z.string().min(1),
+  /** HEAD at capture; null for unborn HEAD or non-Git roots. */
+  head_commit: objectHash.nullable(),
+  hash_algorithm: z.enum(['git-sha1', 'git-sha256', 'sha256']),
+  mode: z.enum(['git', 'content']),
+  exclusion_globs: z.array(z.string()),
+  captured_at: isoTimestamp,
+  files: z.array(SnapshotFileSchema),
+  skipped: z.array(UnavailablePathSchema),
+});
+export type SnapshotInput = z.infer<typeof SnapshotInputSchema>;
+
+/** Metadata persisted with the latest snapshot (the `repositories.fingerprint` jsonb). */
+export const SnapshotMetadataSchema = z.looseObject({
+  root_path: z.string().min(1),
+  head_commit: objectHash.nullable(),
+  hash_algorithm: z.enum(['git-sha1', 'git-sha256', 'sha256']),
+  mode: z.enum(['git', 'content']),
+  exclusion_globs: z.array(z.string()),
+  captured_at: isoTimestamp,
+  file_count: z.number().int().min(0),
+  skipped_count: z.number().int().min(0),
+});
+export type SnapshotMetadata = z.infer<typeof SnapshotMetadataSchema>;

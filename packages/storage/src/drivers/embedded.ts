@@ -10,7 +10,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { vector as pgvectorExtension } from '@electric-sql/pglite-pgvector';
 import type { Extensions, PGliteOptions } from '@electric-sql/pglite';
 
-import { createJobQueue, createStore } from '../store';
+import { createCodeMemoryStore, createJobQueue, createStore } from '../store';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import type { Database, QueryResult } from './client';
@@ -122,6 +122,7 @@ export async function createEmbeddedDb(
     client,
     store: createStore(client),
     jobs: createJobQueue(client),
+    codeMemory: createCodeMemoryStore(client),
     vectors,
     migrate: () => migrateEmbedded(client.pglite),
     close: () => client.close(),

@@ -2,7 +2,7 @@
  * The storage object both drivers return — one repository API over both deployment profiles.
  */
 
-import type { EmbeddingIndex, JobQueue, Store } from '@onememory/core';
+import type { CodeMemoryStore, EmbeddingIndex, JobQueue, Store } from '@onememory/core';
 
 import type { Database } from './client';
 
@@ -14,6 +14,8 @@ export interface OnememoryStorage {
   readonly store: Store;
   /** The core `JobQueue` port implementation. */
   readonly jobs: JobQueue;
+  /** The core `CodeMemoryStore` port implementation (M4 persistence — ADR-0008). */
+  readonly codeMemory: CodeMemoryStore;
   /** The core `EmbeddingIndex` port implementation (pgvector or the GATE-1 float8 fallback). */
   readonly vectors: EmbeddingIndex;
   /** Apply committed migrations (idempotent; advisory-locked on the server profile). */

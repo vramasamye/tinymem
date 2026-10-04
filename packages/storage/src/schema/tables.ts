@@ -493,26 +493,30 @@ export const systemState = pgTable('system_state', {
 });
 
 // ---------------------------------------------------------------------------
-// Code memory (Phase 2 tables — defined now, exercised later)
+// Code memory (ADR-0008 — persisted by the M4 CodeMemoryStore port)
 // ---------------------------------------------------------------------------
 
-export const repositories = pgTable('repositories', {
-  id: uuid('id').primaryKey(),
-  project_id: uuid('project_id')
-    .notNull()
-    .references(() => projects.id),
-  root_path: text('root_path').notNull(),
-  remote_url: text('remote_url'),
-  head_commit: text('head_commit'),
-  last_ingested_commit: text('last_ingested_commit'),
-  fingerprint: jsonb('fingerprint')
-    .$type<Record<string, unknown>>()
-    .notNull()
-    .default(sql`'{}'::jsonb`),
-  last_indexed_at: timestamp('last_indexed_at', { withTimezone: true, mode: 'string' }),
-  created_at: createdAt(),
-  updated_at: updatedAt(),
-});
+export const repositories = pgTable(
+  'repositories',
+  {
+    id: uuid('id').primaryKey(),
+    project_id: uuid('project_id')
+      .notNull()
+      .references(() => projects.id),
+    root_path: text('root_path').notNull(),
+    remote_url: text('remote_url'),
+    head_commit: text('head_commit'),
+    last_ingested_commit: text('last_ingested_commit'),
+    fingerprint: jsonb('fingerprint')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    last_indexed_at: timestamp('last_indexed_at', { withTimezone: true, mode: 'string' }),
+    created_at: createdAt(),
+    updated_at: updatedAt(),
+  },
+  (table) => [uniqueIndex('repositories_project_root_idx').on(table.project_id, table.root_path)],
+);
 
 export const fileFingerprints = pgTable(
   'file_fingerprints',
@@ -523,6 +527,7 @@ export const fileFingerprints = pgTable(
     path: text('path').notNull(),
     blob_sha: text('blob_sha').notNull(),
     tier: text('tier').notNull().default('committed'),
+    file_mode: text('file_mode'),
     last_seen_commit: text('last_seen_commit'),
     symbols_hash: text('symbols_hash'),
     updated_at: timestamp('updated_at', { withTimezone: true, mode: 'string' })
@@ -531,7 +536,8 @@ export const fileFingerprints = pgTable(
   },
   (table) => [
     check('file_fingerprints_tier_check', sql`tier IN ('committed','worktree')`),
-    primaryKey({ columns: [table.repository_id, table.path] }),
+    // ADR-0008 records both tiers per path; the tier is part of the key so they can coexist.
+    primaryKey({ columns: [table.repository_id, table.tier, table.path] }),
   ],
 );
 
