@@ -27,7 +27,37 @@ The system Git choice reuses ADR-0008 and the dependency-verification verdict, r
 reimplementing Git. The package reuses `@onememory/security` exclusions and Zod. Native Node
 subprocess/filesystem/crypto APIs keep the implementation Bun- and Node-compatible. The accepted
 primary-source research is in `docs/research/dependency-verification.md` §10 and
-`docs/research/llm-wiki-loop.md`; supplementary focused Git-contract research runs separately.
+`docs/research/llm-wiki-loop.md`; the mission's exact argv contracts are verified against
+primary sources (official Git docs plus byte-level probes of git 2.39.5) in
+`docs/research/mission-4-git-fingerprint-verification.md`.
+
+## Primary-source contract review
+
+The delivered verification report was reviewed against this implementation before merge. Already
+compliant: argv-only spawning, NUL-only tokenization, trailing `--` on the checkpoint diff,
+explicit rename detection, `GIT_OPTIONAL_LOCKS=0` on every spawn, `--no-ext-diff`/`--no-textconv`,
+no stderr surfacing, unborn/missing-checkpoint degradation, and the SHA-1/SHA-256 algorithm
+guard. The worktree tier hashes raw bytes in-process with Git blob framing — the exact
+`hash-object --no-filters` guarantee (no clean/smudge execution, no object writes) without a
+subprocess — so the verified symlink `hash-object` trap cannot apply; symlinks are never hashed.
+
+Contract pins applied from the review:
+
+- `--full-name` on both `ls-files` calls (verified: from a subdirectory the default output is
+  CWD-relative and subtree-limited);
+- `--quiet` on HEAD verification (verified: unborn HEAD exits 1 silently instead of a fatal);
+- a `rev-parse --verify --quiet` preflight of the stored baseline before the checkpoint diff, so
+  a missing object (shallow cut, rewritten history) degrades to content hashes with a precise
+  warning instead of relying on the diff's failure path;
+- `--ignore-submodules=dirty` on the checkpoint diff, because user config
+  `diff.ignoreSubmodules=all` was verified to silently hide even committed gitlink moves.
+
+Deferred to the drift/event-scan slice, with citations in the research report: plumbing
+`git diff-files` for worktree event scans (on git 2.39.5 the porcelain worktree diff still writes
+`.git/index` under `GIT_OPTIONAL_LOCKS=0`), the staged `--cached` view, symlink retarget
+detection via `M`/`T` diff events, and an explicit `-l` rename limit for very large diffs (the
+default `diff.renameLimit` degrades `R` to `A`+`D`; hashes and staleness stay correct and the
+exact-match fallback still pairs unambiguous moves).
 
 ## Validation
 

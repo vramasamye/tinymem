@@ -94,7 +94,7 @@ describe('local fingerprint capture', () => {
     await writeFile(join(root, 'a.ts'), 'export const a = 2;\n');
     const result = await detectChanges(missing);
     expect(result.changes.map((change) => change.tier)).toEqual(['worktree']);
-    expect(result.warnings.some((warning) => warning.includes('checkpoint/rename diff unavailable'))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes('baseline checkpoint object is missing'))).toBe(true);
   });
 
   test('unborn HEAD and detached HEAD do not depend on a named branch', async () => {

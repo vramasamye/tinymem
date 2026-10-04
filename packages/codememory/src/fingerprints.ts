@@ -81,11 +81,11 @@ export async function captureSnapshot(root: string, options: FingerprintOptions 
       throw new FingerprintError('invalid_git_output', 'unsupported Git object format');
     }
     algorithm = format === 'sha1' ? 'git-sha1' : 'git-sha256';
-    const headResult = await runGit(canonicalRoot, ['rev-parse', '--verify', 'HEAD^{commit}']);
+    const headResult = await runGit(canonicalRoot, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']);
     if (headResult.code === 0) head = ObjectIdSchema.parse(headResult.stdout.trim());
     else warnings.push('HEAD unavailable (unborn or missing): index/worktree fingerprints remain available');
-    index = parseIndex(await requireGit(canonicalRoot, ['ls-files', '--stage', '-z']));
-    const untracked = parsePaths(await requireGit(canonicalRoot, ['ls-files', '--others', '--exclude-standard', '-z']));
+    index = parseIndex(await requireGit(canonicalRoot, ['ls-files', '--stage', '--full-name', '-z']));
+    const untracked = parsePaths(await requireGit(canonicalRoot, ['ls-files', '--others', '--exclude-standard', '--full-name', '-z']));
     candidates = [...new Set([...index.map((entry) => entry.path), ...untracked])].filter((path) => !excluded(path));
     const fileMode = await runGit(canonicalRoot, ['config', '--bool', 'core.filemode']);
     trustFileMode = fileMode.code !== 0 || fileMode.stdout.trim() !== 'false';
@@ -332,12 +332,21 @@ export async function detectChanges(
   let renames: GitRename[] = [];
   if (before.mode === 'git' && before.head_commit !== null && snapshot.head_commit !== null &&
     before.head_commit !== snapshot.head_commit) {
-    const diff = await runGit(before.root_path, [
-      'diff', '--no-ext-diff', '--no-textconv', '--name-status', '-z', '--find-renames=50%',
-      before.head_commit, snapshot.head_commit, '--',
-    ]);
-    if (diff.code === 0) renames = parseRenames(diff.stdout);
-    else warnings.push('Git checkpoint/rename diff unavailable: per-file hashes are authoritative; modified renames may appear as add/delete');
+    // Preflight the stored baseline: shallow cuts and rewritten history can leave it pointing at
+    // a missing object, which the primary-source verification forbids feeding to the diff. Per-file
+    // hashes stay authoritative either way.
+    const baseline = await runGit(before.root_path,
+      ['rev-parse', '--verify', '--quiet', `${before.head_commit}^{commit}`]);
+    if (baseline.code !== 0) {
+      warnings.push('baseline checkpoint object is missing (shallow or rewritten history): per-file hashes are authoritative; modified renames may appear as add/delete');
+    } else {
+      const diff = await runGit(before.root_path, [
+        'diff', '--no-ext-diff', '--no-textconv', '--name-status', '-z', '--find-renames=50%',
+        '--ignore-submodules=dirty', before.head_commit, snapshot.head_commit, '--',
+      ]);
+      if (diff.code === 0) renames = parseRenames(diff.stdout);
+      else warnings.push('Git checkpoint/rename diff unavailable: per-file hashes are authoritative; modified renames may appear as add/delete');
+    }
   }
   return { snapshot, changes: compare(before, snapshot, renames), warnings };
 }

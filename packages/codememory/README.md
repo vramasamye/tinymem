@@ -39,7 +39,11 @@ report. Budget exhaustion fails the whole capture instead of silently truncating
 Git filenames and unsafe repository-relative paths fail closed.
 
 Git subprocesses disable configured fsmonitor helpers, external diff/textconv, inherited Git
-directory overrides, lazy object fetches, and remote protocols. The scanner is not a sandbox
+directory overrides, lazy object fetches, and remote protocols. Diff invocations pin rename
+detection and the submodule policy explicitly, so user configuration (`diff.renames`,
+`diff.ignoreSubmodules`) cannot change results, and the stored baseline commit is preflighted
+before the checkpoint diff, so shallow or rewritten histories degrade to content hashes with a
+precise warning. The scanner is not a sandbox
 against an adversary concurrently replacing the entire filesystem tree while it runs.
 
 ## Validation
