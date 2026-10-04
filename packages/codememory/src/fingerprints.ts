@@ -34,38 +34,63 @@ function key(file: Pick<FileFingerprint, 'tier' | 'path'>): string {
   return `${file.tier}\0${file.path}`;
 }
 
-function inside(root: string, path: string): boolean {
+export function inside(root: string, path: string): boolean {
   const child = relative(root, path);
   return child === '' || (!isAbsolute(child) && child !== '..' && !child.startsWith(`..${sep}`));
 }
 
-/** Only fingerprints/metadata are returned: source bytes, remote URLs, and Git stderr never are. */
-export async function captureSnapshot(root: string, options: FingerprintOptions = {}): Promise<RepositorySnapshot> {
-  const parsed = FingerprintOptionsSchema.parse(options);
-  let canonicalRoot: string;
-  try {
-    canonicalRoot = await realpath(resolve(root));
-    if (!(await lstat(canonicalRoot)).isDirectory()) throw new Error('not a directory');
-  } catch {
-    throw new FingerprintError('invalid_root', 'the repository root must be an accessible directory');
-  }
-
-  const policy = createPathExclusionPolicy({ globs: parsed.exclusion_globs });
-  const excluded = (path: string): boolean => {
+/**
+ * The exclusion predicate shared by fingerprint capture and symbol extraction: built-in ignored
+ * directories at any depth, plus the ADR-0007 security defaults, plus caller globs.
+ */
+export function createPathFilter(globs: readonly string[]): (path: string) => boolean {
+  const policy = createPathExclusionPolicy({ globs: [...globs] });
+  return (path: string): boolean => {
     const parts = path.split('/');
     return parts.some((part, index) =>
       IGNORED_DIRECTORIES.has(part) || isPathExcluded(parts.slice(0, index + 1).join('/'), policy));
   };
+}
+
+/** Canonicalize an extraction root: an accessible, real directory (symlinks resolved). */
+export async function resolveRepositoryRoot(root: string): Promise<string> {
+  try {
+    const canonicalRoot = await realpath(resolve(root));
+    if (!(await lstat(canonicalRoot)).isDirectory()) throw new Error('not a directory');
+    return canonicalRoot;
+  } catch {
+    throw new FingerprintError('invalid_root', 'the repository root must be an accessible directory');
+  }
+}
+
+/**
+ * One shared worktree inspection (the safety conventions of fingerprint capture, reused by
+ * symbol extraction): Git probe with the pinned failure rules, the index, conflicts, untracked
+ * candidates, the object format/HEAD, and the filesystem walk when no Git worktree exists.
+ * `candidates` still contains paths later stages report as unavailable (conflicts, symlinks,
+ * submodules) — each caller applies its own honest reporting on top.
+ */
+export interface WorktreeScan {
+  mode: 'git' | 'content';
+  algorithm: RepositorySnapshot['hash_algorithm'];
+  head: string | null;
+  /** The full `ls-files --stage` record set, every stage included. */
+  index: IndexEntry[];
+  /** Paths with conflict stages (any stage ≠ 0); never fingerprinted, never extracted. */
+  conflicted: string[];
+  /** Every path the worktree currently offers (all index stages + untracked), exclusions applied. */
+  candidates: string[];
+  trustFileMode: boolean;
+  warnings: string[];
+}
+
+export async function scanWorktree(
+  canonicalRoot: string,
+  options: { readonly exclusion_globs: readonly string[]; readonly max_files: number },
+): Promise<WorktreeScan> {
+  const excluded = createPathFilter(options.exclusion_globs);
   const probe = await runGit(canonicalRoot, ['rev-parse', '--is-inside-work-tree']);
   const warnings: string[] = [];
-  const files: FileFingerprint[] = [];
-  const skipped: SkippedPath[] = [];
-  let mode: RepositorySnapshot['mode'] = 'content';
-  let algorithm: RepositorySnapshot['hash_algorithm'] = 'sha256';
-  let head: string | null = null;
-  let candidates: string[];
-  let index: IndexEntry[] = [];
-  let trustFileMode = true;
 
   if (probe.code === 0) {
     if (probe.stdout.trim() !== 'true') {
@@ -75,31 +100,85 @@ export async function captureSnapshot(root: string, options: FingerprintOptions 
     if (await realpath(top) !== canonicalRoot) {
       throw new FingerprintError('invalid_root', 'use the Git worktree root, not a directory inside it');
     }
-    mode = 'git';
     const format = (await requireGit(canonicalRoot, ['rev-parse', '--show-object-format'])).trim();
     if (format !== 'sha1' && format !== 'sha256') {
       throw new FingerprintError('invalid_git_output', 'unsupported Git object format');
     }
-    algorithm = format === 'sha1' ? 'git-sha1' : 'git-sha256';
+    const algorithm: RepositorySnapshot['hash_algorithm'] = format === 'sha1' ? 'git-sha1' : 'git-sha256';
+    let head: string | null = null;
     const headResult = await runGit(canonicalRoot, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']);
     if (headResult.code === 0) head = ObjectIdSchema.parse(headResult.stdout.trim());
     else warnings.push('HEAD unavailable (unborn or missing): index/worktree fingerprints remain available');
-    index = parseIndex(await requireGit(canonicalRoot, ['ls-files', '--stage', '--full-name', '-z']));
+    const index = parseIndex(await requireGit(canonicalRoot, ['ls-files', '--stage', '--full-name', '-z']));
     const untracked = parsePaths(await requireGit(canonicalRoot, ['ls-files', '--others', '--exclude-standard', '--full-name', '-z']));
-    candidates = [...new Set([...index.map((entry) => entry.path), ...untracked])].filter((path) => !excluded(path));
+    const candidates = [...new Set([...index.map((entry) => entry.path), ...untracked])]
+      .filter((path) => !excluded(path));
     const fileMode = await runGit(canonicalRoot, ['config', '--bool', 'core.filemode']);
-    trustFileMode = fileMode.code !== 0 || fileMode.stdout.trim() !== 'false';
-    const conflicted = new Set(index.filter((entry) => entry.stage !== 0).map((entry) => entry.path));
-    for (const path of conflicted) {
+    return {
+      mode: 'git',
+      algorithm,
+      head,
+      index,
+      conflicted: [...new Set(index.filter((entry) => entry.stage !== 0).map((entry) => entry.path))],
+      candidates,
+      trustFileMode: fileMode.code !== 0 || fileMode.stdout.trim() !== 'false',
+      warnings,
+    };
+  }
+
+  if (probe.code !== 128 && probe.code !== 'ENOENT') {
+    throw new FingerprintError('git_failed', `local Git inspection failed (${String(probe.code)})`);
+  }
+  let gitMarker = false;
+  try {
+    await lstat(join(canonicalRoot, '.git'));
+    gitMarker = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new FingerprintError('git_failed', 'cannot inspect the local Git marker');
+    }
+  }
+  if (gitMarker) {
+    throw new FingerprintError('git_failed', probe.code === 'ENOENT'
+      ? 'this root has Git metadata but system Git is unavailable; install Git and retry'
+      : 'this root has Git metadata but Git could not inspect it; check repository permissions and configuration');
+  }
+  warnings.push(probe.code === 'ENOENT'
+    ? 'system Git unavailable: using filesystem content hashes'
+    : 'no Git worktree: using filesystem content hashes');
+  return {
+    mode: 'content',
+    algorithm: 'sha256',
+    head: null,
+    index: [],
+    conflicted: [],
+    candidates: await filesystemPaths(canonicalRoot, excluded, options.max_files),
+    trustFileMode: true,
+    warnings,
+  };
+}
+
+/** Only fingerprints/metadata are returned: source bytes, remote URLs, and Git stderr never are. */
+export async function captureSnapshot(root: string, options: FingerprintOptions = {}): Promise<RepositorySnapshot> {
+  const parsed = FingerprintOptionsSchema.parse(options);
+  const canonicalRoot = await resolveRepositoryRoot(root);
+  const scan = await scanWorktree(canonicalRoot, parsed);
+  const excluded = createPathFilter(parsed.exclusion_globs);
+  const files: FileFingerprint[] = [];
+  const skipped: SkippedPath[] = [];
+  const conflicted = new Set(scan.conflicted);
+
+  if (scan.mode === 'git') {
+    for (const path of scan.conflicted) {
       if (excluded(path)) continue;
       skipped.push({ path, tier: 'committed', reason: 'conflict' }, { path, tier: 'worktree', reason: 'conflict' });
     }
-    for (const entry of index) {
+    for (const entry of scan.index) {
       if (entry.stage !== 0 || conflicted.has(entry.path) || excluded(entry.path)) continue;
       if (entry.mode === '100644' || entry.mode === '100755') {
         files.push({
           path: entry.path, tier: 'committed', blob_sha: entry.blob_sha,
-          hash_algorithm: algorithm, mode: entry.mode,
+          hash_algorithm: scan.algorithm, mode: entry.mode,
         });
       } else {
         const reason = entry.mode === '120000' ? 'symlink' : entry.mode === '160000' ? 'submodule' : 'unsupported';
@@ -107,47 +186,26 @@ export async function captureSnapshot(root: string, options: FingerprintOptions 
         skipped.push({ path: entry.path, tier: 'worktree', reason });
       }
     }
-    const unavailable = new Set(skipped.filter((entry) => entry.tier === 'worktree').map((entry) => entry.path));
-    candidates = candidates.filter((path) => !unavailable.has(path));
-  } else {
-    if (probe.code !== 128 && probe.code !== 'ENOENT') {
-      throw new FingerprintError('git_failed', `local Git inspection failed (${String(probe.code)})`);
-    }
-    let gitMarker = false;
-    try {
-      await lstat(join(canonicalRoot, '.git'));
-      gitMarker = true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw new FingerprintError('git_failed', 'cannot inspect the local Git marker');
-      }
-    }
-    if (gitMarker) {
-      throw new FingerprintError('git_failed', probe.code === 'ENOENT'
-        ? 'this root has Git metadata but system Git is unavailable; install Git and retry'
-        : 'this root has Git metadata but Git could not inspect it; check repository permissions and configuration');
-    }
-    warnings.push(probe.code === 'ENOENT'
-      ? 'system Git unavailable: using filesystem content hashes'
-      : 'no Git worktree: using filesystem content hashes');
-    candidates = await filesystemPaths(canonicalRoot, excluded, parsed.max_files);
   }
+  const unavailable = new Set(skipped.filter((entry) => entry.tier === 'worktree').map((entry) => entry.path));
+  const candidates = scan.candidates.filter((path) => !unavailable.has(path));
   if (candidates.length > parsed.max_files || files.length > parsed.max_files) {
     throw new FingerprintError('scan_limit', 'repository exceeds the configured file budget');
   }
 
-  const indexed = new Map(index.filter((entry) => entry.stage === 0).map((entry) => [entry.path, entry.mode]));
+  const indexed = new Map(scan.index.filter((entry) => entry.stage === 0).map((entry) => [entry.path, entry.mode]));
   for (const path of candidates.sort(sortText)) {
-    const modeOverride = !trustFileMode ? indexed.get(path) : undefined;
-    const outcome = await hashWorktreeFile(canonicalRoot, path, algorithm, parsed.max_file_bytes, modeOverride);
+    const modeOverride = !scan.trustFileMode ? indexed.get(path) : undefined;
+    const outcome = await hashWorktreeFile(canonicalRoot, path, scan.algorithm, parsed.max_file_bytes, modeOverride);
     if (outcome === null) continue; // tracked file deleted from the working tree
     if ('reason' in outcome) skipped.push(outcome);
     else files.push(outcome);
   }
+  const warnings = [...scan.warnings];
   if (skipped.length > 0) warnings.push(`${skipped.length} tier/path entries were unavailable; inspect skipped for reasons`);
 
   return RepositorySnapshotSchema.parse({
-    version: 1, root_path: canonicalRoot, mode, head_commit: head, hash_algorithm: algorithm,
+    version: 1, root_path: canonicalRoot, mode: scan.mode, head_commit: scan.head, hash_algorithm: scan.algorithm,
     exclusion_globs: parsed.exclusion_globs, captured_at: new Date().toISOString(),
     files: files.sort((a, b) => sortText(key(a), key(b))),
     skipped: skipped.sort((a, b) => sortText(key(a), key(b))), warnings,

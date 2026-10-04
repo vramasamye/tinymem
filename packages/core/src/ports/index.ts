@@ -23,5 +23,7 @@ export type {
   SnapshotSaveResult,
   StoredFingerprint,
   MemoryCodeRef,
+  StoredSymbol,
+  SymbolTableSaveResult,
 } from './code-memory-store';
 export type { Redactor, RedactionResult, SecretRedactor } from './redactor';

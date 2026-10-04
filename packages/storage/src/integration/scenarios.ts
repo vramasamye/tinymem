@@ -8,7 +8,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { memoryContentHash } from '@onememory/core';
-import type { OnememoryEvent, SupersedeInput } from '@onememory/core';
+import type { OnememoryEvent, SupersedeInput, SymbolFileInput, SymbolRecordInput } from '@onememory/core';
 
 import { JobKindNotImplemented, createHandlerRegistry, createJobWorker } from '../jobs/worker';
 import { ValidationError } from '../repositories/util';
@@ -961,6 +961,201 @@ export async function codeMemoryRefsScenario(storage: OnememoryStorage): Promise
   expect(await storage.codeMemory.listCodeRefs(repository.id)).toEqual([]);
 }
 
+/**
+ * Symbol tables (M4d, ADR-0008 `code_symbols.span_hash`): scoped replacement per covered file
+ * with a per-file rewrite guard over `file_fingerprints.symbols_hash` (identical tables are
+ * never rewritten), the hash landing on worktree-tier fingerprint rows only, symbol rows
+ * dying with their fingerprint anchor (saveSnapshot), unavailable paths retaining last-known
+ * rows, and the same boundary discipline as every other code-memory writer.
+ */
+export async function codeMemorySymbolsScenario(storage: OnememoryStorage): Promise<void> {
+  const { projectId } = await seedProjectAndSource(storage, 'code-symbols-project');
+  const root = `/tmp/onemem-symbols-${uniqueId()}`;
+  const repository = await storage.codeMemory.ensureRepository({ project_id: projectId, root_path: root });
+  const span = (value: number): string => value.toString(16).padStart(64, '0');
+
+  await storage.codeMemory.saveSnapshot(repository.id, {
+    root_path: root,
+    head_commit: hex40('d'),
+    hash_algorithm: 'git-sha1',
+    mode: 'git',
+    exclusion_globs: [],
+    captured_at: '2026-10-06T00:00:00.000Z',
+    files: [
+      { path: 'src/a.ts', tier: 'committed', blob_sha: sha(1), mode: '100644' },
+      { path: 'src/a.ts', tier: 'worktree', blob_sha: sha(2), mode: '100644' },
+      { path: 'src/b.ts', tier: 'worktree', blob_sha: sha(3), mode: '100644' },
+      { path: 'src/c.py', tier: 'worktree', blob_sha: sha(5), mode: '100644' },
+    ],
+    skipped: [],
+  });
+
+  const alpha: SymbolRecordInput = {
+    name: 'alpha', kind: 'function', signature: 'function alpha ( )',
+    line_start: 1, line_end: 1, span_hash: span(1),
+  };
+  const container: SymbolRecordInput = {
+    name: 'Container', kind: 'class', signature: 'class Container',
+    line_start: 3, line_end: 8, span_hash: span(2),
+  };
+  const beta: SymbolRecordInput = {
+    name: 'beta', kind: 'function', signature: 'function beta ( )',
+    line_start: 1, line_end: 1, span_hash: span(3),
+  };
+  const helper: SymbolRecordInput = {
+    name: 'helper', kind: 'function', signature: 'def helper ( )',
+    line_start: 1, line_end: 2, span_hash: span(5),
+  };
+  const table: SymbolFileInput[] = [
+    {
+      path: 'src/a.ts', language: 'typescript', symbols: [alpha, container],
+      symbols_hash: span(11),
+    },
+    { path: 'src/b.ts', language: 'typescript', symbols: [beta], symbols_hash: span(13) },
+    { path: 'src/c.py', language: 'python', symbols: [helper], symbols_hash: span(15) },
+  ];
+
+  const first = await storage.codeMemory.saveSymbolTable(repository.id, { files: table });
+  expect(first.rewritten).toBe(3);
+  expect(first.unchanged).toBe(0);
+  expect(first.repository.last_ingested_commit).toBeNull(); // the checkpoint never moves here
+  expect(first.repository.head_commit).toBe(hex40('d'));
+
+  const stored = await storage.codeMemory.loadSymbols(repository.id);
+  expect(stored.map((symbol) => `${symbol.path}:${symbol.name}:${symbol.kind}`)).toEqual([
+    'src/a.ts:alpha:function',
+    'src/a.ts:Container:class',
+    'src/b.ts:beta:function',
+    'src/c.py:helper:function',
+  ]);
+  expect(stored[0]).toMatchObject({
+    signature: 'function alpha ( )', line_start: 1, line_end: 1, span_hash: span(1),
+  });
+  expect(stored.every((symbol) => symbol.repository_id === repository.id)).toBe(true);
+  const storedTimes = stored.map((symbol) => `${symbol.path}:${symbol.updated_at}`);
+
+  // The per-file hashes live on the WORKTREE-tier fingerprint rows only (symbols are extracted
+  // from worktree bytes; the committed tier never claims symbol knowledge).
+  const fingerprints = await storage.codeMemory.loadFingerprints(repository.id);
+  expect(fingerprints.map((row) => `${row.tier}:${row.path}@${row.symbols_hash}`)).toEqual([
+    `committed:src/a.ts@${null}`,
+    `worktree:src/a.ts@${span(11)}`,
+    `worktree:src/b.ts@${span(13)}`,
+    `worktree:src/c.py@${span(15)}`,
+  ]);
+
+  // The rewrite guard: saving the very same tables rewrites nothing — every row keeps its
+  // updated_at (only changed symbol tables are persisted, exactly like snapshot fingerprints).
+  const again = await storage.codeMemory.saveSymbolTable(repository.id, { files: table });
+  expect(again.rewritten).toBe(0);
+  expect(again.unchanged).toBe(3);
+  const storedAgain = await storage.codeMemory.loadSymbols(repository.id);
+  expect(storedAgain.map((symbol) => `${symbol.path}:${symbol.updated_at}`)).toEqual(storedTimes);
+
+  // A changed table for one file replaces only that file's rows (new span hash + a new
+  // symbol; the old symbol is gone — replacement, not accumulation).
+  const second = await storage.codeMemory.saveSymbolTable(repository.id, {
+    files: [
+      {
+        path: 'src/a.ts', language: 'typescript',
+        symbols: [{ ...alpha, span_hash: span(9) }, { ...container, name: 'renamed', span_hash: span(4) }],
+        symbols_hash: span(21),
+      },
+      table[1]!, table[2]!,
+    ],
+  });
+  expect(second.rewritten).toBe(1);
+  expect(second.unchanged).toBe(2);
+  const afterChange = await storage.codeMemory.loadSymbols(repository.id);
+  const changedRows = afterChange.filter((symbol) => symbol.path === 'src/a.ts');
+  expect(changedRows.map((symbol) => `${symbol.name}@${symbol.span_hash}`)).toEqual([
+    `alpha@${span(9)}`,
+    `renamed@${span(4)}`,
+  ]);
+  // Replacement, never accumulation: the file still has exactly its current table's rows.
+  expect(changedRows).toHaveLength(2);
+  expect(afterChange).toHaveLength(4); // a.ts(2) + b.ts(1) + c.py(1), unchanged files intact
+  const untouchedBeta = afterChange.find((symbol) => symbol.path === 'src/b.ts')!;
+  expect(untouchedBeta.span_hash).toBe(span(3)); // the guard left the untouched file's rows alone
+
+  // Path filtering on the read side.
+  expect(
+    (await storage.codeMemory.loadSymbols(repository.id, { paths: ['src/c.py', 'no.ts'] }))
+      .map((symbol) => symbol.name),
+  ).toEqual(['helper']);
+  expect(await storage.codeMemory.loadSymbols(repository.id, { paths: [] })).toEqual([]);
+
+  // The anchor rule: a snapshot that DROPS src/c.py (deleted) removes its symbol rows with its
+  // fingerprint; a snapshot that could not read src/b.ts retains b.ts's rows as last-known.
+  await storage.codeMemory.saveSnapshot(repository.id, {
+    root_path: root,
+    head_commit: hex40('e'),
+    hash_algorithm: 'git-sha1',
+    mode: 'git',
+    exclusion_globs: [],
+    captured_at: '2026-10-06T00:01:00.000Z',
+    files: [
+      { path: 'src/a.ts', tier: 'committed', blob_sha: sha(1), mode: '100644' },
+      { path: 'src/a.ts', tier: 'worktree', blob_sha: sha(9), mode: '100644' },
+    ],
+    skipped: [{ path: 'src/b.ts', tier: 'worktree' }],
+  });
+  const afterSnapshot = await storage.codeMemory.loadSymbols(repository.id);
+  expect(afterSnapshot.map((symbol) => `${symbol.path}:${symbol.name}`)).toEqual([
+    'src/a.ts:alpha',
+    'src/a.ts:renamed',
+    'src/b.ts:beta', // retained last-known: the capture could not read it
+  ]);
+  const retainedBeta = afterSnapshot.find((symbol) => symbol.path === 'src/b.ts')!;
+  expect(retainedBeta.updated_at).toBe(untouchedBeta.updated_at);
+  expect((await storage.codeMemory.loadFingerprints(repository.id)).map((row) => `${row.tier}:${row.path}`))
+    .toEqual(['committed:src/a.ts', 'worktree:src/a.ts', 'worktree:src/b.ts']);
+
+  // Boundary discipline: unknown repository, a covered path without a live worktree anchor
+  // (the pipeline shape is saveSnapshot FIRST), and malformed extractions all reject.
+  await expect(
+    storage.codeMemory.saveSymbolTable(uniqueId(), { files: [table[0]!] }),
+  ).rejects.toThrow(/not found/);
+  await expect(
+    storage.codeMemory.saveSymbolTable(repository.id, {
+      files: [{ path: 'never-captured.ts', language: 'typescript', symbols: [], symbols_hash: span(1) }],
+    }),
+  ).rejects.toThrow(/not found/);
+  await expect(
+    storage.codeMemory.saveSymbolTable(repository.id, { files: [table[1]!, table[1]!] }),
+  ).rejects.toThrow(ValidationError);
+  await expect(
+    storage.codeMemory.saveSymbolTable(repository.id, {
+      files: [{ ...table[1]!, language: 'typescript' as const, symbols_hash: 'not-hex' }],
+    }),
+  ).rejects.toThrow(ValidationError);
+  await expect(
+    storage.codeMemory.saveSymbolTable(repository.id, {
+      files: [
+        { ...table[1]!, language: 'typescript' as const, symbols: [{ ...beta, kind: 'widget' as never }] },
+      ],
+    }),
+  ).rejects.toThrow(ValidationError);
+  await expect(storage.codeMemory.saveSymbolTable(repository.id, { files: [] })).rejects.toThrow(
+    ValidationError,
+  );
+
+  // A legitimate save of an EMPTY symbol table (a source file that declares nothing) replaces
+  // a.ts's rows with none — the hash is over an empty table, not a gap in coverage.
+  const emptied = await storage.codeMemory.saveSymbolTable(repository.id, {
+    files: [{ path: 'src/a.ts', language: 'typescript', symbols: [], symbols_hash: span(99) }],
+  });
+  expect(emptied.rewritten).toBe(1);
+  expect(emptied.unchanged).toBe(0);
+  expect((await storage.codeMemory.loadSymbols(repository.id)).map((symbol) => symbol.path)).toEqual([
+    'src/b.ts', // retained last-known from the unreadable capture
+  ]);
+
+  // Removal is the repository FK cascade's job (no delete API), and it cascades symbol rows.
+  await storage.client.query('DELETE FROM repositories WHERE id = $1::uuid', [repository.id]);
+  expect(await storage.codeMemory.loadSymbols(repository.id)).toEqual([]);
+}
+
 // ---------------------------------------------------------------------------
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
@@ -973,7 +1168,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['purge: row + cascaded dependents gone, audit survives, pointers cleared', purgeScenario],
   ['status transitions are audited; reinforce bumps counters', statusTransitionAuditScenario],
   ['events: dedupe by content_hash, redactions passthrough, pending pipeline', eventsIngestScenario],
-  ['entity graph: scoped entities, idempotent binds/edges, merge', entityGraphScenario],
+  ['entity graph: scoped entities, merge', entityGraphScenario],
   ['working memory: sweep purges expired unpromoted, preserves promoted', workingMemoryScenario],
   ['jobs: singleton enqueue, claim/lease, backoff retry, dead-letter', jobsScenario],
   ['jobs worker: registry execution, JobKindNotImplemented, graceful loop', jobWorkerScenario],
@@ -981,6 +1176,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['embedding index: float8 fallback end-to-end', float8FallbackScenario],
   ['code memory: dual-tier fingerprints persist; unavailable paths retained; checkpoint never advances', codeMemoryPersistenceScenario],
   ['code memory refs: idempotent upsert, path filters, unreadable set persisted, FK cascades', codeMemoryRefsScenario],
+  ['code memory symbols: scoped replacement, rewrite guard, hashes on fingerprints, anchor pruning', codeMemorySymbolsScenario],
 ];
 
 /**

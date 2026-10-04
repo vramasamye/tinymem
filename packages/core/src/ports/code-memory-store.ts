@@ -1,7 +1,8 @@
 /**
- * Code-memory persistence port (ADR-0008): the only writer of `repositories` and
- * `file_fingerprints`. Core declares the contract; `@onememory/storage` implements it with the
- * engine's only SQL; the M4 pipeline persists codememory snapshots through it.
+ * Code-memory persistence port (ADR-0008): the only writer of `repositories`,
+ * `file_fingerprints`, and `code_symbols`. Core declares the contract; `@onememory/storage`
+ * implements it with the engine's only SQL; the M4 pipeline persists codememory snapshots and
+ * symbol tables through it.
  *
  * Invariants implementations must keep:
  * - one repository row per (project_id, root_path);
@@ -10,6 +11,9 @@
  * - a snapshot replaces the stored fingerprints it covers, EXCEPT (path, tier) entries that were
  *   unavailable in the new capture (conflict, unreadable, oversized, …): their last-known
  *   fingerprints are retained so drift resolution treats them as suspect, never silently fresh;
+ * - symbol rows only ever exist for paths with a live worktree-tier fingerprint row (their
+ *   `symbols_hash` anchor): when a snapshot deletes a path's worktree fingerprint, that path's
+ *   symbol rows die with it — symbol tables never outlive their evidence;
  * - `last_ingested_commit` is never advanced here — that checkpoint moves only when changed
  *   knowledge is fully processed, which is the drift pipeline's job, not persistence's.
  */
@@ -20,6 +24,7 @@ import type {
   RecordCodeRefs,
   SnapshotInput,
   SnapshotMetadata,
+  SymbolTableSave,
 } from '../schema/persistence';
 
 /** One `repositories` row (the ADR-0008 fingerprint keys live here). */
@@ -47,6 +52,12 @@ export interface StoredFingerprint {
   file_mode: string | null;
   /** HEAD under which this fingerprint was last observed (null when captured unborn). */
   last_seen_commit: string | null;
+  /**
+   * Hash of the symbol table for this file (null until a symbol save covers it, or when the
+   * extraction could not read the file). Worktree-tier only: symbols are extracted from the
+   * bytes the agent actually saw, so the committed tier never carries a symbols_hash.
+   */
+  symbols_hash: string | null;
   updated_at: string;
 }
 
@@ -103,4 +114,47 @@ export interface CodeMemoryStore {
     repository_id: string,
     filter?: { paths?: readonly string[] },
   ): Promise<MemoryCodeRef[]>;
+  /**
+   * Persist one symbol-table extraction atomically (ADR-0008 "Symbol tables re-extract only
+   * changed files"): for every covered file whose `symbols_hash` differs from the stored
+   * worktree-tier fingerprint's `symbols_hash`, replace that file's `code_symbols` rows and
+   * record the new hash on the fingerprint row. Covered files whose hash already matches are
+   * left untouched (the conflict guard: unchanged rows are never rewritten). Files NOT covered
+   * by the save are never touched — a scoped re-extraction save covers exactly the files it
+   * extracted, and files the extraction could not read are simply not covered, so their
+   * last-known rows stay retained-unavailable. Every covered path must have a live
+   * worktree-tier fingerprint row: the pipeline shape is saveSnapshot FIRST, then
+   * saveSymbolTable (the hash lives on the fingerprint row by schema design). Pruning rows
+   * whose fingerprint anchor died is saveSnapshot's job, never this one's, and the ingestion
+   * checkpoint is as untouchable here as everywhere else.
+   */
+  saveSymbolTable(repository_id: string, input: SymbolTableSave): Promise<SymbolTableSaveResult>;
+  /** The persisted symbol rows of one repository, optionally narrowed by paths. */
+  loadSymbols(
+    repository_id: string,
+    filter?: { paths?: readonly string[] },
+  ): Promise<StoredSymbol[]>;
+}
+
+/** One `code_symbols` row. */
+export interface StoredSymbol {
+  repository_id: string;
+  path: string;
+  name: string;
+  kind: string;
+  signature: string | null;
+  /** 1-based inclusive line range of the span (nullable only for rows written without one). */
+  line_start: number | null;
+  line_end: number | null;
+  /** SHA-256 of the symbol's normalized span; null only for rows written without one. */
+  span_hash: string | null;
+  updated_at: string;
+}
+
+export interface SymbolTableSaveResult {
+  repository: CodeRepositoryRecord;
+  /** Covered files whose stored symbol table was rewritten (their symbols_hash differed). */
+  rewritten: number;
+  /** Covered files skipped by the conflict guard: the stored symbols_hash already matched. */
+  unchanged: number;
 }

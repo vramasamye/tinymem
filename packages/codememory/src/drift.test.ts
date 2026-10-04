@@ -91,6 +91,7 @@ function fingerprintRow(repositoryId: string, path: string, blobSha: string): St
     blob_sha: blobSha,
     file_mode: '100644',
     last_seen_commit: null,
+    symbols_hash: null,
     updated_at: '2026-10-05T00:00:00.000Z',
   };
 }
@@ -130,6 +131,9 @@ function fakeStore(state: FakeCodeMemoryState): CodeMemoryStore {
             (filter.paths === undefined || filter.paths.includes(row.path)),
         ),
       ),
+    // Symbol persistence is not drift's read side; the watcher must never touch it either way.
+    saveSymbolTable: () => unexpected('saveSymbolTable'),
+    loadSymbols: () => unexpected('loadSymbols'),
   };
 }
 
@@ -163,6 +167,7 @@ function persistedFrom(
         blob_sha: file.blob_sha,
         file_mode: file.mode,
         last_seen_commit: snapshot.head_commit,
+        symbols_hash: null,
         updated_at: snapshot.captured_at,
       })),
       ...retained,

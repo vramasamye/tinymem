@@ -1,6 +1,8 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
+import { SYMBOL_KINDS, SYMBOL_LANGUAGES } from '@onememory/core';
+
 /** Portable repository-relative paths; never a shell expression or a filesystem escape. */
 export const RepositoryPathSchema = z.string().min(1).refine((path) =>
   !path.startsWith('/') && !path.includes('\\') && !path.includes('\0') &&
@@ -93,9 +95,118 @@ export interface FingerprintChangeReport {
 export const DetectDriftInputSchema = z.strictObject({ project_id: z.uuid() });
 export type DetectDriftInput = z.infer<typeof DetectDriftInputSchema>;
 
+// ---------------------------------------------------------------------------
+// Symbol extraction (tree-sitter — ADR-0008 "Symbol tables re-extract only changed files")
+// ---------------------------------------------------------------------------
+
+/** The shared cross-language kind vocabulary (single source: `@onememory/core` persistence). */
+export const SymbolKindSchema = z.enum(SYMBOL_KINDS);
+export type SymbolKind = z.infer<typeof SymbolKindSchema>;
+
+/** The grammars the extractor ships; other source extensions are outside the symbol domain. */
+export const SymbolLanguageSchema = z.enum(SYMBOL_LANGUAGES);
+export type SymbolLanguage = z.infer<typeof SymbolLanguageSchema>;
+
+const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/, 'a 64-character lowercase hex SHA-256');
+
+export const SymbolRecordSchema = z.strictObject({
+  name: z.string().min(1).max(512),
+  kind: SymbolKindSchema,
+  /** Normalized single-line declaration header (comments stripped, whitespace collapsed, capped). */
+  signature: z.string().max(256),
+  /** 1-based inclusive line range of the symbol's span. */
+  line_start: z.number().int().min(1),
+  line_end: z.number().int().min(1),
+  /** SHA-256 of the symbol's normalized span — intra-file granularity (ADR-0008). */
+  span_hash: sha256Hex,
+}).refine((symbol) => symbol.line_start <= symbol.line_end, {
+  message: 'line_start must not exceed line_end',
+});
+export type SymbolRecord = z.infer<typeof SymbolRecordSchema>;
+
+export const SymbolFileSchema = z.strictObject({
+  path: RepositoryPathSchema,
+  language: SymbolLanguageSchema,
+  /** Document-order symbol table; a known-language file may legitimately declare nothing. */
+  symbols: z.array(SymbolRecordSchema),
+  /** SHA-256 over the ordered symbol table — the per-file rewrite guard. */
+  symbols_hash: sha256Hex,
+  /** How many ERROR nodes the parse recovered from (error-tolerant extraction stays honest). */
+  parse_errors: z.number().int().min(0),
+});
+export type SymbolFile = z.infer<typeof SymbolFileSchema>;
+
+/**
+ * Why a file the extraction covered has no symbol entry. These are the honest reports — never
+ * a fabricated "no symbols" for bytes the extractor could not read or parse.
+ */
+export const SkippedSymbolFileSchema = z.strictObject({
+  path: RepositoryPathSchema,
+  reason: z.enum([
+    'binary',
+    'conflict',
+    'excluded',
+    'grammar_unavailable',
+    'missing',
+    'submodule',
+    'symlink',
+    'too_large',
+    'unreadable',
+    'unsupported',
+    'unsupported_language',
+  ]),
+});
+export type SkippedSymbolFile = z.infer<typeof SkippedSymbolFileSchema>;
+
+export const SymbolOptionsSchema = z.strictObject({
+  exclusion_globs: z.array(z.string().min(1).max(512)).max(1000).default([]),
+  max_files: z.number().int().min(1).max(1_000_000).default(100_000),
+  max_file_bytes: z.number().int().min(1).max(100_000_000).default(10_000_000),
+  /**
+   * Only-changed re-extraction: extract exactly these paths (repository-relative). The future
+   * re-index job passes the paths a `detectChanges`/`DriftWatcher` report flags. Empty = full
+   * scan of every candidate the shared worktree enumeration offers.
+   */
+  files: z.array(RepositoryPathSchema).max(50_000).default([]),
+}).refine((options) => options.files.length <= options.max_files, {
+  message: 'requested files exceed the configured max_files budget',
+}).refine((options) => new Set(options.files).size === options.files.length, {
+  message: 'duplicate paths in the requested files list',
+});
+export type SymbolOptions = z.input<typeof SymbolOptionsSchema>;
+
+export const SymbolTableSchema = z.strictObject({
+  version: z.literal(1),
+  root_path: z.string().refine(isAbsolute, { message: 'root_path must be absolute' }),
+  extracted_at: z.iso.datetime(),
+  files: z.array(SymbolFileSchema),
+  skipped: z.array(SkippedSymbolFileSchema),
+  warnings: z.array(z.string()),
+}).superRefine((table, ctx) => {
+  const seen = new Set<string>();
+  for (const file of table.files) {
+    if (seen.has(file.path)) ctx.addIssue({ code: 'custom', message: 'duplicate symbol file path' });
+    seen.add(file.path);
+  }
+  for (const skipped of table.skipped) {
+    if (seen.has(skipped.path)) {
+      ctx.addIssue({ code: 'custom', message: 'duplicate or conflicting skipped symbol path' });
+    }
+    seen.add(skipped.path);
+  }
+});
+export type SymbolTable = z.infer<typeof SymbolTableSchema>;
+
 export class FingerprintError extends Error {
   constructor(
-    public readonly code: 'invalid_root' | 'unsupported_path' | 'git_failed' | 'invalid_git_output' | 'scan_limit' | 'snapshot_mismatch',
+    public readonly code:
+      | 'invalid_root'
+      | 'unsupported_path'
+      | 'git_failed'
+      | 'invalid_git_output'
+      | 'scan_limit'
+      | 'snapshot_mismatch'
+      | 'runtime_unavailable',
     message: string,
   ) {
     super(message);
