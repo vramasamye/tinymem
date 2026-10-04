@@ -60,8 +60,15 @@ export interface OnememoryMcpContextOptions extends Omit<OnememoryMcpConfigInput
   embedder?: Embedder;
   /** Injectable clock for deterministic tests. */
   now?: () => Date;
-  /** Pre-built storage (tests / the M13 daemon); overrides the storage config profile. */
+  /** Pre-built storage (tests / the daemon); overrides the storage config profile. */
   storage?: OnememoryStorage;
+  /**
+   * Pre-built retrieval engine riding the injected `storage` — the daemon passes its runtime
+   * engine so REST /v1 and MCP /mcp share one result-cache domain (retrieval.md §5; ADR-0010
+   * amendment 2026-10-04). Requires `storage`: a shared engine reading one database while the
+   * context writes another is never coherent, so the misconfiguration fails at construction.
+   */
+  engine?: RetrievalEngine;
   /** Storage profile config (embedded data dir | server Postgres URL) — used only when `storage` is NOT injected. */
   storageConfig?: StorageConfig;
   /** Environment for CLAUDE_PROJECT_DIR (defaults to process.env at bin time). */
@@ -86,13 +93,20 @@ async function openStorage(
 
 /**
  * Build the server context. Storage is opened here (embedded: PGlite + migrations + vector index;
- * server: Postgres pool). The retrieval engine is wired to the same storage object, with the
- * vector index dimension matched to the injected embedder when present.
+ * server: Postgres pool) unless injected. An injected engine+storage pair (the daemon) is adopted
+ * as-is so every surface shares one cache domain; otherwise the retrieval engine is wired to the
+ * same storage object, with the vector index dimension matched to the injected embedder when
+ * present.
  */
 export async function createOnememoryMcpContext(
   options: OnememoryMcpContextOptions = {},
 ): Promise<OnememoryMcpContext> {
-  const { storage: injectedStorage, storageConfig, embedder, now: nowOption, env: envOption, ...configInput } = options;
+  const { storage: injectedStorage, engine: injectedEngine, storageConfig, embedder, now: nowOption, env: envOption, ...configInput } = options;
+  if (injectedEngine !== undefined && injectedStorage === undefined) {
+    throw new Error(
+      'engine injection requires storage injection: the shared engine must read the storage the context writes through (pass both from one runtime — see the daemon)',
+    );
+  }
   const config = resolveMcpConfig({
     ...configInput,
     ...(storageConfig !== undefined ? { storage: storageConfig } : {}),
@@ -102,10 +116,9 @@ export async function createOnememoryMcpContext(
   const env = envOption ?? {};
   const workspaceHint = env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR !== '' ? env.CLAUDE_PROJECT_DIR : null;
 
-  const engine = createRetrievalEngine(storage, {
-    embedder,
-    now,
-  });
+  // Injected engine (daemon mode) wins: one cache domain across the REST and MCP surfaces.
+  // Otherwise the engine rides the storage opened above, vector channel matched to the embedder.
+  const engine = injectedEngine ?? createRetrievalEngine(storage, { embedder, now });
 
   const actor = `agent:${config.agentId}`;
   let cachedLocalUserId: string | null = null;
