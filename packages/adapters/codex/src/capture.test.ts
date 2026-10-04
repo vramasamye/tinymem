@@ -44,8 +44,10 @@ function dropCount(outcome: CaptureOutcome, prefix: string): number {
 }
 
 /**
- * A credential in every family the security package knows: any of these reaching the daemon
- * would be a P1 leak, so the firewall tests use realistic shapes.
+ * A synthetic credential, Anthropic-key-shaped (prefix + a repeated character — the same
+ * convention as the security package's own fixtures, never a real credential). Anything
+ * reaching the daemon would be a P1 leak, so the firewall test embeds it in a tool call and
+ * asserts the delivered wire only ever contains redaction markers.
  */
 const SECRET = `sk-ant-${'b'.repeat(40)}`;
 
