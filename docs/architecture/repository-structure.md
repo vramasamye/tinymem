@@ -93,12 +93,14 @@ storage      retrieval    extraction    consolidation   graph   codememory
 
 As-built (M2): retrieval → storage (read-only candidate fetchers). It is the one
 engine-to-engine import; rule 4 still holds — SQL never leaves storage.
-As-built (M4 foundation + M4b + M4c + M4d): packages/codememory exists (dual-tier snapshot
+As-built (M4 foundation + M4b + M4c + M4d + M4e): packages/codememory exists (dual-tier snapshot
 capture/compare with primary-source-verified Git argv contracts, drift detection over
-persisted fingerprints, tree-sitter symbol extraction via the web-tree-sitter WASM runtime),
-and storage binds the CodeMemoryStore port — the sole writer of
-repositories/file_fingerprints/code_symbols, which never advances the ingestion checkpoint;
-symbol rows are anchored to live worktree-tier fingerprint rows and die with their anchor.
+persisted fingerprints, tree-sitter symbol extraction via the web-tree-sitter WASM runtime,
+and the drift-apply pipeline: audited stale marks, successor ref retargets, and the deliberate
+compare-and-set `advanceCheckpoint` — the only writer of `last_ingested_commit`, never moved
+as a side effect of any save). Storage binds the CodeMemoryStore port — the sole writer of
+repositories/file_fingerprints/code_symbols; symbol rows are anchored to live worktree-tier
+fingerprint rows and die with their anchor.
 ```
 
 1. **`core` declares ports, does not import implementations.** `Storage`, `Searcher`, `Embedder`,
