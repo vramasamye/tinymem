@@ -18,10 +18,14 @@ function recoveryFor(failure: NormalizedEvent, success: NormalizedEvent): boolea
   if (failure.session_id !== success.session_id) return false;
   if (success.command?.exit_code === 0) {
     if (failure.command) return failure.command.text.trim() === success.command.text.trim();
-    // An error event can explicitly name the failing command in its context.
+    // Error contexts may append a location ("<command> in <path>"), but a mere prefix
+    // match would incorrectly accept a different command with extra arguments.
     const command = success.command.text.trim();
-    return command.length > 0 &&
-      (failure.error?.context ?? '').includes(command);
+    const context = (failure.error?.context ?? '').trim().replace(/^codex:\s*/i, '');
+    const contextCommand = context
+      .replace(/\s+in\s+(?=[./~]|[\w.-]+\/)[\w.@~/-]+$/, '')
+      .trim();
+    return command.length > 0 && contextCommand === command;
   }
   if (success.tests && success.tests.failed === 0 && success.tests.passed > 0) {
     return failure.tests?.framework !== undefined &&

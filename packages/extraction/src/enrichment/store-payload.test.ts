@@ -34,6 +34,41 @@ test('test proof is verified; tool-name-only recovery is mitigation, not a verif
   }
 });
 
+test('a successful command is not recovery when it is only part of the command in the error context', () => {
+  const failure = makeInput(
+    'error.raised',
+    {
+      kind: 'error.raised',
+      origin: 'build',
+      message: 'Cannot find module "./schema"',
+      context: 'bun test --filter saves in packages/storage',
+    },
+  );
+  const success = makeInput(
+    'terminal.output',
+    { kind: 'terminal.output', command: 'bun test', exit_code: 0, output_digest: '87 pass' },
+    { offsetSeconds: 10 },
+  );
+  const normalized = [failure, success].map(normalizeEvent);
+  const candidate: ExtractedMemory = {
+    type: 'failure',
+    content: 'Missing module was not fixed by the unrelated full suite',
+    importance: 0.8,
+    confidence: 0.8,
+    entities: [],
+    evidence: [
+      buildEvidence(failure.event, failure.source.id, 'failure'),
+      buildEvidence(success.event, success.source.id, 'success'),
+    ],
+    failure_signature: failureSignatureForEvents(normalized),
+  };
+
+  const payload = storePayloadFor(candidate, normalized, failure.event.occurred_at) as FailurePayload;
+  expect(payload.status).toBe('open');
+  expect(payload.solution).toBeUndefined();
+  expect(payload.verification).toBeUndefined();
+});
+
 test('uncited success, different command arguments, or prose claiming fixed never prove resolution', () => {
   const failure = makeInput('terminal.output', {
     kind: 'terminal.output', command: 'bun test --filter saves', exit_code: 1, output_digest: 'Cannot find module x',
