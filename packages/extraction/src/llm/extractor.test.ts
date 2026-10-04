@@ -14,12 +14,13 @@ import {
 import type { ExtractionInput } from '@onememory/core';
 
 import { createFallbackExtractor } from '../fallback';
+import { failureSignatureHash } from '../enrichment/failure';
 import { createHeuristicExtractor } from '../heuristic/extractor';
 import { ExtractionOutputError, ExtractionUnavailableError } from '../types';
 import { makeInput } from '../testing/transcripts';
 
 import { createLlmExtractor } from './extractor';
-import { EXTRACTION_PROMPT_VERSION, buildExtractionPrompt } from './prompt';
+import { EXTRACTION_PROMPT_VERSION, EXTRACTION_SYSTEM_PROMPT, buildExtractionPrompt } from './prompt';
 
 type FakeStep = { raw: unknown } | { error: Error };
 
@@ -230,5 +231,111 @@ describe('createLlmExtractor', () => {
     expect(included).toHaveLength(2);
     expect(prompt).toContain('[0] (conversation.message');
     expect(prompt).toContain('[1] (terminal.output');
+  });
+});
+
+describe('createLlmExtractor — M3b enrichment', () => {
+  test('a decision payload from the model is normalized and attached to the decision', async () => {
+    const { router } = fakeRouter([
+      {
+        raw: {
+          memories: [
+            {
+              ...validOutput.memories[0],
+              decision_payload: {
+                decision: '  PostgreSQL over SQLite ',
+                alternatives: [{ option: 'SQLite', why_rejected: null }, { option: 'it' }],
+                rationale: 'pgvector support',
+              },
+            },
+          ],
+          working: [],
+        },
+      },
+    ]);
+    const result = await createLlmExtractor({ router }).extract(session());
+    expect(result.memories[0]!.decision_payload).toEqual({
+      decision: 'PostgreSQL over SQLite',
+      alternatives: [{ option: 'SQLite' }],
+      rationale: 'pgvector support',
+    });
+  });
+
+  test('a decision payload on a non-decision candidate is dropped, never attached', async () => {
+    const { router } = fakeRouter([
+      {
+        raw: {
+          memories: [
+            {
+              ...validOutput.memories[0],
+              type: 'episodic',
+              decision_payload: { decision: 'PostgreSQL', alternatives: [], rationale: null },
+            },
+          ],
+          working: [],
+        },
+      },
+    ]);
+    const result = await createLlmExtractor({ router }).extract(session());
+    expect(result.memories[0]!.decision_payload).toBeUndefined();
+  });
+
+  test('the failure signature is computed from the cited events, never asked of the model', async () => {
+    const { router } = fakeRouter([
+      {
+        raw: {
+          memories: [
+            {
+              type: 'failure',
+              content: '`bun test` fails on a missing module; the import path was fixed.',
+              importance: 0.75,
+              confidence: 0.7,
+              entities: ['Bun'],
+              event_indexes: [1],
+              future_value_rationale: 'the fix is reusable',
+            },
+          ],
+          working: [],
+        },
+      },
+    ]);
+    const result = await createLlmExtractor({ router }).extract(session());
+    expect(result.memories[0]!.failure_signature).toEqual({
+      type: 'MODULE_NOT_FOUND',
+      hash: failureSignatureHash('MODULE_NOT_FOUND', '$ bun test → exit <n> error: cannot find module'),
+      normalized_message: '$ bun test → exit <n> error: cannot find module',
+      origin: 'command',
+      tool: 'bun',
+      command: 'bun test',
+    });
+  });
+
+  test('a failure candidate citing no failure event carries no signature (no invented provenance)', async () => {
+    const { router } = fakeRouter([
+      {
+        raw: {
+          memories: [
+            {
+              type: 'failure',
+              content: 'The storage layer used to be flaky before the rewrite.',
+              importance: 0.75,
+              confidence: 0.7,
+              entities: [],
+              event_indexes: [0],
+              future_value_rationale: 'explains the rewrite',
+            },
+          ],
+          working: [],
+        },
+      },
+    ]);
+    const result = await createLlmExtractor({ router }).extract(session());
+    expect(result.memories[0]!.failure_signature).toBeUndefined();
+  });
+
+  test('the prompt asks for a decision payload and forbids inventing signatures', () => {
+    expect(EXTRACTION_SYSTEM_PROMPT).toContain('decision_payload');
+    expect(EXTRACTION_SYSTEM_PROMPT).toContain('Never invent an alternative');
+    expect(EXTRACTION_SYSTEM_PROMPT).toContain('Do NOT emit a failure signature or hash');
   });
 });

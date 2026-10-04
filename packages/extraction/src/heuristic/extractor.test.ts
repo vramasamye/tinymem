@@ -6,8 +6,19 @@
 import { describe, expect, test } from 'bun:test';
 import { ExtractionResultSchema, type ExtractedMemory } from '@onememory/core';
 
+import { failureSignatureHash } from '../enrichment/failure';
+import {
+  chatterSession,
+  decisionSession,
+  failureNoiseVariants,
+  goldenSession,
+  makeInput,
+  noiseSession,
+  sessionlessInputs,
+  testFailureSession,
+} from '../testing/transcripts';
+
 import { createHeuristicExtractor } from './extractor';
-import { goldenSession, makeInput, noiseSession, sessionlessInputs } from '../testing/transcripts';
 
 const extractor = createHeuristicExtractor();
 
@@ -21,7 +32,7 @@ describe('heuristic extractor — golden session', () => {
     expect(() => ExtractionResultSchema.parse(result)).not.toThrow();
     expect(result.extraction_meta).toEqual({
       method: 'heuristic',
-      prompt_version: 'heuristic-v1',
+      prompt_version: 'heuristic-v2',
     });
     expect(result.memories.length).toBeGreaterThan(0);
   });
@@ -110,6 +121,153 @@ describe('heuristic extractor — noise session', () => {
     expect(result.memories).toEqual([]);
     expect(result.working).toEqual([]);
     expect(() => ExtractionResultSchema.parse(result)).not.toThrow();
+  });
+});
+
+describe('heuristic extractor — M3b decision capture', () => {
+  test('captures the alternative, the rationale and the rejected option', async () => {
+    const result = await extractor.extract(decisionSession());
+    const decisions = result.memories.filter((memory) => memory.type === 'decision');
+    expect(decisions).toHaveLength(1);
+    const decision = decisions[0]!;
+    expect(decision.subtype).toBe('decision.choice');
+    expect(decision.content).toBe(
+      'Decision: Drizzle over Prisma — because Drizzle generates plain SQL migrations — also rejected: Kysely',
+    );
+    expect(decision.decision_payload).toEqual({
+      decision: 'Drizzle',
+      alternatives: [
+        { option: 'Prisma' },
+        { option: 'Kysely', why_rejected: 'the team already knows Drizzle' },
+      ],
+      rationale: 'Drizzle generates plain SQL migrations',
+    });
+    expect(decision.entities).toContain('Drizzle');
+    expect(decision.evidence).toHaveLength(1);
+  });
+
+  test('a decision without alternatives or rationale still records an (empty) payload', async () => {
+    const result = await extractor.extract(goldenSession());
+    const decision = result.memories.find((memory) => memory.type === 'decision')!;
+    expect(decision.subtype).toBe('decision.statement');
+    expect(decision.decision_payload).toEqual({
+      decision: 'use PostgreSQL with pgvector as the only database dialect',
+      alternatives: [],
+    });
+  });
+
+  test('an explicit decision statement keeps the user wording and gains the payload', async () => {
+    const result = await extractor.extract([
+      makeInput('explicit.remember', {
+        kind: 'explicit.remember',
+        content: 'We decided to keep PGlite as the embedded profile because it needs no daemon.',
+        type: 'decision',
+      }),
+    ]);
+    const decision = result.memories[0]!;
+    expect(decision.content).toBe('We decided to keep PGlite as the embedded profile because it needs no daemon.');
+    expect(decision.decision_payload).toEqual({
+      decision: 'keep PGlite as the embedded profile',
+      alternatives: [],
+      rationale: 'it needs no daemon',
+    });
+  });
+
+  test('chatter that only sounds like a decision produces no decision candidate', async () => {
+    const result = await extractor.extract(chatterSession());
+    expect(result.memories.filter((memory) => memory.type === 'decision')).toEqual([]);
+    expect(result.memories.filter((memory) => memory.type === 'failure')).toEqual([]);
+    // The one candidate the chatter session legitimately yields is the stated preference; it must
+    // not have grown a decision payload, and nothing anywhere carries a failure signature.
+    expect(result.memories.map((memory) => memory.type)).toEqual(['preference']);
+    for (const memory of result.memories) {
+      expect(memory.decision_payload).toBeUndefined();
+      expect(memory.failure_signature).toBeUndefined();
+    }
+  });
+});
+
+describe('heuristic extractor — M3b failure signatures', () => {
+  test('a resolved error carries a normalized class and a reproducible digest', async () => {
+    const result = await extractor.extract(goldenSession());
+    const failures = result.memories.filter((memory) => memory.type === 'failure');
+    expect(failures).toHaveLength(1);
+    const signature = failures[0]!.failure_signature!;
+    expect(signature.type).toBe('MODULE_NOT_FOUND');
+    expect(signature.origin).toBe('error');
+    expect(signature.error_origin).toBe('build');
+    expect(signature.hash).toBe(failureSignatureHash(signature.type, signature.normalized_message));
+    expect(signature.normalized_message).toContain('cannot find module');
+    // The content stays the human-readable statement, now prefixed with the class.
+    expect(failures[0]!.content).toStartWith('Failure: MODULE_NOT_FOUND — Cannot find module');
+    expect(failures[0]!.content).toContain('resolved by: `bun test`');
+  });
+
+  test('a failing test run resolved by a green one becomes a failure memory', async () => {
+    const result = await extractor.extract(testFailureSession());
+    const failures = result.memories.filter((memory) => memory.type === 'failure');
+    expect(failures).toHaveLength(1);
+    const failure = failures[0]!;
+    expect(failure.subtype).toBe('failure.resolved');
+    expect(failure.failure_signature).toEqual({
+      type: 'TEST_FAILURE',
+      hash: failureSignatureHash('TEST_FAILURE', 'bun: saves rows | reads rows'),
+      normalized_message: 'bun: saves rows | reads rows',
+      origin: 'test',
+      tool: 'bun',
+    });
+    expect(failure.content).toBe(
+      'Failure: TEST_FAILURE — 2 failed: saves rows, reads rows — resolved by: tests passing',
+    );
+    expect(failure.evidence).toHaveLength(2);
+  });
+
+  test('an unresolved failing test run stays session-scoped (never a durable failure)', async () => {
+    const inputs = testFailureSession().slice(0, 1);
+    const result = await extractor.extract(inputs);
+    expect(result.memories.filter((memory) => memory.type === 'failure')).toEqual([]);
+    const note = result.working.find((candidate) => candidate.kind === 'current_error');
+    expect(note?.content).toContain('saves rows');
+  });
+
+  test('the same failure with different paths, timings and colour codes hashes identically', async () => {
+    const [plain, noisy] = failureNoiseVariants();
+    const first = (await extractor.extract(plain)).memories.find((memory) => memory.type === 'failure')!;
+    const second = (await extractor.extract(noisy)).memories.find((memory) => memory.type === 'failure')!;
+    expect(first.failure_signature!.hash).toBe(second.failure_signature!.hash);
+    expect(first.failure_signature!.normalized_message).toBe(second.failure_signature!.normalized_message);
+    // …while the durable content keeps the concrete message the transcript carried.
+    expect(first.content).toContain('src/store.ts');
+    expect(second.content).toContain('/Users/dev/proj/packages/storage/src/store.ts');
+  });
+
+  test('a failing command is fingerprinted as a command failure with its tool', async () => {
+    const result = await extractor.extract([
+      makeInput(
+        'terminal.output',
+        { kind: 'terminal.output', command: 'bunx tsc --noEmit', exit_code: 2, output_digest: 'error TS2345: bad argument' },
+        { offsetSeconds: 0 },
+      ),
+      makeInput(
+        'terminal.output',
+        { kind: 'terminal.output', command: 'bunx tsc --noEmit', exit_code: 0, output_digest: 'no errors' },
+        { offsetSeconds: 10 },
+      ),
+    ]);
+    const failure = result.memories.find((memory) => memory.type === 'failure')!;
+    // `event.text` for a terminal output is `$ <command> → exit <code> <output digest>`, lowercased
+    // and noise-normalized by the signature (the command itself keeps its case in the content).
+    const normalized = '$ bunx tsc --noemit → exit <n> error ts2345: bad argument';
+    expect(failure.failure_signature).toEqual({
+      type: 'TYPECHECK_ERROR',
+      hash: failureSignatureHash('TYPECHECK_ERROR', normalized),
+      normalized_message: normalized,
+      origin: 'command',
+      tool: 'bunx',
+      command: 'bunx tsc',
+    });
+    expect(failure.content).toContain('`bunx tsc --noEmit` failed');
+    expect(failure.content).toContain('resolved by: `bunx tsc --noEmit`');
   });
 });
 

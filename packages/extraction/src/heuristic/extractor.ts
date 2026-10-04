@@ -4,9 +4,11 @@
  *
  * Recognizes (memory-model.md §8 stage 4, event-memory-schemas.md §3):
  * 1. explicit user intent (`explicit.remember`) — highest source authority;
- * 2. explicit decision language ("we decided", "chose X over Y", "settled on");
+ * 2. explicit decision language ("we decided", "chose X over Y", "settled on"), enriched with the
+ *    alternatives considered and the rationale when the sentence carries them (M3b);
  * 3. preference statements ("always/never/prefer/make sure to");
- * 4. error + resolution pairs (`error.raised`/failing command followed by a related success);
+ * 4. failure incidents — `error.raised`, a non-zero exit code, or failing tests — paired with a
+ *    related success, each carrying a stable failure signature (M3b);
  * 5. recurring commands and command sequences (≥ 2 occurrences → procedural candidate);
  * 6. versioned facts ("upgraded to Node 22");
  * 7. stack/dependency mentions (git commits, pull requests, documents);
@@ -29,6 +31,12 @@ import {
 } from '@onememory/core';
 
 import { createHeuristicClassifier, EXPLICIT_SEMANTIC_SUBTYPE, type Classifier, type WorkingSignal } from '../classifier';
+import { decisionContent, decisionPayloadFromText, enrichDecision } from '../enrichment/decision';
+import {
+  createFailureSignature,
+  failureIncidentOf,
+  failureStatement,
+} from '../enrichment/failure';
 import {
   buildEvidence,
   eventTextForMatching,
@@ -142,6 +150,10 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         // explicit user statement, which memory-model.md §9 allows to become `semantic` directly.
         const explicitDurableTypes = new Set(['procedural', 'decision', 'preference', 'failure']);
         const isSemantic = declared === undefined || !explicitDurableTypes.has(declared);
+        // An explicit decision statement keeps the user's own wording as content, but still gets
+        // the structured payload when the wording carries alternatives/rationale.
+        const decisionPayload =
+          declared === 'decision' ? decisionPayloadFromText(event.explicit.content) : undefined;
         push({
           type: isSemantic ? 'semantic_candidate' : (declared as ExtractedMemory['type']),
           ...(isSemantic ? { subtype: EXPLICIT_SEMANTIC_SUBTYPE } : {}),
@@ -151,6 +163,7 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
           entities: extractTechMentions(event.explicit.content),
           evidence: [evidenceFor(event, event.explicit.content)],
           future_value_rationale: 'explicit user statement — highest source authority',
+          ...(decisionPayload === undefined ? {} : { decision_payload: decisionPayload }),
         });
       }
 
@@ -180,20 +193,20 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         if (firstMatch(source.text, DECISION_NOISE_PATTERNS)) continue;
         const match = firstMatch(source.text, DECISION_PATTERNS);
         if (!match) continue;
+        const index = source.text.indexOf(match.match);
+        const payload = enrichDecision({ match, text: source.text, index: index < 0 ? 0 : index });
+        if (!payload) continue;
         const user = source.role === 'user';
-        const isChoice = match.captures.length >= 2;
-        const statement = isChoice
-          ? `${match.captures[0]} over ${match.captures[1]}`
-          : (match.captures[0] ?? match.match);
         push({
           type: 'decision',
-          subtype: isChoice ? 'decision.choice' : 'decision.statement',
-          content: `Decision: ${statement}`,
+          subtype: payload.alternatives.length > 0 ? 'decision.choice' : 'decision.statement',
+          content: decisionContent(payload),
           importance: 0.8,
           confidence: user ? 0.85 : 0.6,
-          entities: extractTechMentions(match.match),
+          entities: extractTechMentions(`${match.match} ${payload.rationale ?? ''}`),
           evidence: [evidenceFor(source.event, match.match)],
           future_value_rationale: 'explicit decision language — prevents re-litigating settled choices',
+          decision_payload: payload,
         });
       }
 
@@ -217,12 +230,10 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         });
       }
 
-      // --- 4. error + resolution pairs ------------------------------------------------------
-      const failures = normalized.filter(
-        (event) =>
-          event.error !== undefined ||
-          (event.command !== undefined && event.command.exit_code !== null && event.command.exit_code !== 0),
-      );
+      // --- 4. failure incidents and error + resolution pairs --------------------------------
+      // One definition of "a failure happened" (enrichment/failure.ts): an `error.raised`, a
+      // command that exited non-zero, or a test run with failing tests.
+      const failures = normalized.filter((event) => failureIncidentOf(event) !== undefined);
       const successes = normalized.filter(
         (event) =>
           (event.command !== undefined && event.command.exit_code === 0) ||
@@ -240,6 +251,8 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         const successCommand = success.command?.normalized;
         if (failureCommand && successCommand && failureCommand === successCommand) return true;
         if (failure.error?.origin === 'test' && success.tests) return true;
+        // A red test run is resolved by a green one (the framework is the shared context).
+        if (failure.tests && success.tests) return true;
         const executableTokens = new Set(
           [failureCommand, successCommand]
             .filter((value): value is string => value !== undefined)
@@ -249,7 +262,9 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         const failureTokens = significantTokens(
           failure.error
             ? `${failure.error.message} ${failure.error.context ?? ''}`
-            : `${failure.command?.text ?? ''} ${failure.command?.normalized ?? ''}`,
+            : failure.tests
+              ? `${failure.tests.framework ?? ''} ${failure.tests.failure_names.join(' ')}`
+              : `${failure.command?.text ?? ''} ${failure.command?.normalized ?? ''}`,
         );
         const successTokens = significantTokens(
           success.command
@@ -281,23 +296,25 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
       const pairings = failures.map((failure) => ({ failure, success: pairFor(failure) }));
 
       for (const { failure, success } of pairings) {
-        const label = failure.error?.message ?? `\`${failure.command?.text ?? 'command'}\` failed`;
+        const incident = failureIncidentOf(failure)!;
+        const signature = createFailureSignature(incident);
         if (!success) {
-          pushWorking('unresolved_error', `Unresolved error: ${label}`, failure);
+          pushWorking('unresolved_error', `Unresolved error: ${incident.label}`, failure);
           continue;
         }
-        // A failing command whose incident also produced an `error.raised` is described better by
-        // that event: emit one failure candidate per incident, not two.
+        // A failing command whose incident also produced a richer failure event (`error.raised` or
+        // a `test.results` run) is described better by that event: one candidate per incident.
         if (failure.command && !failure.error) {
-          const coveredByErrorEvent = pairings.some(
+          const coveredByRicherEvent = pairings.some(
             (other) =>
               other.success !== undefined &&
-              other.failure.error !== undefined &&
+              other.failure.event_id !== failure.event_id &&
+              (other.failure.error !== undefined || (other.failure.tests?.failed ?? 0) > 0) &&
               other.failure.session_id === failure.session_id &&
               other.failure.occurred_at >= failure.occurred_at &&
               other.failure.occurred_at <= success.occurred_at,
           );
-          if (coveredByErrorEvent) continue;
+          if (coveredByRicherEvent) continue;
         }
         const resolution = success.command
           ? `\`${success.command.text}\``
@@ -307,12 +324,13 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         push({
           type: 'failure',
           subtype: 'failure.resolved',
-          content: `Error: ${clamp(label, 200)} — resolved by: ${resolution}`,
+          content: failureStatement(signature, clamp(incident.label, 200), resolution),
           importance: 0.75,
           confidence: 0.7,
-          entities: extractTechMentions(`${label} ${resolution}`),
-          evidence: [evidenceFor(failure, label), evidenceFor(success, resolution)],
+          entities: extractTechMentions(`${incident.label} ${resolution}`),
+          evidence: [evidenceFor(failure, incident.label), evidenceFor(success, resolution)],
           future_value_rationale: 'error followed by a related success — the fix is reusable',
+          failure_signature: signature,
         });
       }
 
