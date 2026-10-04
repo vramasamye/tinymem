@@ -1,0 +1,24 @@
+{
+  "name": "@onememory/codememory",
+  "version": "0.1.0",
+  "description": "Local code fingerprints: Git index/worktree snapshots, rename-aware changes, and filesystem hash fallback",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "bench": "bun run src/fingerprints.bench.ts"
+  },
+  "dependencies": {
+    "@onememory/security": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}

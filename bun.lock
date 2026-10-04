@@ -86,6 +86,17 @@
         "@types/bun": "^1.4.2",
       },
     },
+    "packages/codememory": {
+      "name": "@onememory/codememory",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/security": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
     "packages/config": {
       "name": "@onememory/config",
       "version": "0.1.0",
@@ -321,6 +332,8 @@
     "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
 
     "@onememory/api": ["@onememory/api@workspace:apps/api"],
+
+    "@onememory/codememory": ["@onememory/codememory@workspace:packages/codememory"],
 
     "@onememory/config": ["@onememory/config@workspace:packages/config"],
 
