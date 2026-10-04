@@ -360,7 +360,7 @@ CREATE TABLE file_fingerprints (              -- zero-token drift oracle (both t
   tier           text NOT NULL DEFAULT 'committed' CHECK (tier IN ('committed','worktree')),
   file_mode      text,                        -- '100644' | '100755'; null = pre-column rows
   last_seen_commit text,
-  symbols_hash   text,                        -- hash of the symbol table for this file
+  symbols_hash   text,                        -- symbol-table hash; worktree tier only (M4d: symbols are extracted from the bytes the agent saw)
   updated_at     timestamptz NOT NULL DEFAULT now(),  -- last VALUE change, not last observation
   PRIMARY KEY (repository_id, tier, path)     -- ADR-0008: committed and worktree coexist per path
 );
@@ -370,12 +370,15 @@ CREATE TABLE code_symbols (
   repository_id uuid NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
   path          text NOT NULL,
   name          text NOT NULL,
-  kind          text NOT NULL,                -- function|class|type|interface|method|const|module
+  kind          text NOT NULL,                -- one cross-language set: class|enum|function|impl|interface|method|module|struct|trait|type
   signature     text,
   line_start    integer,
   line_end      integer,
   span_hash     text,                         -- symbol-body hash → intra-file drift
   updated_at    timestamptz NOT NULL DEFAULT now()
+  -- M4d as-built: no natural key (overloads legitimately repeat name+kind within a file); rows
+  -- live only while a live worktree-tier file_fingerprints row anchors them — saveSnapshot prunes
+  -- dead anchors, so symbols never outlive their evidence.
 );
 CREATE INDEX code_symbols_repo_path_idx ON code_symbols (repository_id, path);
 CREATE INDEX code_symbols_name_idx     ON code_symbols (repository_id, name);
