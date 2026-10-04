@@ -35,11 +35,11 @@ Definition of done (Phase 1):
 - [x] `onemem init` scaffolds config + embedded storage and, with explicit consent, detects/configures Claude Code + Codex. Verified from a fresh project with both flags; all project-scoped files were created.
 - [x] `onemem doctor` validates storage, local-mode guard, and wired runtimes. Fresh-project and live-daemon checks reported both runtimes `pass`, the network guard `pass` with 0 attempts, and no failures. The default profile has no embedder, so doctor honestly warns that vector search is unavailable.
 - [x] Roundtrip: explicit CLI remember → token-budgeted CLI search returned the memory with provenance and explain; MCP `memory_store` without `project_id` → MCP search and CLI search returned the same project memory. Search stayed within a 120-token budget.
-- [x] `bun test` green; integration tests pass on BOTH embedded (PGlite) and Postgres targets. Full repo suite: 877 pass, 0 fail, 16 environment-gated skips; Postgres 17 storage parity: 35 pass, 0 fail.
-- [ ] Combined e2e: ingest a transcript fixture → extract decisions/failures → retrieve correct current-vs-historical answers. Extraction/provenance is covered in `packages/extraction/src/handlers/extract.test.ts`; temporal answers are covered separately in `packages/retrieval/src/engine.test.ts`. No combined pipeline test exists, and automatic supersession/consolidation is M14 scope.
+- [x] `bun test` green; integration tests pass on BOTH embedded (PGlite) and Postgres targets. Full repo suite: 878 pass, 0 fail, 16 environment-gated skips; Postgres 17 storage parity: 35 pass, 0 fail.
+- [x] Combined e2e: `apps/api/src/runtime/extraction-temporal.test.ts` ingests the golden transcript, extracts decision/failure memories with source and evidence, explicitly supersedes extracted Node 20 with an extracted Node 22 candidate through the audited storage transaction, and verifies current, point-in-time, and historical retrieval. Automatic contradiction detection/authority resolution remains M14 scope.
 - [x] 100% local: default-profile remember/search passed with the enforced network guard recording 0 calls; the taint integration test also asserts zero outbound calls during the real redact/ingest/query path.
 
-**Gate status:** Phase 1 is not yet complete. The combined transcript-to-temporal acceptance criterion remains open; see the P1 cross-mission follow-up in `docs/backlog/issues.md`.
+**Gate status:** Phase 1 is complete against the criteria above. Its temporal acceptance uses explicit supersession; automatic contradiction detection, authority resolution, and consolidation remain Phase 3 / M14 work.
 
 ## Phase 2 — Coding memory
 

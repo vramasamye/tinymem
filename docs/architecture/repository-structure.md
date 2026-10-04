@@ -130,8 +130,8 @@ scaffolds only accept loopback HTTP URLs because the daemon has no authenticatio
 - Unit tests: co-located in each package (`*.test.ts`, `bun:test`).
 - Integration: `tests/integration/` — pipeline stages against real PGlite + real Postgres
   (docker), both dialect paths exercised (CI matrix: `embedded` / `postgres`).
-- E2E: CLI init/doctor wiring tests and daemon HTTP MCP tests live beside their apps; the
-  extraction fixture pipeline and temporal retrieval fixtures are separate integration suites.
-  A combined transcript-ingest-to-temporal-answer acceptance test remains a Phase 1 gate.
+- E2E: CLI init/doctor wiring, daemon HTTP MCP, and combined transcript extraction → explicit
+  supersession → temporal retrieval acceptance tests live beside their apps. Automatic
+  contradiction detection and authority resolution remain M14 acceptance work.
 - Benchmarks: `benchmarks/` — token efficiency, retrieval precision/recall, ingestion latency;
   run in CI nightly and on demand; results checked into `benchmarks/results/` for regression diffing.

@@ -222,12 +222,11 @@ formalization, to be folded rather than run as written.
 7. **Doctor: adapter state + capture health** [P3] — surface `.onememory/adapters/*.json` cursor
    state with a reset offer (mission-6 §5.4) and a structured delivery ledger for capture hooks,
    which needs a small daemon-side counters endpoint (mission-7 §6).
-8. **Combined transcript-to-temporal acceptance** [P1 gate] — the Phase 1 DoD requires a transcript
-   fixture to be ingested, decisions/failures extracted with provenance, and current-vs-historical
-   retrieval checked end to end. Today extraction/storage and temporal retrieval are covered by
-   separate suites; M14 owns automatic supersession/consolidation. AC: add the combined fixture
-   workflow when supersession is available, or amend the Phase 1 DoD and phase gate before declaring
-   Phase 1 complete.
+8. ~~**Combined transcript-to-temporal acceptance**~~ Resolved: the API cross-package acceptance
+   test ingests the golden transcript, checks extracted decision/failure provenance, explicitly
+   supersedes extracted version facts, and verifies current/as-of/history answers through the real
+   retrieval engine. This does not implement automatic matching or authority resolution; M14 still
+   owns those stages and must exercise them end to end.
 9. **Published hook invocation contract** [P1] — generated Claude hooks assume a project-local
    `node_modules` path and the Claude bin lacks a shebang; Codex capture assumes its executable is
    on `PATH`. AC: a clean external project using the published package can run every generated
