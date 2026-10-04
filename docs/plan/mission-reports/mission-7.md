@@ -160,9 +160,11 @@ module currently imports it — the coordinator may want to keep or demote it to
   stderr; a structured "delivery ledger" would need a small daemon-side counters endpoint).
 - **Adapter parity:** the Claude Code adapter (M6) should mirror the AGENTS.md pointer and
   the MCP env contract so both runtimes share one `.onememory` project cleanly.
-- **Research doc correction:** update
-  `docs/research/mcp-memory-implementations.md` re: `disable_on_external_context` default
-  (false, verified 2026-10-03) — left untouched here (not this mission's file).
+- ~~**Research doc correction:** update
+  `docs/research/mcp-memory-implementations.md` re: `disable_on_external_context` default~~
+  ✅ Resolved (coordinator, 2026-10-04): section B.2, the per-runtime matrix, and open question 3
+  now state the verified `false` default, and ADR-0010 §7's claim was corrected with the
+  daemon-backed MCP amendment.
 - **Optional:** a `POST /v1/projects/{id}/events` bulk-mode flag for backfills larger than
   the 500-batch cap is unnecessary today (the adapter batches), noted only if backfill volumes
   grow.

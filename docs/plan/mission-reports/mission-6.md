@@ -164,8 +164,11 @@ Runtime env the hook honors: `ONEMEMORY_PROJECT_ID` (override), `ONEMEMORY_DAEMO
 1. **Wire `onemem init`** to the scaffold builders (§3 signatures) and to `runHook`'s contract for
    any doctor diagnostics (state file present, cursor count). The CLI owns file writes; the
    builders are pure.
-2. **Fix or implement the draft-completion claim** in mission-13's OpenAPI document (§4.2) — either
-   reword the description or complete drafts server-side; the adapter is unaffected either way.
+2. ~~**Fix or implement the draft-completion claim** in mission-13's OpenAPI document (§4.2)~~
+   ✅ Resolved (coordinator, `c5fa8c0`, 2026-10-03): implemented server-side — `completeDraftEvent`
+   fills missing `id`/`ingested_at`/`content_hash`/`redactions` before validation, exactly as the
+   published contract describes; regression tests cover the stored draft, the duplicate by
+   completed hash, and the payload-less dead-letter. The adapter's complete envelopes remain valid.
 3. **Shared wire-schema package** (project.json / daemon.json): both `@onememory/config` and
    `apps/api` own formats the adapter re-declares. If either gains a field, update
    `discovery.ts` (strict schemas fail loud → visible, not silent).

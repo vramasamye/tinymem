@@ -210,6 +210,18 @@ formalization, to be folded rather than run as written.
    automatically instead of riding provenance metadata.
 4. **Injectable clock for `memory_events.at`** [P3] — audit rows are DB-clock-stamped; uniform
    time-travel tests want the injected `now`.
+5. **stdio bin embedded-owner guard** [P1] (from the ADR-0010 amendment, 2026-10-04) — the
+   standalone `onemem-mcp` bin can still open embedded storage (`ONEMEMORY_DATA_DIR`) while a
+   daemon is alive: a second PGlite owner of the same data dir, exactly what ADR-0002 forbids.
+   `onemem init` never scaffolds that combination (it points at the daemon's `/mcp`), but the bin
+   itself should probe the daemon lock and refuse loudly, pointing at the running daemon's MCP
+   endpoint.
+6. **Shared wire-schema package** (`project.json` / `daemon.json`) [P3] — the Claude Code adapter
+   re-declares cross-process wire records owned by `@onememory/config` / `apps/api`; strict schemas
+   fail loud on drift, but a format change needs two edits (mission-6 §5.3).
+7. **Doctor: adapter state + capture health** [P3] — surface `.onememory/adapters/*.json` cursor
+   state with a reset offer (mission-6 §5.4) and a structured delivery ledger for capture hooks,
+   which needs a small daemon-side counters endpoint (mission-7 §6).
 
 Raised by M3 (extraction): worker-process ONNX isolation (daemon event-loop) — folded into M13's
 brief as a documented decision; consolidation (M14) consumes `semantic_candidate`-tagged memories;
