@@ -838,6 +838,129 @@ export async function codeMemoryPersistenceScenario(storage: OnememoryStorage): 
   expect(await storage.codeMemory.loadFingerprints(repository.id)).toEqual([]);
 }
 
+/**
+ * Code refs (M4c): the persistence half of the drift oracle. Refs are worktree-tier evidence by
+ * definition (no tier column — pinned in code against the normative worktree-tier drift query),
+ * recordCodeRefs is an idempotent upsert, the latest snapshot's unreadable set is persisted so
+ * drift can treat retained rows as suspects, and removal happens only via FK cascades.
+ */
+export async function codeMemoryRefsScenario(storage: OnememoryStorage): Promise<void> {
+  const ctx = await seedProjectAndSource(storage, 'code-refs-project');
+  const inserted = await storage.store.insertMemory(
+    makeMemory(ctx, { content: `the auth module validates sessions ${uniqueId().slice(0, 8)}` }),
+  );
+  expect(inserted.outcome).toBe('inserted');
+  const root = `/tmp/onemem-code-refs-${uniqueId()}`;
+  const repository = await storage.codeMemory.ensureRepository({ project_id: ctx.projectId, root_path: root });
+
+  // A capture that could not read src/b.ts: its unavailable set must persist for drift's
+  // suspicion (b.ts never had a row, so nothing is retained — retained_unavailable stays 0).
+  const saved = await storage.codeMemory.saveSnapshot(repository.id, {
+    root_path: root,
+    head_commit: hex40('c'),
+    hash_algorithm: 'git-sha1',
+    mode: 'git',
+    exclusion_globs: [],
+    captured_at: '2026-10-05T00:00:00.000Z',
+    files: [
+      { path: 'src/a.ts', tier: 'committed', blob_sha: sha(1), mode: '100644' },
+      { path: 'src/a.ts', tier: 'worktree', blob_sha: sha(2), mode: '100644' },
+    ],
+    skipped: [{ path: 'src/b.ts', tier: 'worktree' }],
+  });
+  expect(saved.retained_unavailable).toBe(0);
+  const metadata = await storage.codeMemory.loadSnapshotMetadata(repository.id);
+  expect(metadata?.skipped).toEqual([{ path: 'src/b.ts', tier: 'worktree' }]);
+  expect(metadata?.skipped_count).toBe(1);
+
+  // Idempotent upsert: re-recording a path updates its blob and keeps the original created_at.
+  const recorded = await storage.codeMemory.recordCodeRefs({
+    memory_id: inserted.memory.id,
+    repository_id: repository.id,
+    refs: [
+      { path: 'src/a.ts', blob_sha: sha(2) },
+      { path: 'src/b.ts', blob_sha: sha(3) },
+    ],
+  });
+  expect(recorded.map((ref) => `${ref.path}@${ref.blob_sha}`)).toEqual([
+    `src/a.ts@${sha(2)}`,
+    `src/b.ts@${sha(3)}`,
+  ]);
+  const updated = await storage.codeMemory.recordCodeRefs({
+    memory_id: inserted.memory.id,
+    repository_id: repository.id,
+    refs: [{ path: 'src/a.ts', blob_sha: sha(9) }],
+  });
+  expect(updated).toHaveLength(1);
+  expect(updated[0]?.blob_sha).toBe(sha(9));
+  const listed = await storage.codeMemory.listCodeRefs(repository.id);
+  expect(listed.map((ref) => `${ref.path}@${ref.blob_sha}`)).toEqual([
+    `src/a.ts@${sha(9)}`,
+    `src/b.ts@${sha(3)}`,
+  ]);
+  expect(listed.find((ref) => ref.path === 'src/a.ts')?.created_at).toBe(
+    recorded.find((ref) => ref.path === 'src/a.ts')?.created_at,
+  );
+  expect((await storage.codeMemory.listCodeRefs(repository.id, { paths: ['src/b.ts', 'no.ts'] })).map((ref) => ref.path)).toEqual(['src/b.ts']);
+  expect(await storage.codeMemory.listCodeRefs(repository.id, { paths: [] })).toEqual([]);
+
+  // Boundary rejection: unsafe paths, malformed hashes, duplicated paths, unknown rows.
+  await expect(
+    storage.codeMemory.recordCodeRefs({
+      memory_id: inserted.memory.id,
+      repository_id: repository.id,
+      refs: [{ path: '../escape.ts', blob_sha: sha(1) }],
+    }),
+  ).rejects.toThrow(ValidationError);
+  await expect(
+    storage.codeMemory.recordCodeRefs({
+      memory_id: inserted.memory.id,
+      repository_id: repository.id,
+      refs: [{ path: 'x.ts', blob_sha: 'not-hex' }],
+    }),
+  ).rejects.toThrow(ValidationError);
+  await expect(
+    storage.codeMemory.recordCodeRefs({
+      memory_id: inserted.memory.id,
+      repository_id: repository.id,
+      refs: [
+        { path: 'x.ts', blob_sha: sha(1) },
+        { path: 'x.ts', blob_sha: sha(2) },
+      ],
+    }),
+  ).rejects.toThrow(ValidationError);
+  await expect(
+    storage.codeMemory.recordCodeRefs({
+      memory_id: uniqueId(),
+      repository_id: repository.id,
+      refs: [{ path: 'x.ts', blob_sha: sha(1) }],
+    }),
+  ).rejects.toThrow(/not found/);
+  await expect(
+    storage.codeMemory.recordCodeRefs({
+      memory_id: inserted.memory.id,
+      repository_id: uniqueId(),
+      refs: [{ path: 'x.ts', blob_sha: sha(1) }],
+    }),
+  ).rejects.toThrow(/not found/);
+
+  // Removal is the FK cascades' job (no delete API): the memory's refs die with the memory.
+  await storage.store.deleteMemory(inserted.memory.id, { actor: 'coordinator-test' });
+  expect(await storage.codeMemory.listCodeRefs(repository.id)).toEqual([]);
+
+  // ...and a repository removal cascades any other memory's refs to it.
+  const second = await storage.store.insertMemory(
+    makeMemory(ctx, { content: `session tokens rotate hourly ${uniqueId().slice(0, 8)}` }),
+  );
+  await storage.codeMemory.recordCodeRefs({
+    memory_id: second.memory.id,
+    repository_id: repository.id,
+    refs: [{ path: 'src/a.ts', blob_sha: sha(9) }],
+  });
+  await storage.client.query('DELETE FROM repositories WHERE id = $1::uuid', [repository.id]);
+  expect(await storage.codeMemory.listCodeRefs(repository.id)).toEqual([]);
+}
+
 // ---------------------------------------------------------------------------
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
@@ -857,6 +980,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['embedding index: pgvector KNN, upsert/replace, remove, minCosine', vectorIndexScenario],
   ['embedding index: float8 fallback end-to-end', float8FallbackScenario],
   ['code memory: dual-tier fingerprints persist; unavailable paths retained; checkpoint never advances', codeMemoryPersistenceScenario],
+  ['code memory refs: idempotent upsert, path filters, unreadable set persisted, FK cascades', codeMemoryRefsScenario],
 ];
 
 /**

@@ -333,5 +333,34 @@ export const SnapshotMetadataSchema = z.looseObject({
   captured_at: isoTimestamp,
   file_count: z.number().int().min(0),
   skipped_count: z.number().int().min(0),
+  /**
+   * The (path, tier) entries the latest capture could not read — the honest source for drift's
+   * "retained-unavailable" suspicion. Rows persisted before this field existed parse without
+   * it; their unreadable-path knowledge is simply absent until the next saveSnapshot.
+   */
+  skipped: z.array(UnavailablePathSchema).optional(),
 });
 export type SnapshotMetadata = z.infer<typeof SnapshotMetadataSchema>;
+
+// ---------------------------------------------------------------------------
+// Code refs (M4c — which memories rest on which code)
+// ---------------------------------------------------------------------------
+
+/**
+ * The code evidence one memory rests on within ONE repository. Refs record worktree-tier
+ * evidence only — the bytes the agent actually saw — so no `tier` column is needed and the
+ * ref's `blob_sha` must be a worktree-tier fingerprint (matching the normative drift query,
+ * which pins `ff.tier = 'worktree'`).
+ */
+export const RecordCodeRefsSchema = z.looseObject({
+  memory_id: z.uuid(),
+  repository_id: z.uuid(),
+  /** Each path with the worktree-tier blob the memory was extracted against. */
+  refs: z
+    .array(z.looseObject({ path: repositoryPath, blob_sha: objectHash }))
+    .min(1)
+    .refine((refs) => new Set(refs.map((ref) => ref.path)).size === refs.length, {
+      message: 'duplicate ref paths in one recordCodeRefs call',
+    }),
+});
+export type RecordCodeRefs = z.infer<typeof RecordCodeRefsSchema>;

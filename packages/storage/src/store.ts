@@ -129,6 +129,8 @@ export function createCodeMemoryStore(db: Database): CodeMemoryStore {
     loadFingerprints: (repositoryId, filter) =>
       codeMemoryRepo.loadFingerprints(db, repositoryId, filter),
     loadSnapshotMetadata: (repositoryId) => codeMemoryRepo.loadSnapshotMetadata(db, repositoryId),
+    recordCodeRefs: (input) => codeMemoryRepo.recordCodeRefs(db, input),
+    listCodeRefs: (repositoryId, filter) => codeMemoryRepo.listCodeRefs(db, repositoryId, filter),
   };
 }
 

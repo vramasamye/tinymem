@@ -10,11 +10,18 @@ export type {
   EntityMention,
   ResolvedEntity,
 } from './entity-resolver';
-export type { DriftWatcher, DriftReport, DriftedMemory } from './drift-watcher';
+export type {
+  DriftWatcher,
+  DriftReport,
+  DriftedMemory,
+  DriftedRef,
+  DriftReason,
+} from './drift-watcher';
 export type {
   CodeMemoryStore,
   CodeRepositoryRecord,
   SnapshotSaveResult,
   StoredFingerprint,
+  MemoryCodeRef,
 } from './code-memory-store';
 export type { Redactor, RedactionResult, SecretRedactor } from './redactor';

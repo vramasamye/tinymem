@@ -17,6 +17,7 @@
 import type {
   EnsureCodeRepository,
   FingerprintTier,
+  RecordCodeRefs,
   SnapshotInput,
   SnapshotMetadata,
 } from '../schema/persistence';
@@ -49,6 +50,17 @@ export interface StoredFingerprint {
   updated_at: string;
 }
 
+/** One `memory_code_refs` row: the worktree-tier evidence blob a memory rests on. */
+export interface MemoryCodeRef {
+  memory_id: string;
+  repository_id: string;
+  /** Repository-relative path the memory was extracted against. */
+  path: string;
+  /** Worktree-tier blob the memory's evidence was verified against. */
+  blob_sha: string;
+  created_at: string;
+}
+
 export interface SnapshotSaveResult {
   repository: CodeRepositoryRecord;
   /** Fingerprint rows whose stored values actually changed; already-current rows stay untouched. */
@@ -77,4 +89,18 @@ export interface CodeMemoryStore {
   ): Promise<StoredFingerprint[]>;
   /** Metadata of the latest persisted snapshot, or null when none was saved yet. */
   loadSnapshotMetadata(repository_id: string): Promise<SnapshotMetadata | null>;
+  /**
+   * Idempotent upsert of the code evidence ONE memory rests on within ONE repository. Refs are
+   * worktree-tier by definition (see `RecordCodeRefsSchema`) — callers pass the worktree-tier
+   * fingerprint the memory was extracted against. Re-recording a path updates its blob and
+   * keeps the original `created_at`; recording never deletes rows, so pruning or re-pointing a
+   * memory's ref set belongs to the drift pipeline, not persistence. Removal happens only via
+   * the memory/repository FK cascades.
+   */
+  recordCodeRefs(input: RecordCodeRefs): Promise<MemoryCodeRef[]>;
+  /** The refs recorded for one repository, optionally narrowed by paths (drift's read side). */
+  listCodeRefs(
+    repository_id: string,
+    filter?: { paths?: readonly string[] },
+  ): Promise<MemoryCodeRef[]>;
 }

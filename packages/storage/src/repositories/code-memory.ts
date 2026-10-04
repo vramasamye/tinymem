@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 import {
   EnsureCodeRepositorySchema,
+  RecordCodeRefsSchema,
   SnapshotInputSchema,
   SnapshotMetadataSchema,
   uuidv7,
@@ -20,6 +21,8 @@ import type {
   CodeRepositoryRecord,
   EnsureCodeRepository,
   FingerprintTier,
+  MemoryCodeRef,
+  RecordCodeRefs,
   SnapshotInput,
   SnapshotMetadata,
   SnapshotSaveResult,
@@ -89,6 +92,24 @@ function mapFingerprint(row: FingerprintRow): StoredFingerprint {
     file_mode: row.file_mode,
     last_seen_commit: row.last_seen_commit,
     updated_at: toIso(row.updated_at),
+  };
+}
+
+type CodeRefRow = {
+  memory_id: string;
+  repository_id: string;
+  path: string;
+  blob_sha: string;
+  created_at: Date | string;
+};
+
+function mapCodeRef(row: CodeRefRow): MemoryCodeRef {
+  return {
+    memory_id: row.memory_id,
+    repository_id: row.repository_id,
+    path: row.path,
+    blob_sha: row.blob_sha,
+    created_at: toIso(row.created_at),
   };
 }
 
@@ -214,6 +235,9 @@ export async function saveSnapshot(
       captured_at: snapshot.captured_at,
       file_count: snapshot.files.length,
       skipped_count: snapshot.skipped.length,
+      // The unreadable (path, tier) set of the LATEST capture: drift reads this to treat
+      // retained-unavailable fingerprints as suspect instead of silently fresh.
+      skipped: snapshot.skipped,
     });
     const updated = await tx.query<RepositoryRow>(
       `UPDATE repositories
@@ -269,4 +293,65 @@ export async function loadSnapshotMetadata(
     root_path: row.root_path,
     head_commit: row.head_commit,
   }, 'loadSnapshotMetadata');
+}
+
+// ---------------------------------------------------------------------------
+// Code refs (which memories rest on which code — the drift oracle's read side)
+// ---------------------------------------------------------------------------
+
+export async function recordCodeRefs(
+  db: Database,
+  rawInput: RecordCodeRefs,
+): Promise<MemoryCodeRef[]> {
+  const input = parseInput(RecordCodeRefsSchema, rawInput, 'recordCodeRefs');
+  return db.transaction(async (tx) => {
+    // Better-than-FK errors at the boundary; the FKs still guard the check-to-insert race.
+    const memory = await tx.query('SELECT 1 FROM memories WHERE id = $1::uuid', [input.memory_id]);
+    if (memory.rows.length === 0) throw new NotFoundError('memory', input.memory_id);
+    const repository = await tx.query('SELECT 1 FROM repositories WHERE id = $1::uuid', [
+      input.repository_id,
+    ]);
+    if (repository.rows.length === 0) throw new NotFoundError('repository', input.repository_id);
+
+    for (let offset = 0; offset < input.refs.length; offset += UPSERT_CHUNK) {
+      const chunk = input.refs.slice(offset, offset + UPSERT_CHUNK);
+      const values: string[] = [];
+      const params: unknown[] = [input.memory_id, input.repository_id];
+      chunk.forEach((ref, index) => {
+        const base = 3 + index * 2;
+        values.push(`($1::uuid, $2::uuid, $${base}, $${base + 1})`);
+        params.push(ref.path, ref.blob_sha);
+      });
+      await tx.query(
+        `INSERT INTO memory_code_refs (memory_id, repository_id, path, blob_sha)
+         VALUES ${values.join(', ')}
+         ON CONFLICT (memory_id, repository_id, path) DO UPDATE SET blob_sha = EXCLUDED.blob_sha`,
+        params,
+      );
+    }
+
+    const readBack = await tx.query<CodeRefRow>(
+      `SELECT * FROM memory_code_refs
+        WHERE memory_id = $1::uuid AND repository_id = $2::uuid AND path = ANY($3::text[])
+        ORDER BY path`,
+      [input.memory_id, input.repository_id, pgTextArray(input.refs.map((ref) => ref.path))],
+    );
+    return readBack.rows.map(mapCodeRef);
+  });
+}
+
+export async function listCodeRefs(
+  db: Database,
+  repositoryId: string,
+  filter: { paths?: readonly string[] } = {},
+): Promise<MemoryCodeRef[]> {
+  const params: unknown[] = [repositoryId];
+  let query = 'SELECT * FROM memory_code_refs WHERE repository_id = $1::uuid';
+  if (filter.paths !== undefined) {
+    params.push(pgTextArray(filter.paths));
+    query += ` AND path = ANY($${params.length}::text[])`;
+  }
+  query += ' ORDER BY memory_id, path';
+  const result = await db.query<CodeRefRow>(query, params);
+  return result.rows.map(mapCodeRef);
 }
