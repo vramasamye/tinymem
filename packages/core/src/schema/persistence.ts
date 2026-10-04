@@ -364,3 +364,77 @@ export const RecordCodeRefsSchema = z.looseObject({
     }),
 });
 export type RecordCodeRefs = z.infer<typeof RecordCodeRefsSchema>;
+
+// ---------------------------------------------------------------------------
+// Symbol tables (M4d — ADR-0008 "Symbol tables re-extract only changed files")
+// ---------------------------------------------------------------------------
+
+/** The extraction kind vocabulary shared by every grammar (one cross-language set). */
+export const SYMBOL_KINDS = [
+  'class',
+  'enum',
+  'function',
+  'impl',
+  'interface',
+  'method',
+  'module',
+  'struct',
+  'trait',
+  'type',
+] as const;
+export const SymbolKindSchema = z.enum(SYMBOL_KINDS);
+export type SymbolKind = z.infer<typeof SymbolKindSchema>;
+
+/** The grammars the extractor can load; other source extensions are outside the symbol domain. */
+export const SYMBOL_LANGUAGES = ['go', 'javascript', 'python', 'rust', 'tsx', 'typescript'] as const;
+export const SymbolLanguageSchema = z.enum(SYMBOL_LANGUAGES);
+export type SymbolLanguage = z.infer<typeof SymbolLanguageSchema>;
+
+/** A 64-character lowercase hex SHA-256 (span and symbol-table hashes are always SHA-256). */
+const sha256Hex = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, 'a 64-character lowercase hex SHA-256');
+
+export const SymbolRecordSchema = z.looseObject({
+  name: z.string().min(1).max(512),
+  kind: SymbolKindSchema,
+  /** Normalized single-line declaration header (comments stripped, whitespace collapsed, capped). */
+  signature: z.string().max(256),
+  /** 1-based inclusive line range of the symbol's span. */
+  line_start: z.number().int().min(1),
+  line_end: z.number().int().min(1),
+  /** SHA-256 of the symbol's normalized span — intra-file granularity (ADR-0008). */
+  span_hash: sha256Hex,
+}).refine((symbol) => symbol.line_start <= symbol.line_end, {
+  message: 'line_start must not exceed line_end',
+});
+export type SymbolRecordInput = z.infer<typeof SymbolRecordSchema>;
+
+export const SymbolFileInputSchema = z.looseObject({
+  path: repositoryPath,
+  language: SymbolLanguageSchema,
+  /**
+   * Document-order symbol table for this file. May be empty: a file in a known language can
+   * legitimately declare nothing (the file is still covered, with a hash over an empty table).
+   */
+  symbols: z.array(SymbolRecordSchema),
+  /** Hash over the ordered symbol table — the per-file rewrite guard. */
+  symbols_hash: sha256Hex,
+});
+export type SymbolFileInput = z.infer<typeof SymbolFileInputSchema>;
+
+/**
+ * One extraction's persistable coverage. A scoped save (re-extraction of only changed files)
+ * covers exactly the files it extracted; persistence replaces the rows of covered files and
+ * never touches uncovered paths — files the extraction could not read are simply not covered,
+ * so their last-known rows stay retained-unavailable, exactly like snapshot fingerprints.
+ */
+export const SymbolTableSaveSchema = z.looseObject({
+  files: z
+    .array(SymbolFileInputSchema)
+    .min(1)
+    .refine((files) => new Set(files.map((file) => file.path)).size === files.length, {
+      message: 'duplicate file paths in one saveSymbolTable call',
+    }),
+});
+export type SymbolTableSave = z.infer<typeof SymbolTableSaveSchema>;

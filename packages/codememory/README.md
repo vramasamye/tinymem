@@ -5,11 +5,18 @@ uses system Git through argument-safe subprocesses and hashes file bytes locally
 a model, fetches a remote, writes Git state, or returns source-file contents.
 
 ```ts
-import { captureSnapshot, detectChanges, createDriftWatcher } from '@onememory/codememory';
+import { captureSnapshot, detectChanges, extractSymbolTable, createDriftWatcher } from '@onememory/codememory';
 
 const baseline = await captureSnapshot('/absolute/project/root');
 const report = await detectChanges(baseline);
 // report.changes: added | modified | deleted | renamed | unavailable, separated by tier
+
+const table = await extractSymbolTable('/absolute/project/root');
+// table.files: one symbol table per source file; table.skipped: honest per-path skip reasons
+
+// Only-changed re-extraction: re-extract exactly the drift-flagged paths.
+const changed = [...new Set(driftReport.flatMap((memory) => memory.changed_paths))];
+const update = await extractSymbolTable(root, { files: changed });
 ```
 
 ## Semantics
@@ -46,6 +53,51 @@ It is a pure read over PERSISTED state — the pipeline captures and persists a 
 - `detectDrift` writes nothing: applying `stale`, retargeting `memory_code_refs`, re-indexing, and
   advancing `last_ingested_commit` are the pipeline's later steps.
 
+## Symbol extraction (tree-sitter, WASM, offline)
+
+`extractSymbolTable(root)` parses the worktree's source files with tree-sitter through the
+`web-tree-sitter` WASM runtime (dependency-verification §9 verdict: no OS native addon, no build
+step at install — Bun blocks the grammar packages' `install` scripts, and an install performs no
+compilation at all). The core runtime WASM resolves through `web-tree-sitter`'s exported
+`web-tree-sitter.wasm` subpath; grammar bytes come from the installed `tree-sitter-*` packages'
+prebuilt `.wasm` files via literal `require.resolve` calls, read with `fs` — nothing is fetched
+at install or runtime, and the symbol tests pin this with the `@onememory/security` network guard.
+Bun-from-source is the supported runtime; the extraction API also runs under Node LTS when
+resolved against an installed `node_modules` (the literal asset references make that a
+bundler-friendly packaging concern, not a silent failure).
+
+Languages and declaration surfaces (the symbol vocabulary of ADR-0008):
+
+- TypeScript / TSX / JavaScript: `function`, `class`, `method`, `interface`, `type`, `enum`,
+  `module` (namespaces).
+- Python: `function` (functions + methods), `class`.
+- Go: `function` (functions + methods), `struct`, `interface`, `type` (type aliases/defs).
+- Rust: `function` (free + associated + trait-default), `struct`, `enum`, `trait`, `impl`,
+  `module`.
+
+Per file the extractor reports `symbols` — `name`, `kind`, normalized `signature` (a canonical
+single-space token rendering capped at 240 chars), `line_start`/`line_end`, and a `span_hash` —
+plus `parse_errors` (tree-sitter ERROR node count; a tree with errors still yields its clean
+declarations) and a `symbols_hash` over the ordered table. Two stability properties are pinned by
+tests:
+
+- **`span_hash` ignores comments and whitespace** (a SHA-256 over the span's normalized token
+  stream): adding comments, editing a comment, reindenting, or switching CRLF/LF never moves a
+  symbol's hash. Editing real tokens moves that symbol's hash and leaves every sibling untouched.
+- **`symbols_hash` includes line positions** (a hash move is legitimate re-extraction evidence),
+  so `saveSymbolTable`'s per-file rewrite guard (in storage) can distinguish cosmetic-only files
+  from real edits — cosmetic-only files keep their persisted rows and `updated_at`.
+
+Scope mode: `extractSymbolTable(root, { files })` re-extracts exactly the given paths (the
+`detectChanges` / `detectDrift` flagged set), skipping every other file — the only-changed
+primitive the drift pipeline needs. It parses bytes with the same read discipline as fingerprint
+capture: paths are validated repository-relative, symlinks are not followed, and races between
+stat and read are detected. Files outside the vocabulary skip with a structured reason, never a
+silent omission: `excluded`, `conflict`, `symlink`, `submodule`, `binary`, `too_large`, `missing`,
+`unreadable`, `unsupported_language`, `grammar_unavailable` (the runtime/grammar could not load),
+or `outside_root`. Persistence (`code_symbols`, `file_fingerprints.symbols_hash`) lives behind
+the `CodeMemoryStore` port in `@onememory/storage` — this package contains no SQL.
+
 ## Safety and completeness
 
 The security package's built-in `.env`, key, and credential exclusions cannot be disabled.
@@ -75,13 +127,18 @@ bun run bench
 
 The unit and real-Git integration fixtures cover unusual filenames, staged/dirty edits, modified
 renames, missing checkpoints, detached/unborn HEAD, SHA-256 repositories, conflicts, exclusions,
-non-Git fallback, bounded reads, and filter/fsmonitor non-execution.
+non-Git fallback, bounded reads, and filter/fsmonitor non-execution. The symbol fixtures cover
+the six grammar vocabularies, comment/whitespace-insensitive span hashing, position-sensitive
+table hashing, scoped re-extraction over a real embedded database (saveSnapshot → extract →
+saveSymbolTable → detectChanges → scoped re-extract → rewrite guard), every skip reason, and the
+offline invariant (zero network calls under the guard).
 The pure comparison benchmark checks 1k/10k/100k exact renames; it reports local timings, not a
 hardware-independent latency promise.
 
 ## Remaining M4 scope
 
-This package does not yet persist snapshots itself (the `CodeMemoryStore` port in
+This package does not yet persist its symbol tables itself (the `CodeMemoryStore` port in
 `@onememory/storage` does), mark memories stale, retarget `memory_code_refs`, enqueue re-index
-work, advance the ingestion checkpoint, parse symbols, or assemble a project digest. Those are
-the next M4 slices, not placeholder implementations in this one.
+work, advance the ingestion checkpoint, or assemble a project digest. Symbol-level drift
+comparison (matching extracted symbols against persisted ones beyond the per-file rewrite guard)
+is a later slice, not a placeholder in this one.

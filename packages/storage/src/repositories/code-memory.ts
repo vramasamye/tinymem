@@ -1,11 +1,11 @@
 /**
- * Code-memory persistence (ADR-0008): `repositories` + `file_fingerprints` — this module is the
- * only writer of those tables. `last_ingested_commit` is intentionally untouched: the ingestion
- * checkpoint advances only when changed knowledge is fully processed, which is the drift
- * pipeline's job, never persistence's.
+ * Code-memory persistence (ADR-0008): `repositories`, `file_fingerprints`, and `code_symbols` —
+ * this module is the only writer of those tables. `last_ingested_commit` is intentionally
+ * untouched: the ingestion checkpoint advances only when changed knowledge is fully processed,
+ * which is the drift pipeline's job, never persistence's.
  *
  * Conventions: handwritten parameterized SQL over the shared `Database` client (the one SQL
- * surface in the engine), every input Zod-parsed at the boundary, one transaction per snapshot.
+ * surface in the engine), every input Zod-parsed at the boundary, one transaction per save.
  */
 
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import {
   RecordCodeRefsSchema,
   SnapshotInputSchema,
   SnapshotMetadataSchema,
+  SymbolTableSaveSchema,
   uuidv7,
 } from '@onememory/core';
 import type {
@@ -27,6 +28,9 @@ import type {
   SnapshotMetadata,
   SnapshotSaveResult,
   StoredFingerprint,
+  StoredSymbol,
+  SymbolTableSave,
+  SymbolTableSaveResult,
 } from '@onememory/core';
 
 import type { Database } from '../drivers/client';
@@ -77,6 +81,7 @@ type FingerprintRow = {
   blob_sha: string;
   file_mode: string | null;
   last_seen_commit: string | null;
+  symbols_hash: string | null;
   updated_at: Date | string;
 };
 
@@ -91,6 +96,33 @@ function mapFingerprint(row: FingerprintRow): StoredFingerprint {
     blob_sha: row.blob_sha,
     file_mode: row.file_mode,
     last_seen_commit: row.last_seen_commit,
+    symbols_hash: row.symbols_hash,
+    updated_at: toIso(row.updated_at),
+  };
+}
+
+type SymbolRow = {
+  repository_id: string;
+  path: string;
+  name: string;
+  kind: string;
+  signature: string | null;
+  line_start: number | null;
+  line_end: number | null;
+  span_hash: string | null;
+  updated_at: Date | string;
+};
+
+function mapSymbol(row: SymbolRow): StoredSymbol {
+  return {
+    repository_id: row.repository_id,
+    path: row.path,
+    name: row.name,
+    kind: row.kind,
+    signature: row.signature,
+    line_start: row.line_start,
+    line_end: row.line_end,
+    span_hash: row.span_hash,
     updated_at: toIso(row.updated_at),
   };
 }
@@ -194,6 +226,15 @@ export async function saveSnapshot(
         [repositoryId, tier, pgTextArray(gone)],
       );
       deleted += result.rowCount ?? gone.length;
+      // Symbol rows never outlive their worktree-tier fingerprint anchor (its symbols_hash is
+      // the per-file rewrite guard): when a capture drops the path's fingerprint, its symbol
+      // table dies with it. Unavailable paths keep both as retained last-known, like above.
+      if (tier === 'worktree') {
+        await tx.query(
+          'DELETE FROM code_symbols WHERE repository_id = $1::uuid AND path = ANY($2::text[])',
+          [repositoryId, pgTextArray(gone)],
+        );
+      }
     }
     const retained = current.rows.filter((row) => unavailable.has(tierKey(row.tier, row.path))).length;
 
@@ -354,4 +395,123 @@ export async function listCodeRefs(
   query += ' ORDER BY memory_id, path';
   const result = await db.query<CodeRefRow>(query, params);
   return result.rows.map(mapCodeRef);
+}
+
+// ---------------------------------------------------------------------------
+// Symbol tables (tree-sitter extraction persistence — ADR-0008)
+// ---------------------------------------------------------------------------
+
+export async function saveSymbolTable(
+  db: Database,
+  repositoryId: string,
+  rawInput: SymbolTableSave,
+): Promise<SymbolTableSaveResult> {
+  const input = parseInput(SymbolTableSaveSchema, rawInput, 'saveSymbolTable');
+  return db.transaction(async (tx) => {
+    const locked = await tx.query<RepositoryRow>(
+      'SELECT * FROM repositories WHERE id = $1::uuid FOR UPDATE',
+      [repositoryId],
+    );
+    const repository = locked.rows[0];
+    if (!repository) throw new NotFoundError('repository', repositoryId);
+
+    const paths = input.files.map((file) => file.path);
+    const anchors = await tx.query<FingerprintRow>(
+      `SELECT * FROM file_fingerprints
+        WHERE repository_id = $1::uuid AND tier = 'worktree' AND path = ANY($2::text[])`,
+      [repositoryId, pgTextArray(paths)],
+    );
+    const anchorByPath = new Map(anchors.rows.map((row) => [row.path, row]));
+    // The symbols_hash anchor lives on the worktree-tier fingerprint row by schema design, so
+    // the pipeline shape is saveSnapshot FIRST, then saveSymbolTable: a covered path without a
+    // live worktree anchor is a pipeline error, reported at the boundary rather than guessed.
+    for (const path of paths) {
+      if (!anchorByPath.has(path)) throw new NotFoundError('worktree fingerprint', path);
+    }
+
+    // The conflict guard: only covered files whose symbols_hash differs are rewritten; files
+    // whose hash already matches keep their rows and updated_at exactly as stored.
+    const changed = input.files.filter(
+      (file) => anchorByPath.get(file.path)?.symbols_hash !== file.symbols_hash,
+    );
+
+    for (let offset = 0; offset < changed.length; offset += UPSERT_CHUNK) {
+      const chunk = changed.slice(offset, offset + UPSERT_CHUNK);
+      const chunkPaths = chunk.map((file) => file.path);
+      // Replacement per covered file: rows for the file die and are re-created (symbol rows have
+      // no natural key — overloads legitimately repeat a name within one file).
+      await tx.query(
+        'DELETE FROM code_symbols WHERE repository_id = $1::uuid AND path = ANY($2::text[])',
+        [repositoryId, pgTextArray(chunkPaths)],
+      );
+      const values: string[] = [];
+      const params: unknown[] = [repositoryId];
+      let rows = 0;
+      const flush = async (): Promise<void> => {
+        if (rows === 0) return;
+        await tx.query(
+          `INSERT INTO code_symbols
+             (id, repository_id, path, name, kind, signature, line_start, line_end, span_hash, updated_at)
+           VALUES ${values.join(', ')}`,
+          params,
+        );
+        values.length = 0;
+        params.length = 1;
+        rows = 0;
+      };
+      for (const file of chunk) {
+        for (const symbol of file.symbols) {
+          if (rows === UPSERT_CHUNK) await flush();
+          const base = params.length;
+          values.push(
+            `($${base + 1}::uuid, $1::uuid, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, now())`,
+          );
+          params.push(
+            uuidv7(), file.path, symbol.name, symbol.kind, symbol.signature,
+            symbol.line_start, symbol.line_end, symbol.span_hash,
+          );
+          rows++;
+        }
+      }
+      await flush();
+      // Record the new per-file hash on the worktree anchor (its updated_at keeps marking
+      // fingerprint-value changes only — a symbol-table change is not a fingerprint change).
+      const hashValues: string[] = [];
+      const hashParams: unknown[] = [repositoryId];
+      chunk.forEach((file, index) => {
+        hashValues.push(`($${2 + index * 2}, $${3 + index * 2})`);
+        hashParams.push(file.path, file.symbols_hash);
+      });
+      await tx.query(
+        `UPDATE file_fingerprints AS ff
+           SET symbols_hash = v.hash
+           FROM (VALUES ${hashValues.join(', ')}) AS v(path, hash)
+         WHERE ff.repository_id = $1::uuid AND ff.tier = 'worktree' AND ff.path = v.path`,
+        hashParams,
+      );
+    }
+
+    return {
+      repository: mapRepository(repository),
+      rewritten: changed.length,
+      unchanged: input.files.length - changed.length,
+    };
+  });
+}
+
+export async function loadSymbols(
+  db: Database,
+  repositoryId: string,
+  filter: { paths?: readonly string[] } = {},
+): Promise<StoredSymbol[]> {
+  const params: unknown[] = [repositoryId];
+  let query = 'SELECT * FROM code_symbols WHERE repository_id = $1::uuid';
+  if (filter.paths !== undefined) {
+    params.push(pgTextArray(filter.paths));
+    query += ` AND path = ANY($${params.length}::text[])`;
+  }
+  // Document order per file, then stable for same-named rows (overloads).
+  query += ' ORDER BY path, line_start, line_end, name, id';
+  const result = await db.query<SymbolRow>(query, params);
+  return result.rows.map(mapSymbol);
 }
