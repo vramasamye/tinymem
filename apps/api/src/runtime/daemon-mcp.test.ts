@@ -10,9 +10,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { renderDefaultConfigYaml } from '@onememory/config';
+import { ProjectStateSchema, renderDefaultConfigYaml, saveProjectState } from '@onememory/config';
 
-import { startDaemon, type DaemonHandle } from './index';
+import { openRuntime, startDaemon, type DaemonHandle } from './index';
 
 /**
  * The pre-guard fetch (the runtime.test.ts pattern): captured at import time, before any runtime
@@ -49,9 +49,9 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** POST one stateless JSON-RPC request to the daemon's /mcp; parse the `data:` frame reply. */
-async function rpc(method: string, params: unknown, id: number): Promise<Record<string, unknown>> {
-  const response = await rawFetch(`${handle.info.url}/mcp`, {
+/** POST one stateless JSON-RPC request to a daemon's /mcp; parse the `data:` frame reply. */
+async function rpc(method: string, params: unknown, id: number, target: DaemonHandle = handle): Promise<Record<string, unknown>> {
+  const response = await rawFetch(`${target.info.url}/mcp`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
     body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
@@ -136,4 +136,61 @@ describe('the daemon at /mcp — one storage, one engine with /v1', () => {
     )) as { result: { structuredContent: { results: Array<{ id: string; summary: string }> } } };
     expect(searched.result.structuredContent.results.length).toBeGreaterThan(0);
   }, 20_000);
+});
+
+describe('the daemon at /mcp — the registered project is the default scope', () => {
+  test('project-scoped tools work without an explicit project_id when project.json exists', async () => {
+    const root = join(
+      process.env.TMPDIR ?? '/tmp',
+      `onemem-daemon-mcp-ctx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    mkdirSync(join(root, '.onememory'), { recursive: true });
+    writeFileSync(join(root, '.onememory', 'onememory.yaml'), renderDefaultConfigYaml(), 'utf8');
+
+    // Register the project and write project.json BEFORE booting the daemon: the MCP context
+    // pins the default project from the loaded state at boot.
+    const runtime = await openRuntime({ cwd: root, env: {}, startWorker: false });
+    const project = await runtime.storage.store.createProject({ name: 'daemon-mcp-default', root_path: root });
+    await runtime.close();
+    saveProjectState(
+      join(root, '.onememory'),
+      ProjectStateSchema.parse({
+        project_id: project.id,
+        name: project.name,
+        root_path: root,
+        created_at: new Date().toISOString(),
+      }),
+    );
+
+    const daemon = await startDaemon({ cwd: root, env: {}, port: 0, installSignalHandlers: false, fetch: rawFetch });
+    try {
+      // A write with NO project_id lands in the registered project (scope "project" resolves).
+      const stored = (await rpc(
+        'tools/call',
+        {
+          name: 'memory_store',
+          arguments: {
+            content: 'Default-scope writes need no project_id over HTTP.',
+            type: 'semantic',
+            scope: 'project',
+            evidence: [{ excerpt: 'init-wiring follow-up', locator: 'daemon-mcp.test.ts:1' }],
+          },
+        },
+        10,
+        daemon,
+      )) as { result: { structuredContent: { id: string; outcome: string }; isError?: boolean } };
+      expect(stored.result.isError).toBeUndefined();
+      expect(stored.result.structuredContent.outcome).toBe('new');
+
+      // And memory_project_context with no project_id answers for that same project.
+      const context = (await rpc('tools/call', { name: 'memory_project_context', arguments: {} }, 11, daemon)) as {
+        result: { structuredContent: { project_id: string; text: string } };
+      };
+      expect(context.result.structuredContent.project_id).toBe(project.id);
+      expect(typeof context.result.structuredContent.text).toBe('string');
+    } finally {
+      await daemon.stop();
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 60_000);
 });

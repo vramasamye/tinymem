@@ -128,6 +128,10 @@ export async function startDaemon(options: ServeOptions = {}): Promise<DaemonHan
       engine: runtime.engine,
       embedder: runtime.embedder === null ? undefined : runtime.embedder,
       redactor: runtime.redaction,
+      // The registered project is the default scope over HTTP: agents reach /mcp with a URL only
+      // (no env, no headers in Phase 1), so without this every project-scoped tool call would
+      // demand an explicit project_id. An input project_id still wins per call.
+      projectId: runtime.loaded.project_state?.project_id,
     }),
   );
 
