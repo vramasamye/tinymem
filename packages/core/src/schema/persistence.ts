@@ -366,6 +366,40 @@ export const RecordCodeRefsSchema = z.looseObject({
 export type RecordCodeRefs = z.infer<typeof RecordCodeRefsSchema>;
 
 // ---------------------------------------------------------------------------
+// Drift apply (M4e — retargeting refs and advancing the ingestion checkpoint)
+// ---------------------------------------------------------------------------
+
+/**
+ * Move ONE memory's ref from a path that disappeared to the path its exact content now lives at
+ * (drift's `successor_path`). The ref keeps its evidence blob; persistence re-verifies the move
+ * against the persisted worktree tier before writing.
+ */
+export const RetargetCodeRefSchema = z
+  .looseObject({
+    memory_id: z.uuid(),
+    repository_id: z.uuid(),
+    from_path: repositoryPath,
+    to_path: repositoryPath,
+  })
+  .refine((input) => input.from_path !== input.to_path, {
+    message: 'from_path and to_path must differ',
+  });
+export type RetargetCodeRef = z.infer<typeof RetargetCodeRefSchema>;
+
+/**
+ * Compare-and-set of `repositories.last_ingested_commit`. `to_commit` must be the repository's
+ * current persisted `head_commit` (the latest capture), and the stored checkpoint must still
+ * equal `expected_last_ingested_commit` — so a pipeline holding an older drift report can never
+ * move the checkpoint behind a newer capture or overwrite a concurrent advance.
+ */
+export const AdvanceCheckpointSchema = z.looseObject({
+  repository_id: z.uuid(),
+  expected_last_ingested_commit: objectHash.nullable(),
+  to_commit: objectHash,
+});
+export type AdvanceCheckpoint = z.infer<typeof AdvanceCheckpointSchema>;
+
+// ---------------------------------------------------------------------------
 // Symbol tables (M4d — ADR-0008 "Symbol tables re-extract only changed files")
 // ---------------------------------------------------------------------------
 

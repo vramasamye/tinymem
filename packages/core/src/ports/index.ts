@@ -25,5 +25,9 @@ export type {
   MemoryCodeRef,
   StoredSymbol,
   SymbolTableSaveResult,
+  CodeRefRetargetOutcome,
+  CodeRefRetargetResult,
+  CheckpointAdvanceOutcome,
+  CheckpointAdvanceResult,
 } from './code-memory-store';
 export type { Redactor, RedactionResult, SecretRedactor } from './redactor';

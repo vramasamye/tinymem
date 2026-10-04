@@ -134,6 +134,8 @@ function fakeStore(state: FakeCodeMemoryState): CodeMemoryStore {
     // Symbol persistence is not drift's read side; the watcher must never touch it either way.
     saveSymbolTable: () => unexpected('saveSymbolTable'),
     loadSymbols: () => unexpected('loadSymbols'),
+    retargetCodeRef: () => unexpected('retargetCodeRef'),
+    advanceCheckpoint: () => unexpected('advanceCheckpoint'),
   };
 }
 

@@ -7,11 +7,11 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { memoryContentHash } from '@onememory/core';
+import { InvalidTransitionError, memoryContentHash } from '@onememory/core';
 import type { OnememoryEvent, SupersedeInput, SymbolFileInput, SymbolRecordInput } from '@onememory/core';
 
 import { JobKindNotImplemented, createHandlerRegistry, createJobWorker } from '../jobs/worker';
-import { ValidationError } from '../repositories/util';
+import { NotFoundError, ValidationError } from '../repositories/util';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import { makeEvent, makeMemory, makeSession, makeWorking, seedProjectAndSource, uniqueId } from './harness';
@@ -1156,6 +1156,166 @@ export async function codeMemorySymbolsScenario(storage: OnememoryStorage): Prom
   expect(await storage.codeMemory.loadSymbols(repository.id)).toEqual([]);
 }
 
+/**
+ * Drift apply (M4e): the persistence primitives the codememory drift applier drives — audited
+ * stale, conservative ref retargeting, and the compare-and-set checkpoint — on BOTH legs.
+ * Record refs → a new capture drifts one file and exactly renames another → apply → assert
+ * stale + retarget + checkpoint advanced → a second apply is a no-op.
+ */
+export async function codeMemoryDriftApplyScenario(storage: OnememoryStorage): Promise<void> {
+  const ctx = await seedProjectAndSource(storage, 'code-drift-apply-project');
+  const memory = async (label: string): Promise<string> => {
+    const inserted = await storage.store.insertMemory(
+      makeMemory(ctx, { content: `${label} ${uniqueId().slice(0, 8)}` }),
+    );
+    expect(inserted.outcome).toBe('inserted');
+    return inserted.memory.id;
+  };
+  const changed = await memory('a.ts computes totals');
+  const renamed = await memory('b.ts parses input');
+  const bystander = await memory('c.ts is constant');
+  const root = `/tmp/onemem-drift-apply-${uniqueId()}`;
+  const repository = await storage.codeMemory.ensureRepository({ project_id: ctx.projectId, root_path: root });
+  const capture = (head: string, files: Array<[path: string, blob: string]>, skipped: string[] = []) =>
+    storage.codeMemory.saveSnapshot(repository.id, {
+      root_path: root,
+      head_commit: head,
+      hash_algorithm: 'git-sha1',
+      mode: 'git',
+      exclusion_globs: [],
+      captured_at: '2026-10-07T00:00:00.000Z',
+      files: files.map(([path, blob]) => ({ path, tier: 'worktree' as const, blob_sha: blob, mode: '100644' as const })),
+      skipped: skipped.map((path) => ({ path, tier: 'worktree' as const })),
+    });
+
+  const head1 = hex40('1');
+  await capture(head1, [['a.ts', sha(10)], ['b.ts', sha(20)], ['c.ts', sha(30)], ['locked.ts', sha(40)]]);
+  for (const [memoryId, path, blob] of [
+    [changed, 'a.ts', sha(10)],
+    [renamed, 'b.ts', sha(20)],
+    [bystander, 'c.ts', sha(30)],
+  ] as const) {
+    await storage.codeMemory.recordCodeRefs({ memory_id: memoryId, repository_id: repository.id, refs: [{ path, blob_sha: blob }] });
+  }
+  const baseline = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: null,
+    to_commit: head1,
+  });
+  expect([baseline.outcome, baseline.previous_commit, baseline.current_commit]).toEqual(['advanced', null, head1]);
+  expect(baseline.repository.last_ingested_commit).toBe(head1);
+
+  // The drifting capture: a.ts edited, b.ts moved unchanged, locked.ts unreadable (retained).
+  const head2 = hex40('2');
+  await capture(head2, [['a.ts', sha(11)], ['moved/b.ts', sha(20)], ['c.ts', sha(30)]], ['locked.ts']);
+  const auditsBefore = (await storage.store.listMemoryEvents(bystander)).length;
+
+  // Apply: stale the content-changed memory, retarget the exact move, advance the checkpoint.
+  const staled = await storage.store.updateMemoryStatus(changed, 'stale', { actor: 'job:drift_scan', reason: 'code_drift' });
+  expect(staled.status).toBe('stale');
+  const moved = await storage.codeMemory.retargetCodeRef({
+    memory_id: renamed,
+    repository_id: repository.id,
+    from_path: 'b.ts',
+    to_path: 'moved/b.ts',
+  });
+  expect(moved.outcome).toBe('retargeted');
+  expect([moved.ref.path, moved.ref.blob_sha]).toEqual(['moved/b.ts', sha(20)]);
+  const advanced = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: head1,
+    to_commit: head2,
+  });
+  expect([advanced.outcome, advanced.previous_commit, advanced.current_commit]).toEqual(['advanced', head1, head2]);
+
+  expect((await storage.store.getMemory(renamed))?.status).toBe('active');
+  expect((await storage.store.getMemory(bystander))?.status).toBe('active');
+  expect((await storage.store.listMemoryEvents(bystander)).length).toBe(auditsBefore);
+  expect((await storage.codeMemory.listCodeRefs(repository.id)).map((ref) => [ref.memory_id, ref.path])).toEqual(
+    [
+      [changed, 'a.ts'],
+      [renamed, 'moved/b.ts'],
+      [bystander, 'c.ts'],
+    ].sort((x, y) => (x[0]! < y[0]! ? -1 : 1)),
+  );
+  // Stale memories remain current knowledge until re-indexed.
+  const current = await storage.store.queryCurrent({ project_id: ctx.projectId, limit: 20 });
+  expect(current.map((row) => row.id)).toContain(changed);
+
+  // Second apply of the same drift: every step is a safe no-op.
+  await expect(
+    storage.store.updateMemoryStatus(changed, 'stale', { actor: 'job:drift_scan' }),
+  ).rejects.toThrow(InvalidTransitionError);
+  const again = await storage.codeMemory.retargetCodeRef({
+    memory_id: renamed,
+    repository_id: repository.id,
+    from_path: 'b.ts',
+    to_path: 'moved/b.ts',
+  });
+  expect([again.outcome, again.ref.path]).toEqual(['already_retargeted', 'moved/b.ts']);
+  const unchanged = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: head1,
+    to_commit: head2,
+  });
+  expect([unchanged.outcome, unchanged.previous_commit, unchanged.current_commit]).toEqual(['unchanged', head2, head2]);
+
+  // Retarget refuses anything the persisted worktree tier cannot prove.
+  await storage.codeMemory.recordCodeRefs({
+    memory_id: bystander,
+    repository_id: repository.id,
+    refs: [{ path: 'gone.ts', blob_sha: sha(40) }],
+  });
+  const retarget = (from_path: string, to_path: string, memory_id = bystander) =>
+    storage.codeMemory.retargetCodeRef({ memory_id, repository_id: repository.id, from_path, to_path });
+  expect((await retarget('c.ts', 'moved/b.ts')).outcome).toBe('source_present');
+  expect((await retarget('gone.ts', 'c.ts')).outcome).toBe('conflict');
+  expect((await retarget('gone.ts', 'moved/b.ts')).outcome).toBe('successor_mismatch'); // blob differs
+  expect((await retarget('gone.ts', 'nowhere.ts')).outcome).toBe('successor_mismatch'); // no fingerprint
+  // locked.ts holds the ref's exact blob, but only as a retained last-known (unreadable) value.
+  const lockedRow = await storage.codeMemory.loadFingerprints(repository.id, { tier: 'worktree', paths: ['locked.ts'] });
+  expect(lockedRow[0]?.blob_sha).toBe(sha(40));
+  expect((await retarget('gone.ts', 'locked.ts')).outcome).toBe('successor_mismatch');
+  expect((await storage.codeMemory.listCodeRefs(repository.id, { paths: ['gone.ts'] })).length).toBe(1);
+
+  await expect(retarget('never.ts', 'c.ts', changed)).rejects.toThrow(NotFoundError);
+  await expect(retarget('a.ts', 'c.ts', uniqueId())).rejects.toThrow(NotFoundError);
+  await expect(
+    storage.codeMemory.retargetCodeRef({ memory_id: changed, repository_id: uniqueId(), from_path: 'a.ts', to_path: 'c.ts' }),
+  ).rejects.toThrow(NotFoundError);
+  await expect(retarget('a.ts', 'a.ts', changed)).rejects.toThrow(ValidationError);
+  await expect(retarget('a.ts', '../escape.ts', changed)).rejects.toThrow(ValidationError);
+
+  // The checkpoint never moves behind the persisted head, and only from the expected prior.
+  const back = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: head2,
+    to_commit: head1,
+  });
+  expect([back.outcome, back.current_commit]).toEqual(['head_mismatch', head2]);
+  const head3 = hex40('3');
+  await capture(head3, [['a.ts', sha(11)], ['moved/b.ts', sha(20)], ['c.ts', sha(30)]]);
+  const stale = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: head1,
+    to_commit: head3,
+  });
+  expect([stale.outcome, stale.current_commit]).toEqual(['expectation_mismatch', head2]);
+  expect((await storage.codeMemory.getRepository(repository.id))?.last_ingested_commit).toBe(head2);
+  const forward = await storage.codeMemory.advanceCheckpoint({
+    repository_id: repository.id,
+    expected_last_ingested_commit: head2,
+    to_commit: head3,
+  });
+  expect([forward.outcome, forward.previous_commit, forward.current_commit]).toEqual(['advanced', head2, head3]);
+  await expect(
+    storage.codeMemory.advanceCheckpoint({ repository_id: uniqueId(), expected_last_ingested_commit: null, to_commit: head3 }),
+  ).rejects.toThrow(NotFoundError);
+  await expect(
+    storage.codeMemory.advanceCheckpoint({ repository_id: repository.id, expected_last_ingested_commit: null, to_commit: 'HEAD' }),
+  ).rejects.toThrow(ValidationError);
+}
+
 // ---------------------------------------------------------------------------
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
@@ -1177,6 +1337,7 @@ const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: Oneme
   ['code memory: dual-tier fingerprints persist; unavailable paths retained; checkpoint never advances', codeMemoryPersistenceScenario],
   ['code memory refs: idempotent upsert, path filters, unreadable set persisted, FK cascades', codeMemoryRefsScenario],
   ['code memory symbols: scoped replacement, rewrite guard, hashes on fingerprints, anchor pruning', codeMemorySymbolsScenario],
+  ['code memory drift apply: audited stale, verified retarget, compare-and-set checkpoint, idempotent re-apply', codeMemoryDriftApplyScenario],
 ];
 
 /**

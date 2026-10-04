@@ -134,6 +134,8 @@ export function createCodeMemoryStore(db: Database): CodeMemoryStore {
     saveSymbolTable: (repositoryId, input) =>
       codeMemoryRepo.saveSymbolTable(db, repositoryId, input),
     loadSymbols: (repositoryId, filter) => codeMemoryRepo.loadSymbols(db, repositoryId, filter),
+    retargetCodeRef: (input) => codeMemoryRepo.retargetCodeRef(db, input),
+    advanceCheckpoint: (input) => codeMemoryRepo.advanceCheckpoint(db, input),
   };
 }
 

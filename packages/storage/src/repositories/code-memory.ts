@@ -1,8 +1,8 @@
 /**
  * Code-memory persistence (ADR-0008): `repositories`, `file_fingerprints`, and `code_symbols` —
- * this module is the only writer of those tables. `last_ingested_commit` is intentionally
- * untouched: the ingestion checkpoint advances only when changed knowledge is fully processed,
- * which is the drift pipeline's job, never persistence's.
+ * this module is the only writer of those tables. No save touches `last_ingested_commit`: the
+ * ingestion checkpoint advances only when changed knowledge is fully processed, which the drift
+ * pipeline signals through the deliberate compare-and-set `advanceCheckpoint`.
  *
  * Conventions: handwritten parameterized SQL over the shared `Database` client (the one SQL
  * surface in the engine), every input Zod-parsed at the boundary, one transaction per save.
@@ -11,19 +11,26 @@
 import { z } from 'zod';
 
 import {
+  AdvanceCheckpointSchema,
   EnsureCodeRepositorySchema,
   RecordCodeRefsSchema,
+  RetargetCodeRefSchema,
   SnapshotInputSchema,
   SnapshotMetadataSchema,
   SymbolTableSaveSchema,
   uuidv7,
 } from '@onememory/core';
 import type {
+  AdvanceCheckpoint,
+  CheckpointAdvanceOutcome,
+  CheckpointAdvanceResult,
+  CodeRefRetargetResult,
   CodeRepositoryRecord,
   EnsureCodeRepository,
   FingerprintTier,
   MemoryCodeRef,
   RecordCodeRefs,
+  RetargetCodeRef,
   SnapshotInput,
   SnapshotMetadata,
   SnapshotSaveResult,
@@ -395,6 +402,108 @@ export async function listCodeRefs(
   query += ' ORDER BY memory_id, path';
   const result = await db.query<CodeRefRow>(query, params);
   return result.rows.map(mapCodeRef);
+}
+
+// ---------------------------------------------------------------------------
+// Drift apply (M4e): ref retargeting and the deliberate checkpoint advance
+// ---------------------------------------------------------------------------
+
+export async function retargetCodeRef(
+  db: Database,
+  rawInput: RetargetCodeRef,
+): Promise<CodeRefRetargetResult> {
+  const input = parseInput(RetargetCodeRefSchema, rawInput, 'retargetCodeRef');
+  return db.transaction(async (tx) => {
+    const memory = await tx.query('SELECT 1 FROM memories WHERE id = $1::uuid', [input.memory_id]);
+    if (memory.rows.length === 0) throw new NotFoundError('memory', input.memory_id);
+    const repositories = await tx.query<RepositoryRow>(
+      'SELECT * FROM repositories WHERE id = $1::uuid',
+      [input.repository_id],
+    );
+    const repository = repositories.rows[0];
+    if (!repository) throw new NotFoundError('repository', input.repository_id);
+
+    const refs = await tx.query<CodeRefRow>(
+      `SELECT * FROM memory_code_refs
+        WHERE memory_id = $1::uuid AND repository_id = $2::uuid AND path = ANY($3::text[])
+        FOR UPDATE`,
+      [input.memory_id, input.repository_id, pgTextArray([input.from_path, input.to_path])],
+    );
+    const from = refs.rows.find((row) => row.path === input.from_path);
+    const to = refs.rows.find((row) => row.path === input.to_path);
+    if (!from) {
+      if (to) return { outcome: 'already_retargeted' as const, ref: mapCodeRef(to) };
+      throw new NotFoundError('memory_code_ref', `${input.memory_id}:${input.from_path}`);
+    }
+    if (to) return { outcome: 'conflict' as const, ref: mapCodeRef(from) };
+
+    const fingerprints = await tx.query<{ path: string; blob_sha: string }>(
+      `SELECT path, blob_sha FROM file_fingerprints
+        WHERE repository_id = $1::uuid AND tier = 'worktree' AND path = ANY($2::text[])`,
+      [input.repository_id, pgTextArray([input.from_path, input.to_path])],
+    );
+    if (fingerprints.rows.some((row) => row.path === input.from_path)) {
+      return { outcome: 'source_present' as const, ref: mapCodeRef(from) };
+    }
+    const successor = fingerprints.rows.find((row) => row.path === input.to_path);
+    // A fingerprint the latest capture could not read is a retained last-known value: it can
+    // never prove where content moved (the same rule drift uses for rename candidates).
+    const skipped = SnapshotMetadataSchema.shape.skipped.safeParse(
+      (repository.fingerprint ?? {})['skipped'],
+    );
+    const unreadable = (skipped.success ? skipped.data ?? [] : []).some(
+      (entry) => entry.tier === 'worktree' && entry.path === input.to_path,
+    );
+    if (!successor || unreadable || successor.blob_sha !== from.blob_sha) {
+      return { outcome: 'successor_mismatch' as const, ref: mapCodeRef(from) };
+    }
+
+    const moved = await tx.query<CodeRefRow>(
+      `UPDATE memory_code_refs SET path = $4
+        WHERE memory_id = $1::uuid AND repository_id = $2::uuid AND path = $3
+        RETURNING *`,
+      [input.memory_id, input.repository_id, input.from_path, input.to_path],
+    );
+    return { outcome: 'retargeted' as const, ref: mapCodeRef(moved.rows[0]!) };
+  });
+}
+
+export async function advanceCheckpoint(
+  db: Database,
+  rawInput: AdvanceCheckpoint,
+): Promise<CheckpointAdvanceResult> {
+  const input = parseInput(AdvanceCheckpointSchema, rawInput, 'advanceCheckpoint');
+  return db.transaction(async (tx) => {
+    const locked = await tx.query<RepositoryRow>(
+      'SELECT * FROM repositories WHERE id = $1::uuid FOR UPDATE',
+      [input.repository_id],
+    );
+    const row = locked.rows[0];
+    if (!row) throw new NotFoundError('repository', input.repository_id);
+    const previous = row.last_ingested_commit;
+    const unchanged = (outcome: CheckpointAdvanceOutcome): CheckpointAdvanceResult => ({
+      outcome,
+      previous_commit: previous,
+      current_commit: previous,
+      repository: mapRepository(row),
+    });
+    if (previous === input.to_commit) return unchanged('unchanged');
+    if (row.head_commit !== input.to_commit) return unchanged('head_mismatch');
+    if (previous !== input.expected_last_ingested_commit) return unchanged('expectation_mismatch');
+
+    const updated = await tx.query<RepositoryRow>(
+      `UPDATE repositories SET last_ingested_commit = $2, updated_at = now()
+        WHERE id = $1::uuid
+        RETURNING *`,
+      [input.repository_id, input.to_commit],
+    );
+    return {
+      outcome: 'advanced',
+      previous_commit: previous,
+      current_commit: input.to_commit,
+      repository: mapRepository(updated.rows[0]!),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

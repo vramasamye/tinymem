@@ -7,8 +7,11 @@
  * Detection is a pure read over PERSISTED state (ADR-0008: drift is a hash comparison, not a
  * model call). The pipeline captures and persists the latest snapshot (`saveSnapshot`) first;
  * `detectDrift` then compares every recorded ref blob against the current persisted
- * worktree-tier fingerprint. `detectDrift` never writes: advancing `last_ingested_commit`,
- * applying `stale`, retargeting refs, and re-indexing are the pipeline's later steps.
+ * worktree-tier fingerprint. `detectDrift` never writes. The write side is codememory's drift
+ * applier (M4e): refs with a `successor_path` are retargeted (exact moves keep their evidence),
+ * memories with any other drifted ref go `stale` (audited), and `last_ingested_commit` advances
+ * via `CodeMemoryStore.advanceCheckpoint` only once every drifted memory was processed.
+ * Re-indexing stale memories is a later step.
  */
 
 /** Why one recorded ref is reported as changed or suspect — never silently fresh. */

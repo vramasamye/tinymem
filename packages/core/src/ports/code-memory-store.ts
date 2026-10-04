@@ -14,12 +14,15 @@
  * - symbol rows only ever exist for paths with a live worktree-tier fingerprint row (their
  *   `symbols_hash` anchor): when a snapshot deletes a path's worktree fingerprint, that path's
  *   symbol rows die with it — symbol tables never outlive their evidence;
- * - `last_ingested_commit` is never advanced here — that checkpoint moves only when changed
- *   knowledge is fully processed, which is the drift pipeline's job, not persistence's.
+ * - `last_ingested_commit` is never advanced as a side effect of any save — that checkpoint
+ *   moves only when changed knowledge is fully processed, which the drift pipeline signals by
+ *   calling the deliberate, conditional `advanceCheckpoint`.
  */
 
 import type {
+  AdvanceCheckpoint,
   EnsureCodeRepository,
+  RetargetCodeRef,
   FingerprintTier,
   RecordCodeRefs,
   SnapshotInput,
@@ -134,6 +137,67 @@ export interface CodeMemoryStore {
     repository_id: string,
     filter?: { paths?: readonly string[] },
   ): Promise<StoredSymbol[]>;
+  /**
+   * Retarget ONE memory's ref (scoped by memory, repository, and from_path) to the path its
+   * exact content moved to, atomically and idempotently. The write happens only when the move
+   * is still provable from persisted state: the from_path has no worktree fingerprint, and the
+   * to_path has a readable worktree fingerprint whose blob equals the ref's blob. Otherwise the
+   * result reports why nothing was written, so the caller can treat the ref as drifted.
+   * Throws NotFoundError when the memory, the repository, or both ref rows are unknown.
+   */
+  retargetCodeRef(input: RetargetCodeRef): Promise<CodeRefRetargetResult>;
+  /**
+   * The ONLY writer of `last_ingested_commit`: a transactional compare-and-set (see
+   * `AdvanceCheckpointSchema`). Never moves the checkpoint to a commit other than the current
+   * persisted head, so it cannot go backwards behind a newer capture. Throws NotFoundError for
+   * an unknown repository.
+   */
+  advanceCheckpoint(input: AdvanceCheckpoint): Promise<CheckpointAdvanceResult>;
+}
+
+/**
+ * Why a retarget did or did not write:
+ * - `retargeted`: the ref now points at to_path;
+ * - `already_retargeted`: only the to_path ref exists (an earlier apply moved it);
+ * - `conflict`: the memory already has refs at BOTH paths — nothing is merged or guessed;
+ * - `source_present`: from_path still has a worktree fingerprint, so the content did not move;
+ * - `successor_mismatch`: to_path is missing, unreadable in the latest capture, or holds a
+ *   different blob than the ref's evidence.
+ */
+export type CodeRefRetargetOutcome =
+  | 'retargeted'
+  | 'already_retargeted'
+  | 'conflict'
+  | 'source_present'
+  | 'successor_mismatch';
+
+export interface CodeRefRetargetResult {
+  outcome: CodeRefRetargetOutcome;
+  /** The ref row after the call: at to_path when (already) retargeted, at from_path otherwise. */
+  ref: MemoryCodeRef;
+}
+
+/**
+ * - `advanced`: the checkpoint moved from `previous_commit` to `current_commit`;
+ * - `unchanged`: the checkpoint already equals `to_commit` (idempotent re-apply);
+ * - `head_mismatch`: `to_commit` is not the repository's current persisted head — a newer (or
+ *   different) capture landed, so the processed knowledge does not describe it;
+ * - `expectation_mismatch`: the stored checkpoint is not the expected prior value.
+ * Only `advanced` writes.
+ */
+export type CheckpointAdvanceOutcome =
+  | 'advanced'
+  | 'unchanged'
+  | 'head_mismatch'
+  | 'expectation_mismatch';
+
+export interface CheckpointAdvanceResult {
+  outcome: CheckpointAdvanceOutcome;
+  /** The stored checkpoint before the call. */
+  previous_commit: string | null;
+  /** The stored checkpoint after the call. */
+  current_commit: string | null;
+  repository: CodeRepositoryRecord;
 }
 
 /** One `code_symbols` row. */
