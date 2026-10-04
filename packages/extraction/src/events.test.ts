@@ -130,6 +130,36 @@ describe('normalizeEvent', () => {
     expect(explicit.explicit).toEqual({ content: 'remember this', type: 'decision' });
   });
 
+  test('structures a tool result, carrying the tool name only when the payload named one', () => {
+    const named = normalizeEvent(
+      makeInput('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'c1',
+        ok: false,
+        tool: 'Edit',
+        output_digest: 'string to replace not found in file',
+        error: { message: 'String to replace not found in file src/store.ts' },
+      }),
+    );
+    expect(named.tool_result).toEqual({
+      call_id: 'c1',
+      ok: false,
+      tool: 'Edit',
+      error_message: 'String to replace not found in file src/store.ts',
+      output_digest: 'string to replace not found in file',
+    });
+
+    const unnamed = normalizeEvent(
+      makeInput('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'c2',
+        ok: true,
+        output_digest: 'ok',
+      }),
+    );
+    expect(unnamed.tool_result).toEqual({ call_id: 'c2', ok: true, output_digest: 'ok' });
+  });
+
   test('throws NormalizationError for a payload that does not match its canonical schema', () => {
     const input = makeInput('terminal.output', {
       kind: 'terminal.output',

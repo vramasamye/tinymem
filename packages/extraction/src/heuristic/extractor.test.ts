@@ -16,6 +16,7 @@ import {
   noiseSession,
   sessionlessInputs,
   testFailureSession,
+  toolFailureSession,
 } from '../testing/transcripts';
 
 import { createHeuristicExtractor } from './extractor';
@@ -268,6 +269,113 @@ describe('heuristic extractor — M3b failure signatures', () => {
     });
     expect(failure.content).toContain('`bunx tsc --noEmit` failed');
     expect(failure.content).toContain('resolved by: `bunx tsc --noEmit`');
+  });
+});
+
+describe('heuristic extractor — M3c tool-result failures', () => {
+  test('a failing tool result resolved by the same tool becomes a failure with its tool', async () => {
+    const result = await extractor.extract(toolFailureSession());
+    const failures = result.memories.filter((memory) => memory.type === 'failure');
+    expect(failures).toHaveLength(1);
+    const failure = failures[0]!;
+    expect(failure.subtype).toBe('failure.resolved');
+    expect(failure.failure_signature).toEqual({
+      type: 'TOOL_ERROR',
+      hash: failureSignatureHash('TOOL_ERROR', 'string to replace not found in file <path>'),
+      normalized_message: 'string to replace not found in file <path>',
+      origin: 'tool',
+      tool: 'Edit',
+    });
+    expect(failure.content).toBe(
+      'Failure: TOOL_ERROR — Edit failed: String to replace not found in file src/store.ts — resolved by: `Edit` succeeded',
+    );
+    expect(failure.evidence).toHaveLength(2);
+    expect(result.working).toEqual([]);
+  });
+
+  test('a different tool succeeding does not resolve the failure (unambiguous pairing)', async () => {
+    const result = await extractor.extract([
+      makeInput(
+        'conversation.tool_result',
+        {
+          kind: 'conversation.tool_result',
+          call_id: 'c1',
+          ok: false,
+          tool: 'Edit',
+          output_digest: 'string to replace not found in file',
+          error: { message: 'String to replace not found in file src/store.ts' },
+        },
+        { offsetSeconds: 0 },
+      ),
+      makeInput(
+        'conversation.tool_result',
+        {
+          kind: 'conversation.tool_result',
+          call_id: 'c2',
+          ok: true,
+          tool: 'Write',
+          output_digest: 'wrote src/store.ts',
+        },
+        { offsetSeconds: 10 },
+      ),
+    ]);
+    expect(result.memories.filter((memory) => memory.type === 'failure')).toEqual([]);
+    const note = result.working.find((candidate) => candidate.kind === 'current_error');
+    expect(note?.content).toContain('Edit failed');
+  });
+
+  test('successful tool results alone produce no failure candidate', async () => {
+    const result = await extractor.extract([
+      makeInput(
+        'conversation.tool_result',
+        {
+          kind: 'conversation.tool_result',
+          call_id: 'c1',
+          ok: true,
+          tool: 'Edit',
+          output_digest: 'edited src/store.ts',
+        },
+        { offsetSeconds: 0 },
+      ),
+    ]);
+    expect(result.memories).toEqual([]);
+    expect(result.working).toEqual([]);
+  });
+
+  test('the same tool failure with different paths keeps one signature', async () => {
+    const run = (path: string) =>
+      extractor.extract([
+        makeInput(
+          'conversation.tool_result',
+          {
+            kind: 'conversation.tool_result',
+            call_id: 'c1',
+            ok: false,
+            tool: 'Edit',
+            output_digest: 'string to replace not found in file',
+            error: { message: `String to replace not found in file ${path}` },
+          },
+          { offsetSeconds: 0 },
+        ),
+        makeInput(
+          'conversation.tool_result',
+          {
+            kind: 'conversation.tool_result',
+            call_id: 'c2',
+            ok: true,
+            tool: 'Edit',
+            output_digest: 'edited',
+          },
+          { offsetSeconds: 10 },
+        ),
+      ]);
+    const plain = (await run('src/store.ts')).memories.find((memory) => memory.type === 'failure')!;
+    const deep = (await run('/Users/dev/proj/packages/storage/src/store.ts')).memories.find(
+      (memory) => memory.type === 'failure',
+    )!;
+    expect(plain.failure_signature!.hash).toBe(deep.failure_signature!.hash);
+    expect(plain.content).toContain('src/store.ts');
+    expect(deep.content).toContain('/Users/dev/proj/packages/storage/src/store.ts');
   });
 });
 

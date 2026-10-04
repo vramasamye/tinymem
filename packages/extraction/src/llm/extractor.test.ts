@@ -11,7 +11,7 @@ import {
   type ModelProvider,
   type ModelProviderRequest,
 } from '@onememory/llm';
-import type { ExtractionInput } from '@onememory/core';
+import type { ExtractionInput, FailureSignature } from '@onememory/core';
 
 import { createFallbackExtractor } from '../fallback';
 import { failureSignatureHash } from '../enrichment/failure';
@@ -308,6 +308,57 @@ describe('createLlmExtractor — M3b enrichment', () => {
       tool: 'bun',
       command: 'bun test',
     });
+  });
+
+  test('a tool-result failure is fingerprinted from the cited events, identical to the heuristic path', async () => {
+    const { router } = fakeRouter([
+      {
+        raw: {
+          memories: [
+            {
+              type: 'failure',
+              content: 'The Edit tool failed; a later Edit succeeded.',
+              importance: 0.75,
+              confidence: 0.7,
+              entities: ['Edit'],
+              event_indexes: [0],
+              future_value_rationale: 'the fix is reusable',
+            },
+          ],
+          working: [],
+        },
+      },
+    ]);
+    const inputs: ExtractionInput[] = [
+      makeInput('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'c1',
+        ok: false,
+        tool: 'Edit',
+        output_digest: 'string to replace not found in file',
+        error: { message: 'String to replace not found in file src/store.ts' },
+      }),
+      makeInput('conversation.tool_result', {
+        kind: 'conversation.tool_result',
+        call_id: 'c2',
+        ok: true,
+        tool: 'Edit',
+        output_digest: 'edited',
+      }, { offsetSeconds: 10 }),
+    ];
+    const llm = await createLlmExtractor({ router }).extract(inputs);
+    const heuristic = await createHeuristicExtractor().extract(inputs);
+    const expected: FailureSignature = {
+      type: 'TOOL_ERROR',
+      hash: failureSignatureHash('TOOL_ERROR', 'string to replace not found in file <path>'),
+      normalized_message: 'string to replace not found in file <path>',
+      origin: 'tool',
+      tool: 'Edit',
+    };
+    expect(llm.memories[0]!.failure_signature).toEqual(expected);
+    expect(
+      heuristic.memories.find((memory) => memory.type === 'failure')!.failure_signature,
+    ).toEqual(expected);
   });
 
   test('a failure candidate citing no failure event carries no signature (no invented provenance)', async () => {

@@ -1,7 +1,8 @@
 /**
- * Failure-signature enrichment (M3b): a **stable fingerprint** for a coding failure, computed from
- * error / terminal / test events — the input ADR-0009 rule 1 needs ("failures are fingerprinted
- * (`signature_hash` + embedding of the problem statement)").
+ * Failure-signature enrichment (M3b; tool-result failures added in M3c): a **stable fingerprint**
+ * for a coding failure, computed from error / terminal / test / tool-result events — the input
+ * ADR-0009 rule 1 needs ("failures are fingerprinted (`signature_hash` + embedding of the problem
+ * statement)").
  *
  * The signature is deterministic, local, and dependency-free: a normalized error class plus a
  * sha256 digest over the noise-normalized message. Two runs of the same failure that differ only
@@ -85,7 +86,7 @@ const FALLBACK_CLASS_BY_ORIGIN: Record<string, string> = {
 /** One recognized failure event, in the form the signature is computed from. */
 export interface FailureIncident {
   /** Which event kind supplied the signature. */
-  origin: 'error' | 'command' | 'test';
+  origin: 'error' | 'command' | 'test' | 'tool';
   /** Raw text the signature normalizes (error message, command line, or failing test names). */
   message: string;
   /** Human-readable label for the durable `content`. */
@@ -111,7 +112,8 @@ function testFailureNames(event: NormalizedEvent): string[] {
 /**
  * Recognize a failure incident in a normalized event, or `undefined` when the event is not a
  * failure. This is the single definition of "a failure happened" for the extract stage: an
- * `error.raised`, a command that exited non-zero, or a test run with failing tests.
+ * `error.raised`, a command that exited non-zero, a test run with failing tests, or a tool result
+ * the runtime itself marked `ok: false`.
  */
 export function failureIncidentOf(event: NormalizedEvent): FailureIncident | undefined {
   if (event.error) {
@@ -149,6 +151,22 @@ export function failureIncidentOf(event: NormalizedEvent): FailureIncident | und
           : `${framework ?? 'tests'}: ${event.tests.failed} failed`,
       label: names.length > 0 ? `${names.length} failed: ${names.join(', ')}` : 'tests failed',
     };
+  }
+  if (event.tool_result && !event.tool_result.ok) {
+    const tool = event.tool_result.tool;
+    const detail = (event.tool_result.error_message ?? event.tool_result.output_digest).trim();
+    // The digest input deliberately excludes the tool name: one root cause reached through
+    // different tools must collapse to one signature (`tool` is recorded context, not identity).
+    const message = detail.length > 0 ? detail : 'tool call failed';
+    const label =
+      detail.length > 0
+        ? tool === undefined
+          ? `tool call failed: ${detail}`
+          : `${tool} failed: ${detail}`
+        : tool === undefined
+          ? 'tool call failed'
+          : `${tool} call failed`;
+    return { origin: 'tool', message, label, ...(tool === undefined ? {} : { tool }) };
   }
   return undefined;
 }
@@ -211,6 +229,7 @@ export function classifyFailure(incident: FailureIncident): string {
   }
   if (incident.origin === 'test') return 'TEST_FAILURE';
   if (incident.origin === 'command') return 'NONZERO_EXIT';
+  if (incident.origin === 'tool') return 'TOOL_ERROR';
   return FALLBACK_CLASS_BY_ORIGIN[incident.error_origin ?? 'runtime'] ?? 'ERROR';
 }
 

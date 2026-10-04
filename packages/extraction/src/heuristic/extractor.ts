@@ -7,8 +7,8 @@
  * 2. explicit decision language ("we decided", "chose X over Y", "settled on"), enriched with the
  *    alternatives considered and the rationale when the sentence carries them (M3b);
  * 3. preference statements ("always/never/prefer/make sure to");
- * 4. failure incidents — `error.raised`, a non-zero exit code, or failing tests — paired with a
- *    related success, each carrying a stable failure signature (M3b);
+ * 4. failure incidents — `error.raised`, a non-zero exit code, failing tests, or a failing tool
+ *    result — paired with a related success, each carrying a stable failure signature (M3b/M3c);
  * 5. recurring commands and command sequences (≥ 2 occurrences → procedural candidate);
  * 6. versioned facts ("upgraded to Node 22");
  * 7. stack/dependency mentions (git commits, pull requests, documents);
@@ -232,19 +232,21 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
 
       // --- 4. failure incidents and error + resolution pairs --------------------------------
       // One definition of "a failure happened" (enrichment/failure.ts): an `error.raised`, a
-      // command that exited non-zero, or a test run with failing tests.
+      // command that exited non-zero, a test run with failing tests, or a tool result the runtime
+      // marked `ok: false`.
       const failures = normalized.filter((event) => failureIncidentOf(event) !== undefined);
       const successes = normalized.filter(
         (event) =>
           (event.command !== undefined && event.command.exit_code === 0) ||
           (event.tests !== undefined && event.tests.failed === 0) ||
-          isSuccessfulToolResult(eventById.get(event.event_id)),
+          isSuccessfulToolResult(event),
       );
 
       /**
        * Relatedness: a success resolves a failure when it runs the same command again, when the
-       * failure was a test run and the tests now pass, or when the texts share a significant token
-       * that is not merely the shared executable (`bun test` failing is not fixed by `bun install`).
+       * failure was a test run and the tests now pass, when the same tool succeeds on a later
+       * call, or when the texts share a significant token that is not merely the shared executable
+       * (`bun test` failing is not fixed by `bun install`).
        */
       function isRelated(failure: NormalizedEvent, success: NormalizedEvent): boolean {
         const failureCommand = failure.command?.normalized;
@@ -253,6 +255,14 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
         if (failure.error?.origin === 'test' && success.tests) return true;
         // A red test run is resolved by a green one (the framework is the shared context).
         if (failure.tests && success.tests) return true;
+        // A failing tool result is resolved by a later successful result of the *same* tool. Both
+        // names must be present: without them "same tool" cannot be established, and guessing from
+        // the result text would pair unrelated calls.
+        const failureTool = failure.tool_result?.tool;
+        const successTool = success.tool_result?.tool;
+        if (failureTool !== undefined && successTool !== undefined && failureTool === successTool) {
+          return true;
+        }
         const executableTokens = new Set(
           [failureCommand, successCommand]
             .filter((value): value is string => value !== undefined)
@@ -320,7 +330,9 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
           ? `\`${success.command.text}\``
           : success.tests
             ? 'tests passing'
-            : 'the following tool call succeeded';
+            : success.tool_result?.tool !== undefined
+              ? `\`${success.tool_result.tool}\` succeeded`
+              : 'the following tool call succeeded';
         push({
           type: 'failure',
           subtype: 'failure.resolved',
@@ -516,7 +528,6 @@ export function createHeuristicExtractor(options: HeuristicExtractorOptions = {}
   };
 }
 
-function isSuccessfulToolResult(event: OnememoryEvent | undefined): boolean {
-  if (!event || event.kind !== 'conversation.tool_result') return false;
-  return (event.payload as { ok?: boolean }).ok === true;
+function isSuccessfulToolResult(event: NormalizedEvent): boolean {
+  return event.tool_result?.ok === true;
 }
