@@ -45,6 +45,7 @@
         "@onememory/adapter-codex": "workspace:*",
         "@onememory/api": "workspace:*",
         "@onememory/config": "workspace:*",
+        "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
         "commander": "^15.0.0",
         "yaml": "^2.9.1",
@@ -130,6 +131,21 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
+    "packages/consolidation": {
+      "name": "@onememory/consolidation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/core": "workspace:*",
+        "@onememory/extraction": "workspace:*",
+        "@onememory/llm": "workspace:*",
+        "@onememory/retrieval": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@onememory/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
@@ -361,6 +377,8 @@
     "@onememory/codememory": ["@onememory/codememory@workspace:packages/codememory"],
 
     "@onememory/config": ["@onememory/config@workspace:packages/config"],
+
+    "@onememory/consolidation": ["@onememory/consolidation@workspace:packages/consolidation"],
 
     "@onememory/core": ["@onememory/core@workspace:packages/core"],
 

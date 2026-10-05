@@ -24,6 +24,7 @@ import { runForget, runPurge, runRestore } from './commands/forget';
 import { runInspect } from './commands/inspect';
 import { runStats } from './commands/stats';
 import { runServe } from './commands/serve';
+import { runConsolidate } from './commands/consolidate';
 
 export interface MainDeps {
   /** Injected stdout (tests capture it; `--json` still routes through it). */
@@ -347,6 +348,26 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
       const io = ioFor(options);
       await execute(io, () =>
         runStats(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+          },
+          io,
+        ),
+      );
+    });
+
+  common(program.command('consolidate'))
+    .description(
+      'run the consolidation pass by hand: near-duplicate merges, contradiction resolution ' +
+        '(ties become disputed), episodic→semantic derivation, decay/archive — all audited',
+    )
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runConsolidate(
           {
             ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
             ...(options.config === undefined ? {} : { configPath: String(options.config) }),

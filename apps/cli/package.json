@@ -22,6 +22,7 @@
     "@onememory/adapter-codex": "workspace:*",
     "@onememory/api": "workspace:*",
     "@onememory/config": "workspace:*",
+    "@onememory/consolidation": "workspace:*",
     "@onememory/core": "workspace:*",
     "commander": "^15.0.0",
     "yaml": "^2.9.1",
