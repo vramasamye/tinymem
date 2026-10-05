@@ -76,15 +76,17 @@ contradictions become `disputed` or supersede with authority rules; repeated fac
 one semantic memory; benchmark thresholds enforced in CI.
 
 **Status (2026-10-05):** Phase 3 DoD met. M11a shipped the golden datasets, metrics harness, and
-CI-enforced thresholds (`mission/11-benchmarks`); M14 shipped the consolidation core —
+CI-enforced thresholds (`mission/11-benchmarks`). M14 shipped the consolidation core —
 authority-ordered contradiction resolution with audited supersession (full ties `disputed`),
 episodic→semantic derivation with `derived_from` edges, keeper-gated near-dup merge, and
 decay/archive — plus the Node 20→22→24 anchor scenario (`mission/14-consolidation`, merged
-`bc8bf24`; semantics synced in `docs/architecture/memory-model.md` §9). The two M14-dependent
-benchmark metrics (contradiction accuracy, consolidation quality) are measured and published but
-deliberately ungated until the harness runs consolidation and a post-M14 baseline is taken
-(backlog: "raised by M11a" item 5). M14.5 (project digest rollup) and M14.6 (events compaction)
-remain open scope.
+`bc8bf24`; semantics synced in `docs/architecture/memory-model.md` §9). M11b (`mission/11-benchmarks-consolidation-gates`,
+merged `e0f504e`) closed the M11a-raised backlog item 5: the harness now runs real consolidation
+for opted-in datasets, and both dependent metrics are CI-gated
+(`contradiction_accuracy ≥ 0.8`, measured 0.8333, 5/6 groups;
+`consolidation_quality ≥ 0.3`, measured 0.3333 — the cross-phrasing
+detector miss is documented and tracked as a follow-up). M14.5 (project digest rollup) and
+M14.6 (events compaction) remain open scope.
 
 ## Phase 4 — Universal agents
 
