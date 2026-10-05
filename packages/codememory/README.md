@@ -89,6 +89,93 @@ await applier.applyReport({ report, checkpoints: basis });
 - Nothing is deleted: stale memories stay retrievable (`queryCurrent` returns active + stale) and
   keep drifting on later passes until re-indexing (a later slice) refreshes them.
 
+## The re-index loop (M4f): scheduler → drift_scan → reindex
+
+`createCodeMemoryOrchestration({ store, codeMemory, jobs, extractor, classify, ... })` owns the
+loop the M4 primitives were waiting for. It is a pure function of injected ports — the same
+`Store`, `CodeMemoryStore`, `JobQueue`, and `Extractor` the pipeline already uses — so the daemon
+and a direct-mode CLI call run the same code:
+
+- **`tick()`** registers the project root (`ensureRepository`, resolving the canonical root the
+  same way capture does) and enqueues exactly one `drift_scan` job per repository with a
+  singleton key (`drift_scan:<repository_id>`), so overlapping ticks coalesce instead of piling
+  up jobs. A repository whose scan is already queued or running is `existing`, not an error.
+- **`runDriftScan`** (the `drift_scan` handler's body) captures a snapshot, persists it
+  (`saveSnapshot`), applies drift through the M4e applier, and then enqueues one chained `reindex`
+  job per repository when anything was applied — the handler never sleeps mid-job.
+- **`runReindex`** (the `reindex` handler's body) is the minimal re-index below; it also persists
+  or refreshes the architecture digest.
+- **`status()`** reports the project id, the last drift scan, and the last re-index pass.
+
+```ts
+const orchestration = createCodeMemoryOrchestration({ store, codeMemory, jobs, extractor, classify, projectId, rootPath });
+await orchestration.tick();                                    // enqueue drift_scan per repository
+const scan = await orchestration.runDriftScan({ project_id });  // capture + apply + chain reindex
+const pass = await orchestration.runReindex({ project_id });   // re-extract drifted paths + digest
+```
+
+The payloads crossing the job queue are Zod-validated at that boundary
+(`parseDriftScanJobPayload`, `parseReindexJobPayload`) — an unparseable payload is an honest
+error, never a silently dropped job.
+
+### The scheduler
+
+`createCodeMemoryScheduler({ intervalMs, tick, timer?, onError? })` turns a tick function into a
+periodic pass with an injectable timer (`setTimeout`/`clearTimeout` by default, `.unref()`-ed so
+a scheduled pass never keeps the process alive). It runs an immediate pass on `start`, chains the
+next pass only after the current one settles (passes never overlap), reports tick errors through
+`onError` without stopping the loop, exposes `runOnce()` for manual passes, and `stop()` awaits
+any in-flight pass. The composition root starts it alongside the job worker (default interval
+`DEFAULT_DRIFT_SCAN_INTERVAL_MS` = 5 minutes) and stops it first on shutdown so no new
+code-memory job is enqueued while the worker drains.
+
+### Minimal re-index (`createReindexer`)
+
+Zero cost for unchanged files, real work only for drift:
+
+1. **Detect** (`detectDrift`): only stale memories and their drifted paths. One unchanged file
+   costs nothing — no read, no parse, no extraction.
+2. **Symbols**: one scoped `extractSymbolTable(root, { files })` pass over exactly the drifted
+   paths, persisted with `saveSymbolTable` (its rewrite guard keeps cosmetic-only files). A
+   failing symbol pass is a warning, not a blocker: the text re-index below still runs.
+3. **Text**: re-read each drifted path (same read discipline as capture — repository-relative,
+   no symlinks, bounded reads), redact it, and hand it to the SAME `Extractor` the `extract` job
+   uses, wrapped as a synthetic `document.added` event (`buildCodeDocumentEvent`): an in-memory
+   envelope, never ingested, so no synthetic row pollutes the `events` table and the normal
+   pipeline never re-processes it. The durable provenance of anything extracted is the real
+   `sources` row the re-index creates plus a `file:<path>` evidence locator (`fileEvidence`) —
+   the FILE is the source of truth, not the synthetic event.
+4. **Resolve** each stale memory against its file's fresh candidates, classified by the injected
+   classifier:
+   - reproduces the memory's knowledge (same durable type, same content hash) → audited
+     `stale → active` (`restored`), refs re-recorded against the current blobs, and `re_embed`
+     enqueued when the content changed and an embedder is registered;
+   - different knowledge of the same type → the fresh candidate supersedes it through the
+     audited `Store.supersede` (actor `job:reindex`, reason `code_drift_reindex`), the winner's
+     ref is tracked on the current blob, and the loser keeps its own code refs for the trail;
+   - nothing reproducible → the memory honestly stays `stale` and is reported `deferred` — never
+     a silent un-stale;
+   - the path is unreadable → `gone` with a warning, the memory stays `stale`.
+   - unexpected failure → `failed`, reported, never thrown.
+5. **Digest**: build the architecture digest (below) and persist it through the normal insertion
+   path — created, refreshed via supersede when the code shape changed, or left untouched when
+   identical.
+
+### The architecture digest (the ≤300-token project summary)
+
+`buildArchitectureDigest` composes the persisted symbol tables into one compact, deterministic
+project summary: grouped modules (top-level directories) → responsibilities (per-file symbol
+names, responsibilities first to keep the "what is this" signal in budget) → entry points
+(bins/servers/cli), plus a language mix and an honest `truncated` flag when the token budget
+forced drops (responsibilities → entry points → modules, in that order). It is deterministic:
+the same code shape yields the same text and the same content hash, so it persists through the
+normal insertion path with full provenance (a `sources` row + `file:` evidence for the files it
+summarizes) and is NOT refreshed unless the code shape actually changed. The budget is
+`DEFAULT_DIGEST_TOKEN_BUDGET` = 300 tokens by default (`estimateDigestTokens` ≈ chars/4, the
+same order of magnitude OpenAI reports for English text; the budget is an argument, so a
+different surface can tighten it). `moduleOfPath` maps a repository-relative path to its module
+label.
+
 ## Symbol extraction (tree-sitter, WASM, offline)
 
 `extractSymbolTable(root)` parses the worktree's source files with tree-sitter through the
@@ -167,14 +254,22 @@ non-Git fallback, bounded reads, and filter/fsmonitor non-execution. The symbol 
 the six grammar vocabularies, comment/whitespace-insensitive span hashing, position-sensitive
 table hashing, scoped re-extraction over a real embedded database (saveSnapshot → extract →
 saveSymbolTable → detectChanges → scoped re-extract → rewrite guard), every skip reason, and the
-offline invariant (zero network calls under the guard).
+offline invariant (zero network calls under the guard). The M4f fixtures pin the whole loop over
+a real Git repository and real embedded storage — scheduler pass → drift scan (audited stale +
+checkpoint advance) → chained re-index that re-reads ONLY the drifted path, refreshes the memory,
+and persists the digest — plus the synthetic `document.added` bridge flowing through the REAL
+heuristic extractor offline, and every re-index/scheduler/digest edge (supersede, deferred,
+degraded extractor/symbols, unreadable path, `re_embed` gating, digest create/unchanged/refresh).
+
 The pure comparison benchmark checks 1k/10k/100k exact renames; it reports local timings, not a
 hardware-independent latency promise.
 
 ## Remaining M4 scope
 
-This package does not yet persist its symbol tables itself (the `CodeMemoryStore` port in
-`@onememory/storage` does), mark memories stale, retarget `memory_code_refs`, enqueue re-index
-work, advance the ingestion checkpoint, or assemble a project digest. Symbol-level drift
-comparison (matching extracted symbols against persisted ones beyond the per-file rewrite guard)
-is a later slice, not a placeholder in this one.
+Symbol-level drift comparison (matching extracted symbols against persisted ones beyond the
+per-file rewrite guard) is a later slice, not a placeholder in this one. The re-index resolves
+memories at the file-text level through the composed extraction pipeline; symbol-level
+resolution (a symbol moved between files, a signature change that keeps the prose true) is not
+attempted here. Large drift sets are re-indexed in one pass — chunked/queued batches for a
+whole-repository rewrite are a later scaling concern, and the digest's token budget is a
+heuristic estimate, not a tokenizer call.

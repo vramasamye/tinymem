@@ -170,8 +170,11 @@ export async function extractSymbolTable(
  * symlinked parent, or O_NOFOLLOW race), size caps, and the read-race check — bytes that
  * changed mid-read are unreadable, never a coherent parse of stale content. Binary detection
  * is honest about its heuristic: a NUL byte or invalid UTF-8 means the bytes are not source.
+ *
+ * Exported (M4f): the re-index reads the SAME bytes through this one discipline before handing
+ * them to the extraction pipeline — the bounded read is shared, never re-implemented.
  */
-async function readSourceFile(
+export async function readSourceFile(
   root: string,
   path: string,
   maxBytes: number,

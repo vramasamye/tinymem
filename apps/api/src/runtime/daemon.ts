@@ -2,10 +2,15 @@
  * `onemem serve` — the daemon.
  *
  * One process owns embedded storage and runs both halves of the system: the REST server (loopback
- * by default) and the job worker (`normalize` → `extract` → `re_embed`). That is the only safe
- * pairing for the embedded profile (ADR-0002), and it is also what makes the write paths
- * self-consistent: the ingest endpoint enqueues `normalize`, and the same process has a worker
- * that picks it up.
+ * by default) and the job worker (`normalize` → `extract` → `re_embed`, plus the M4f code-memory
+ * jobs `drift_scan` → `reindex`). That is the only safe pairing for the embedded profile (ADR-0002),
+ * and it is also what makes the write paths self-consistent: the ingest endpoint enqueues
+ * `normalize`, and the same process has a worker that picks it up.
+ *
+ * The code-memory interval scheduler starts with the worker (see the composition root): it
+ * periodically enqueues one `drift_scan` per registered repository, and each `drift_scan` chains a
+ * `reindex` pass. Both are stopped before the worker drains so no new code-memory job is enqueued
+ * while storage closes.
  *
  * Startup order is deliberate: config → daemon-lock check → storage/worker → HTTP bind → lock file
  * → self-check. Shutdown is the reverse, and the lock file is removed last so a crash never leaves
@@ -28,7 +33,7 @@ import {
 import { BackendError, type OnememoryBackend } from './types';
 import { ONEMEMORY_VERSION } from './version';
 
-export interface ServeOptions extends Pick<OpenRuntimeOptions, 'cwd' | 'configPath' | 'env' | 'embedderFactory' | 'onWarning'> {
+export interface ServeOptions extends Pick<OpenRuntimeOptions, 'cwd' | 'configPath' | 'env' | 'embedderFactory' | 'onWarning' | 'codeMemoryScheduler' | 'driftScanIntervalMs'> {
   /** Bind host; defaults to `daemon.host` (127.0.0.1). */
   host?: string;
   /** Bind port; defaults to `daemon.port`. `0` asks the OS for a free port (tests). */
@@ -112,6 +117,8 @@ export async function startDaemon(options: ServeOptions = {}): Promise<DaemonHan
     ...(options.configPath === undefined ? {} : { configPath: options.configPath }),
     ...(options.env === undefined ? {} : { env: options.env }),
     startWorker: true,
+    ...(options.codeMemoryScheduler === undefined ? {} : { codeMemoryScheduler: options.codeMemoryScheduler }),
+    ...(options.driftScanIntervalMs === undefined ? {} : { driftScanIntervalMs: options.driftScanIntervalMs }),
     ...(options.embedderFactory === undefined ? {} : { embedderFactory: options.embedderFactory }),
     onWarning: options.onWarning ?? ((message: string) => log(options, message)),
   });

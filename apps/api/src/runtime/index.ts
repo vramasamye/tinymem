@@ -10,6 +10,8 @@ export {
   openRuntime,
   openStorage,
   createRuntimeHandlers,
+  DEFAULT_DRIFT_SCAN_INTERVAL_MS,
+  type CodeMemoryRuntimeInfo,
   type OnememoryRuntime,
   type OpenRuntimeOptions,
   type RuntimeDegradation,
@@ -20,6 +22,7 @@ export {
 export { createEmbedder, type EmbedderFactoryOptions } from './embedder';
 
 export {
+  codeMemoryCheck,
   finalizeDoctorReport,
   inspectRuntime,
   failedDoctorReport,

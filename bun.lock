@@ -17,6 +17,7 @@
         "@modelcontextprotocol/server": "2.3.0",
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
+        "@onememory/codememory": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/embeddings": "workspace:*",
@@ -101,6 +102,7 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
+        "@onememory/extraction": "workspace:*",
         "@onememory/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
