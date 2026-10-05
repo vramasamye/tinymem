@@ -18,6 +18,8 @@
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
         "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/codememory": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
@@ -46,6 +48,8 @@
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
         "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/api": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/consolidation": "workspace:*",
@@ -66,6 +70,8 @@
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
         "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/extraction": "workspace:*",
@@ -117,6 +123,32 @@
       },
       "dependencies": {
         "@onememory/core": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
+    "packages/adapters/opencode": {
+      "name": "@onememory/adapter-opencode",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/config": "workspace:*",
+        "@onememory/core": "workspace:*",
+        "@onememory/security": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
+    "packages/adapters/pi": {
+      "name": "@onememory/adapter-pi",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/config": "workspace:*",
+        "@onememory/core": "workspace:*",
+        "@onememory/security": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -233,7 +265,6 @@
       },
       "dependencies": {
         "@modelcontextprotocol/server": "2.3.0",
-        "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/retrieval": "workspace:*",
         "@onememory/security": "workspace:*",
@@ -393,6 +424,10 @@
     "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
 
     "@onememory/adapter-cursor": ["@onememory/adapter-cursor@workspace:packages/adapters/cursor"],
+
+    "@onememory/adapter-opencode": ["@onememory/adapter-opencode@workspace:packages/adapters/opencode"],
+
+    "@onememory/adapter-pi": ["@onememory/adapter-pi@workspace:packages/adapters/pi"],
 
     "@onememory/api": ["@onememory/api@workspace:apps/api"],
 

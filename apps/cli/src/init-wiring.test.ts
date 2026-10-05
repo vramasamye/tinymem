@@ -138,7 +138,7 @@ describe('consent', () => {
         prompt,
       );
       expect(code).toBe(0);
-      expect(offered.map((option) => option.value)).toEqual(['claude-code', 'codex', 'cursor']);
+      expect(offered.map((option) => option.value)).toEqual(['claude-code', 'codex', 'cursor', 'pi', 'opencode']);
       expect(offered[0]!.hint).toContain(join(home, '.claude'));
       expect(preselected).toEqual(['claude-code']);
       const document = JSON.parse(out);
@@ -146,6 +146,8 @@ describe('consent', () => {
       expect(existsSync(join(dir, '.mcp.json'))).toBeTrue();
       expect(existsSync(join(dir, '.codex'))).toBeFalse();
       expect(existsSync(join(dir, '.cursor'))).toBeFalse();
+      expect(existsSync(join(dir, '.pi'))).toBeFalse();
+      expect(existsSync(join(dir, '.opencode'))).toBeFalse();
     },
     BOOT_TIMEOUT,
   );
@@ -224,6 +226,8 @@ describe('--with-claude --with-codex', () => {
         ['runtime-claude-code', 'pass'],
         ['runtime-codex', 'pass'],
         ['runtime-cursor', 'info'],
+        ['runtime-pi', 'info'],
+        ['runtime-opencode', 'info'],
       ]);
       const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
       expect(human.out).toContain('agent runtimes');
@@ -260,7 +264,13 @@ describe('--with-claude --with-codex', () => {
       const configPath = join(dir, '.onememory', 'onememory.yaml');
       writeFileSync(configPath, read(configPath).replace(/^  port: 7331$/m, '  port: 7400'));
       const stale = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
-      expect(stale.runtimes.map((check: { status: string }) => check.status)).toEqual(['warn', 'warn', 'info']);
+      expect(stale.runtimes.map((check: { status: string }) => check.status)).toEqual([
+        'warn',
+        'warn',
+        'info',
+        'info',
+        'info',
+      ]);
       expect(stale.runtimes[0].detail).toContain('http://127.0.0.1:7400/mcp');
 
       const rewired = json(await cli(['init', '--cwd', dir, '--with-claude', '--with-codex', '--json']));
@@ -270,7 +280,13 @@ describe('--with-claude --with-codex', () => {
       expect(toml['mcp_servers']['onememory']['url']).toBe('http://127.0.0.1:7400/mcp');
 
       const fresh = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
-      expect(fresh.runtimes.map((check: { status: string }) => check.status)).toEqual(['pass', 'pass', 'info']);
+      expect(fresh.runtimes.map((check: { status: string }) => check.status)).toEqual([
+        'pass',
+        'pass',
+        'info',
+        'info',
+        'info',
+      ]);
     },
     BOOT_TIMEOUT,
   );
@@ -286,7 +302,7 @@ describe('already initialized', () => {
       expect(again.exitCode).toBe(0);
       expect(again.out).toContain('already initialized');
       expect(again.out).toContain('onemem doctor');
-      expect(again.out).toContain('re-run with --with-claude, --with-codex and/or --with-cursor');
+      expect(again.out).toContain('re-run with --with-claude, --with-codex, --with-cursor, --with-pi and/or --with-opencode');
       expect(existsSync(join(dir, '.mcp.json'))).toBeFalse();
     },
     BOOT_TIMEOUT,
@@ -417,12 +433,144 @@ describe('--with-cursor', () => {
   );
 });
 
+describe('--with-pi', () => {
+  let dir: string;
+  let first: any;
+
+  beforeAll(async () => {
+    dir = projectDir();
+    // A pre-existing Pi config the merges must preserve.
+    mkdirSync(join(dir, '.pi'), { recursive: true });
+    writeFileSync(
+      join(dir, '.pi', 'mcp.json'),
+      `${JSON.stringify({ mcpServers: { linear: { url: 'https://mcp.linear.app/sse' } } }, null, 2)}\n`,
+    );
+    writeFileSync(join(dir, '.pi', 'APPEND_SYSTEM.md'), 'team conventions\n');
+    const result = await cli(['init', '--preset', 'local', '--name', 'pi-demo', '--cwd', dir, '--with-pi', '--json']);
+    expect(result.exitCode).toBe(0);
+    first = json(result);
+  }, BOOT_TIMEOUT);
+
+  test('writes .pi/mcp.json with the daemon http entry beside the user server', () => {
+    const document = JSON.parse(read(join(dir, '.pi', 'mcp.json'))) as { mcpServers: Record<string, unknown> };
+    expect((document.mcpServers['onememory'] as { url: string }).url).toBe(URL_7331);
+    expect((document.mcpServers['linear'] as { url: string }).url).toBe('https://mcp.linear.app/sse');
+  });
+
+  test('writes the generated extension and keeps the user APPEND_SYSTEM.md prose', () => {
+    const extension = read(join(dir, '.pi', 'extensions', 'onememory.ts'));
+    expect(extension).toContain('createPiExtension');
+    const pointer = read(join(dir, '.pi', 'APPEND_SYSTEM.md'));
+    expect(pointer.startsWith('team conventions')).toBe(true);
+    expect(pointer).toContain('onemem:begin');
+  });
+
+  test('the result reports the three files and the review steps', () => {
+    const wired = first.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'pi');
+    expect(wired.files.map((file: { action: string }) => file.action)).toEqual(['patched', 'created', 'patched']);
+    const review = first.required_review.join('\n');
+    expect(review).toContain('only after project trust is granted');
+    expect(review).toContain('/reload');
+  });
+
+  test(
+    'doctor detects the Pi wiring as pass, and a re-run is an idempotent no-op',
+    async () => {
+      const report = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
+      const pi = report.runtimes.find((check: { id: string }) => check.id === 'runtime-pi');
+      expect(pi.status).toBe('pass');
+      expect(pi.detail).toContain(URL_7331);
+      const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
+      expect(human.out).toContain('[ok] Pi');
+
+      const again = json(await cli(['init', '--cwd', dir, '--with-pi', '--json']));
+      const wired = again.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'pi');
+      expect(wired.files.map((file: { action: string }) => file.action)).toEqual([
+        'unchanged',
+        'unchanged',
+        'unchanged',
+      ]);
+    },
+    BOOT_TIMEOUT,
+  );
+});
+
+describe('--with-opencode', () => {
+  let dir: string;
+  let first: any;
+
+  beforeAll(async () => {
+    dir = projectDir();
+    // A pre-existing OpenCode config with a user server + instruction the merges must preserve.
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      `${JSON.stringify(
+        { theme: 'opencode', mcp: { filesystem: { type: 'local', command: ['npx', 'fs-serve'] } }, instructions: ['.opencode/rules/team.md'] },
+        null,
+        2,
+      )}\n`,
+    );
+    const result = await cli(['init', '--preset', 'local', '--name', 'opencode-demo', '--cwd', dir, '--with-opencode', '--json']);
+    expect(result.exitCode).toBe(0);
+    first = json(result);
+  }, BOOT_TIMEOUT);
+
+  test('writes opencode.json with the daemon http entry, keeping the user keys', () => {
+    const document = JSON.parse(read(join(dir, 'opencode.json'))) as {
+      theme: string;
+      mcp: Record<string, unknown>;
+      instructions: string[];
+    };
+    expect(document.theme).toBe('opencode');
+    expect(document.mcp['onememory']).toEqual({ type: 'remote', url: URL_7331, enabled: true });
+    expect(document.mcp['filesystem']).toEqual({ type: 'local', command: ['npx', 'fs-serve'] });
+    expect(document.instructions).toEqual(['.opencode/rules/team.md', '.opencode/onememory.md']);
+  });
+
+  test('writes the auto-loaded plugin shim and the instructions pointer', () => {
+    const plugin = read(join(dir, '.opencode', 'plugins', 'onememory.ts'));
+    expect(plugin).toContain('createOpenCodePlugin');
+    const pointer = read(join(dir, '.opencode', 'onememory.md'));
+    expect(pointer).toContain('onemem:begin');
+    expect(pointer).toContain('memory_search');
+  });
+
+  test('the result reports the three files and the review steps', () => {
+    const wired = first.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'opencode');
+    expect(wired.files.map((file: { action: string }) => file.action)).toEqual(['patched', 'created', 'created']);
+    const review = first.required_review.join('\n');
+    expect(review).toContain('restart opencode after scaffolding');
+    expect(review).toContain('permission');
+  });
+
+  test(
+    'doctor detects the OpenCode wiring as pass, and a re-run is an idempotent no-op',
+    async () => {
+      const report = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
+      const opencode = report.runtimes.find((check: { id: string }) => check.id === 'runtime-opencode');
+      expect(opencode.status).toBe('pass');
+      expect(opencode.detail).toContain(URL_7331);
+      const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
+      expect(human.out).toContain('[ok] OpenCode');
+
+      const again = json(await cli(['init', '--cwd', dir, '--with-opencode', '--json']));
+      const wired = again.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'opencode');
+      expect(wired.files.map((file: { action: string }) => file.action)).toEqual([
+        'unchanged',
+        'unchanged',
+        'unchanged',
+      ]);
+    },
+    BOOT_TIMEOUT,
+  );
+});
+
 describe('scaffold phase units', () => {
   test('detection reads HOME / CODEX_HOME from the injected env only', () => {
     const seen: string[] = [];
     const detection = detectRuntimes('/repo', { HOME: '/h', CODEX_HOME: '/ch' }, (path) => {
       seen.push(path);
-      return path === '/ch' || path === '/repo/.claude' || path === '/h/.cursor';
+      return path === '/ch' || path === '/repo/.claude' || path === '/h/.cursor' || path === '/repo/.pi' || path === '/h/.config/opencode';
     });
     expect(seen).toEqual([
       '/h/.claude',
@@ -432,11 +580,18 @@ describe('scaffold phase units', () => {
       '/repo/.codex',
       '/h/.cursor',
       '/repo/.cursor',
+      '/h/.pi',
+      '/repo/.pi',
+      '/h/.config/opencode',
+      '/repo/.opencode',
+      '/repo/opencode.json',
     ]);
     expect(detection).toEqual([
       { runtime: 'claude-code', detected: true, evidence: ['/repo/.claude'] },
       { runtime: 'codex', detected: true, evidence: ['/ch'] },
       { runtime: 'cursor', detected: true, evidence: ['/h/.cursor'] },
+      { runtime: 'pi', detected: true, evidence: ['/repo/.pi'] },
+      { runtime: 'opencode', detected: true, evidence: ['/h/.config/opencode'] },
     ]);
     expect(detectRuntimes('/repo', {}, () => false).every((entry) => !entry.detected)).toBeTrue();
   });

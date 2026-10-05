@@ -255,8 +255,10 @@ describe('the durable write path (real storage)', () => {
       ['runtime-claude-code', 'info'],
       ['runtime-codex', 'info'],
       ['runtime-cursor', 'info'],
+      ['runtime-pi', 'info'],
+      ['runtime-opencode', 'info'],
     ]);
-    expect(report.summary.info).toBe(3);
+    expect(report.summary.info).toBe(5);
   });
 
   test('the HTTP backend over the real REST app returns the same answers', async () => {

@@ -13,6 +13,8 @@
 import { inspectClaudeScaffold } from '@onememory/adapter-claude';
 import { inspectCodexScaffold } from '@onememory/adapter-codex';
 import { inspectCursorScaffold } from '@onememory/adapter-cursor';
+import { inspectPiScaffold } from '@onememory/adapter-pi';
+import { inspectOpenCodeScaffold } from '@onememory/adapter-opencode';
 
 import type { DoctorCheck } from './doctor';
 
@@ -24,7 +26,7 @@ export function daemonMcpUrl(daemon: { host: string; port: number }): string {
   return `http://${daemon.host}:${daemon.port}${DAEMON_MCP_PATH}`;
 }
 
-export type WiredRuntime = 'claude-code' | 'codex' | 'cursor';
+export type WiredRuntime = 'claude-code' | 'codex' | 'cursor' | 'pi' | 'opencode';
 
 /** The scaffolded state of one runtime, normalized across adapters. */
 export interface RuntimeScaffoldState {
@@ -44,6 +46,8 @@ const RUNTIME_LABELS: Record<WiredRuntime, { title: string; flag: string }> = {
   'claude-code': { title: 'Claude Code', flag: '--with-claude' },
   codex: { title: 'Codex', flag: '--with-codex' },
   cursor: { title: 'Cursor', flag: '--with-cursor' },
+  pi: { title: 'Pi', flag: '--with-pi' },
+  opencode: { title: 'OpenCode', flag: '--with-opencode' },
 };
 
 function isConfigured(state: RuntimeScaffoldState): boolean {
@@ -145,7 +149,7 @@ export function evaluateRuntimeScaffold(
   };
 }
 
-/** Read the project-scope Claude Code, Codex and Cursor scaffolds under `root` and judge all three. */
+/** Read the project-scope runtime scaffolds under `root` and judge every one (info when unwired). */
 export function runtimeScaffoldChecks(
   root: string,
   context: RuntimeCheckContext & { projectId?: string },
@@ -153,6 +157,8 @@ export function runtimeScaffoldChecks(
   const claude = inspectClaudeScaffold(root);
   const codex = inspectCodexScaffold(root, context.projectId === undefined ? {} : { projectId: context.projectId });
   const cursor = inspectCursorScaffold(root);
+  const pi = inspectPiScaffold(root);
+  const opencode = inspectOpenCodeScaffold(root);
   return [
     evaluateRuntimeScaffold(
       'claude-code',
@@ -169,5 +175,7 @@ export function runtimeScaffoldChecks(
       { mcp: cursor.mcp_json, hooks: cursor.hooks, pointer: cursor.rule },
       context,
     ),
+    evaluateRuntimeScaffold('pi', { mcp: pi.mcp, hooks: pi.hooks, pointer: pi.pointer }, context),
+    evaluateRuntimeScaffold('opencode', { mcp: opencode.mcp, hooks: opencode.hooks, pointer: opencode.pointer }, context),
   ];
 }
