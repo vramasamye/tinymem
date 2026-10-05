@@ -12,6 +12,7 @@
 
 import { inspectClaudeScaffold } from '@onememory/adapter-claude';
 import { inspectCodexScaffold } from '@onememory/adapter-codex';
+import { inspectCursorScaffold } from '@onememory/adapter-cursor';
 
 import type { DoctorCheck } from './doctor';
 
@@ -23,7 +24,7 @@ export function daemonMcpUrl(daemon: { host: string; port: number }): string {
   return `http://${daemon.host}:${daemon.port}${DAEMON_MCP_PATH}`;
 }
 
-export type WiredRuntime = 'claude-code' | 'codex';
+export type WiredRuntime = 'claude-code' | 'codex' | 'cursor';
 
 /** The scaffolded state of one runtime, normalized across adapters. */
 export interface RuntimeScaffoldState {
@@ -42,6 +43,7 @@ export interface RuntimeCheckContext {
 const RUNTIME_LABELS: Record<WiredRuntime, { title: string; flag: string }> = {
   'claude-code': { title: 'Claude Code', flag: '--with-claude' },
   codex: { title: 'Codex', flag: '--with-codex' },
+  cursor: { title: 'Cursor', flag: '--with-cursor' },
 };
 
 function isConfigured(state: RuntimeScaffoldState): boolean {
@@ -143,13 +145,14 @@ export function evaluateRuntimeScaffold(
   };
 }
 
-/** Read the project-scope Claude Code and Codex scaffolds under `root` and judge both. */
+/** Read the project-scope Claude Code, Codex and Cursor scaffolds under `root` and judge all three. */
 export function runtimeScaffoldChecks(
   root: string,
   context: RuntimeCheckContext & { projectId?: string },
 ): DoctorCheck[] {
   const claude = inspectClaudeScaffold(root);
   const codex = inspectCodexScaffold(root, context.projectId === undefined ? {} : { projectId: context.projectId });
+  const cursor = inspectCursorScaffold(root);
   return [
     evaluateRuntimeScaffold(
       'claude-code',
@@ -159,6 +162,11 @@ export function runtimeScaffoldChecks(
     evaluateRuntimeScaffold(
       'codex',
       { mcp: codex.config_toml, hooks: codex.hooks_json, pointer: { path: codex.agents_md.path, present: codex.agents_md.present } },
+      context,
+    ),
+    evaluateRuntimeScaffold(
+      'cursor',
+      { mcp: cursor.mcp_json, hooks: cursor.hooks, pointer: cursor.rule },
       context,
     ),
   ];

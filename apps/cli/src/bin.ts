@@ -151,6 +151,7 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
     .option('--embed-model <model>', 'ollama preset: embedding model (default: nomic-embed-text)')
     .option('--with-claude', 'wire Claude Code: .mcp.json (daemon MCP), .claude/settings.json hooks, CLAUDE.md pointer')
     .option('--with-codex', 'wire Codex: .codex/config.toml (daemon MCP), .codex/hooks.json, AGENTS.md pointer')
+    .option('--with-cursor', 'wire Cursor: .cursor/mcp.json (daemon MCP), .cursor/hooks.json, .cursor/rules/onememory.mdc')
     .action(async (options) => {
       const io = ioFor(options);
       const preset = options.preset === undefined ? undefined : String(options.preset);
@@ -174,6 +175,7 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.embedModel === undefined ? {} : { embedModel: String(options.embedModel) }),
             ...(options.withClaude === true ? { withClaude: true } : {}),
             ...(options.withCodex === true ? { withCodex: true } : {}),
+            ...(options.withCursor === true ? { withCursor: true } : {}),
           },
           io,
           prompt,

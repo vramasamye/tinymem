@@ -14,8 +14,9 @@
  * default pipeline answered, not just that a file exists.
  *
  * After the project is registered, the scaffold phase (`wire-runtimes.ts`) wires the agent
- * runtimes the user consented to — Claude Code and/or Codex — to the daemon's MCP surface. On an
- * already-initialized project, `--with-claude` / `--with-codex` run that phase alone.
+ * runtimes the user consented to — Claude Code, Codex and/or Cursor — to the daemon's MCP surface.
+ * On an already-initialized project, `--with-claude` / `--with-codex` / `--with-cursor` run that
+ * phase alone.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -72,6 +73,8 @@ export interface InitOptions {
   withClaude?: boolean;
   /** `--with-codex`: wire Codex (consent for non-interactive runs). */
   withCodex?: boolean;
+  /** `--with-cursor`: wire Cursor (consent for non-interactive runs). */
+  withCursor?: boolean;
   /** Runtime-detection probe (tests inject one; default `existsSync`). */
   pathExists?: PathExists;
 }
@@ -216,7 +219,7 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
   const configPath = join(configDir, CONFIG_FILE_NAME);
 
   const env = options.env ?? process.env;
-  const wantsWiring = options.withClaude === true || options.withCodex === true;
+  const wantsWiring = options.withClaude === true || options.withCodex === true || options.withCursor === true;
 
   for (const name of [CONFIG_FILE_NAME, CONFIG_FILE_NAME_ALT]) {
     const existing = join(configDir, name);
@@ -224,7 +227,7 @@ export async function runInit(options: InitOptions, io: Io, prompt: Prompt): Pro
       io.out(`onememory is already initialized here: ${existing}`);
       if (!wantsWiring) {
         io.out(`configuration lives in ${configDir}; run 'onemem doctor' to check the setup.`);
-        io.out('to wire an agent runtime, re-run with --with-claude and/or --with-codex.');
+        io.out('to wire an agent runtime, re-run with --with-claude, --with-codex and/or --with-cursor.');
         const result: InitAlreadyResult = { status: 'already-initialized', config_path: existing, config_dir: configDir };
         io.emit(result);
         return 0;
@@ -402,6 +405,7 @@ async function rewireExisting(
     runtimes: [
       ...(options.withClaude === true ? (['claude-code'] as const) : []),
       ...(options.withCodex === true ? (['codex'] as const) : []),
+      ...(options.withCursor === true ? (['cursor'] as const) : []),
     ],
     detected: detection.filter((entry) => entry.detected).map((entry) => entry.runtime),
   });
