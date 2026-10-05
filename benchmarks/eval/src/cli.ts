@@ -72,9 +72,6 @@ function summarize(report: BenchmarkReport): string {
       `  ${check.passed ? 'pass' : 'FAIL'}  ${check.metric}=${check.actual} (${check.comparison} ${check.threshold})`,
     );
   }
-  lines.push(
-    `  reported-only  contradiction_accuracy=${report.gates.reported_only.contradiction_accuracy} consolidation_quality=${report.gates.reported_only.consolidation_quality}`,
-  );
   if (report.network_attempts !== null) {
     lines.push(`  network attempts: ${report.network_attempts}`);
   }

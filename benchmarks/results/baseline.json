@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-10-05T10:06:21.956Z",
+  "generated_at": "2026-10-05T11:36:54.437Z",
   "engine": {
     "profile": "embedded",
     "embedder": "none (lexical + graph default)",
@@ -17,8 +17,8 @@
   "datasets": [
     {
       "id": "consolidation-repeats",
-      "title": "Repeated facts and repeated failures: pre-M14 consolidation baseline (reported, not gated)",
-      "description": "Exact repeats, paraphrases and a repeated failure. Exact content-hash dedupe (memory-model.md §8 stage 6) is the only collapse mechanism today; episodic→semantic derivation and near-duplicate merging are M14. The metric is reported, not gated, until M14 merges.",
+      "title": "Repeated facts and repeated failures: consolidation under the offline default",
+      "description": "Exact repeats, paraphrases and a repeated failure. The dataset opts into the M14 consolidation pass: contradiction resolution and decay run (fixtures are minutes old, so decay archives nothing), while the vector-gated passes (episodic-to-semantic derivation, near-duplicate merge) skip with recorded warnings because the offline default wires no embedder. The paraphrase pair therefore stays distinct offline — the honest measured ceiling of consolidation quality in the no-embedding default.",
       "extraction": {
         "events_processed": 6,
         "memories_inserted": 5,
@@ -30,47 +30,60 @@
       },
       "memories": 5,
       "superseded": 0,
+      "consolidation": {
+        "ran_at": "2026-10-03T10:00:00.000Z",
+        "actor": "bench:consolidation",
+        "pairs": 0,
+        "resolved": 0,
+        "disputed_pairs": 0,
+        "merged_sources": 0,
+        "derived": 0,
+        "archived": 0,
+        "warnings": [
+          "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
+        ]
+      },
       "facts": [
         {
           "key": "postgres-repeat-a",
           "scenario": "repeated",
           "description": "First observation of the PostgreSQL decision",
-          "memory_id": "01a10b87-414c-7000-b1c6-cbded8398b61",
+          "memory_id": "01a10bda-25ff-7000-83bb-5fdd69cc1313",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "postgres-repeat-b",
           "scenario": "repeated",
           "description": "Second (identical) observation of the PostgreSQL decision",
-          "memory_id": "01a10b87-414c-7000-b1c6-cbded8398b61",
+          "memory_id": "01a10bda-25ff-7000-83bb-5fdd69cc1313",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "redis-decision-a",
           "scenario": "repeated",
           "description": "Redis caching decision, wording A",
-          "memory_id": "01a10b87-4169-7000-8d3a-17c351e7ab22",
+          "memory_id": "01a10bda-2614-7000-bfea-529958364c2a",
           "content": "Decision: use Redis for caching session data"
         },
         {
           "key": "redis-decision-b",
           "scenario": "repeated",
           "description": "Redis caching decision, wording B (paraphrase)",
-          "memory_id": "01a10b87-415f-7000-b376-718634787916",
+          "memory_id": "01a10bda-260e-7000-ba85-0911efb9df10",
           "content": "Decision: on Redis as the cache for session data"
         },
         {
           "key": "failure-repeat-a",
           "scenario": "repeated",
           "description": "First observation of the MODULE_NOT_FOUND failure",
-          "memory_id": "01a10b87-417e-7000-94e3-d6a370b62d4e",
+          "memory_id": "01a10bda-261e-7000-a842-17668d05e0e7",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         },
         {
           "key": "failure-repeat-b",
           "scenario": "repeated",
           "description": "Second observation of the MODULE_NOT_FOUND failure",
-          "memory_id": "01a10b87-417e-7000-94e3-d6a370b62d4e",
+          "memory_id": "01a10bda-261e-7000-a842-17668d05e0e7",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         }
       ],
@@ -79,12 +92,12 @@
           "id": "database-choice",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
           "returnedIds": [
-            "01a10b87-414c-7000-b1c6-cbded8398b61"
+            "01a10bda-25ff-7000-83bb-5fdd69cc1313"
           ],
           "expectedIds": [
-            "01a10b87-414c-7000-b1c6-cbded8398b61"
+            "01a10bda-25ff-7000-83bb-5fdd69cc1313"
           ],
           "forbiddenIds": [],
           "usedTokens": 17,
@@ -98,15 +111,15 @@
           "id": "cache-decision",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
           "returnedIds": [
-            "01a10b87-414c-7000-b1c6-cbded8398b61",
-            "01a10b87-4169-7000-8d3a-17c351e7ab22",
-            "01a10b87-415f-7000-b376-718634787916"
+            "01a10bda-25ff-7000-83bb-5fdd69cc1313",
+            "01a10bda-2614-7000-bfea-529958364c2a",
+            "01a10bda-260e-7000-ba85-0911efb9df10"
           ],
           "expectedIds": [
-            "01a10b87-4169-7000-8d3a-17c351e7ab22",
-            "01a10b87-415f-7000-b376-718634787916"
+            "01a10bda-2614-7000-bfea-529958364c2a",
+            "01a10bda-260e-7000-ba85-0911efb9df10"
           ],
           "forbiddenIds": [],
           "usedTokens": 40,
@@ -120,12 +133,12 @@
           "id": "module-failure",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
           "returnedIds": [
-            "01a10b87-417e-7000-94e3-d6a370b62d4e"
+            "01a10bda-261e-7000-a842-17668d05e0e7"
           ],
           "expectedIds": [
-            "01a10b87-417e-7000-94e3-d6a370b62d4e"
+            "01a10bda-261e-7000-a842-17668d05e0e7"
           ],
           "forbiddenIds": [],
           "usedTokens": 18,
@@ -213,38 +226,122 @@
       },
       "warnings": [
         "event at offset 20s (conversation.message) was not stored: duplicate",
-        "event at offset 70s (terminal.output) was not stored: duplicate"
+        "event at offset 70s (terminal.output) was not stored: duplicate",
+        "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
       ]
     },
     {
       "id": "contradictions",
-      "title": "Contradictory facts: pre-M14 baseline (reported, not gated)",
-      "description": "Two mutually exclusive database decisions in one project, ingested without supersession. Nothing in the engine resolves them today (automatic contradiction detection + authority resolution is M14), so the probe measures how often the engine surfaces an unresolved conflict. Reported only; the coordinator flips this gate on after M14 merges.",
+      "title": "Contradictory facts: automatic authority resolution (M14)",
+      "description": "Mutually exclusive statements in one project, ingested WITHOUT declared supersessions and resolved by the automatic contradiction pass (explicit > decision > newer > confidence; a full tie marks both sides disputed). The dataset opts into the M14 consolidation pass; the offline harness runs contradiction resolution and decay, while the vector-gated passes (derivation, near-duplicate merge) skip with recorded warnings. Groups cover every authority level plus one full tie, and one cross-phrasing pair the template heuristic cannot detect (the documented detector gap).",
       "extraction": {
-        "events_processed": 2,
-        "memories_inserted": 2,
+        "events_processed": 12,
+        "memories_inserted": 12,
         "duplicates": 0,
         "working_inserted": 0,
         "candidates_discarded": 0,
         "needs_review": 0,
         "re_embed_jobs": 0
       },
-      "memories": 2,
+      "memories": 12,
       "superseded": 0,
+      "consolidation": {
+        "ran_at": "2026-10-03T10:00:00.000Z",
+        "actor": "bench:consolidation",
+        "pairs": 5,
+        "resolved": 4,
+        "disputed_pairs": 1,
+        "merged_sources": 0,
+        "derived": 0,
+        "archived": 0,
+        "warnings": [
+          "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
+        ]
+      },
       "facts": [
         {
           "key": "postgres-decision",
           "scenario": "contradictory",
-          "description": "Older PostgreSQL decision",
-          "memory_id": "01a10b87-478a-7000-b92d-26416dcbe421",
+          "description": "Older PostgreSQL decision (cross-phrasing pair, undetected by the template heuristic)",
+          "memory_id": "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "mysql-decision",
           "scenario": "contradictory",
-          "description": "Newer MySQL decision",
-          "memory_id": "01a10b87-4780-7000-9c4f-15ecc357de95",
+          "description": "Newer MySQL decision (cross-phrasing pair, undetected by the template heuristic)",
+          "memory_id": "01a10bda-2b9d-7000-91ba-bc61aa46fb28",
           "content": "Decision: use MySQL for the primary datastore"
+        },
+        {
+          "key": "gateway-port-explicit",
+          "scenario": "contradictory",
+          "description": "Explicit user statement of the API gateway port (source kind 'explicit')",
+          "memory_id": "01a10bda-2bbd-7000-b564-5ec19fa0f848",
+          "content": "Decision: port 8081 for the API gateway"
+        },
+        {
+          "key": "gateway-port-decision",
+          "scenario": "contradictory",
+          "description": "Newer conversation decision naming a different API gateway port",
+          "memory_id": "01a10bda-2bc8-7000-854d-8a160c781ed4",
+          "content": "Decision: port 8080 for the API gateway"
+        },
+        {
+          "key": "port-standard-decision",
+          "scenario": "contradictory",
+          "description": "Explicit decision memory declaring the standard API port",
+          "memory_id": "01a10bda-2bd1-7000-b0aa-1731a5897e32",
+          "content": "Port 5432 is the standard API port for all services."
+        },
+        {
+          "key": "port-standard-semantic",
+          "scenario": "contradictory",
+          "description": "Newer explicit observation of the standard API port (durable semantic)",
+          "memory_id": "01a10bda-2bd6-7000-bb81-c108d53534d9",
+          "content": "Port 5433 is the standard API port for all services."
+        },
+        {
+          "key": "pool-cap-20",
+          "scenario": "contradictory",
+          "description": "Older connection pool cap decision",
+          "memory_id": "01a10bda-2bdc-7000-9929-7dbe69775746",
+          "content": "Decision: capping the connection pool at 20 connections"
+        },
+        {
+          "key": "pool-cap-50",
+          "scenario": "contradictory",
+          "description": "Newer connection pool cap decision",
+          "memory_id": "01a10bda-2be0-7000-8f88-2c1497a1309b",
+          "content": "Decision: capping the connection pool at 50 connections"
+        },
+        {
+          "key": "retention-30",
+          "scenario": "contradictory",
+          "description": "Log retention decided by the user (confidence 0.85)",
+          "memory_id": "01a10bda-2beb-7000-9fc6-16fcbbf08d0c",
+          "content": "Decision: 30 days of log retention"
+        },
+        {
+          "key": "retention-90",
+          "scenario": "contradictory",
+          "description": "Log retention inferred by the assistant at the same instant (confidence 0.6)",
+          "memory_id": "01a10bda-2bf0-7000-9c44-e5e9baac995e",
+          "content": "Decision: 90 days of log retention"
+        },
+        {
+          "key": "rate-limit-100",
+          "scenario": "contradictory",
+          "description": "One side of the full-authority tie on the API rate limit",
+          "memory_id": "01a10bda-2bf5-7000-9434-1ad0582d589b",
+          "content": "Decision: an API rate limit of 100 requests per minute"
+        },
+        {
+          "key": "rate-limit-1000",
+          "scenario": "contradictory",
+          "description": "Other side of the full-authority tie on the API rate limit",
+          "memory_id": "01a10bda-2bff-7000-ad1c-1407583b558d",
+          "content": "Decision: an API rate limit of 1000 requests per minute"
         }
       ],
       "queries": [
@@ -252,14 +349,14 @@
           "id": "database-decision",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4775-7000-843d-16d2f285dde8",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
           "returnedIds": [
-            "01a10b87-478a-7000-b92d-26416dcbe421",
-            "01a10b87-4780-7000-9c4f-15ecc357de95"
+            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
+            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
           ],
           "expectedIds": [
-            "01a10b87-478a-7000-b92d-26416dcbe421",
-            "01a10b87-4780-7000-9c4f-15ecc357de95"
+            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
+            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
           ],
           "forbiddenIds": [],
           "usedTokens": 29,
@@ -273,18 +370,127 @@
           "id": "contradiction-database-dialect",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4775-7000-843d-16d2f285dde8",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
           "returnedIds": [
-            "01a10b87-478a-7000-b92d-26416dcbe421",
-            "01a10b87-4780-7000-9c4f-15ecc357de95"
+            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
+            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
           ],
           "expectedIds": [
-            "01a10b87-4780-7000-9c4f-15ecc357de95"
+            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
           ],
           "forbiddenIds": [
-            "01a10b87-478a-7000-b92d-26416dcbe421"
+            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12"
           ],
           "usedTokens": 29,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-explicit-over-decision",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "returnedIds": [
+            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
+            "01a10bda-2bd1-7000-b0aa-1731a5897e32",
+            "01a10bda-2b9d-7000-91ba-bc61aa46fb28",
+            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12"
+          ],
+          "expectedIds": [
+            "01a10bda-2bbd-7000-b564-5ec19fa0f848"
+          ],
+          "forbiddenIds": [
+            "01a10bda-2bc8-7000-854d-8a160c781ed4"
+          ],
+          "usedTokens": 52,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-decision-over-observation",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "returnedIds": [
+            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
+            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+          ],
+          "expectedIds": [
+            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+          ],
+          "forbiddenIds": [
+            "01a10bda-2bd6-7000-bb81-c108d53534d9"
+          ],
+          "usedTokens": 23,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-newer-decision-wins",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "returnedIds": [
+            "01a10bda-2be0-7000-8f88-2c1497a1309b"
+          ],
+          "expectedIds": [
+            "01a10bda-2be0-7000-8f88-2c1497a1309b"
+          ],
+          "forbiddenIds": [
+            "01a10bda-2bdc-7000-9929-7dbe69775746"
+          ],
+          "usedTokens": 14,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-confidence-wins",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "returnedIds": [
+            "01a10bda-2beb-7000-9fc6-16fcbbf08d0c"
+          ],
+          "expectedIds": [
+            "01a10bda-2beb-7000-9fc6-16fcbbf08d0c"
+          ],
+          "forbiddenIds": [
+            "01a10bda-2bf0-7000-9c44-e5e9baac995e"
+          ],
+          "usedTokens": 9,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-full-tie-disputed",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "returnedIds": [
+            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
+            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+          ],
+          "expectedIds": [],
+          "forbiddenIds": [
+            "01a10bda-2bf5-7000-9434-1ad0582d589b",
+            "01a10bda-2bff-7000-ad1c-1407583b558d"
+          ],
+          "usedTokens": 23,
           "budget": 800,
           "packing": "summary",
           "warnings": [
@@ -303,12 +509,12 @@
           "mrr": 1
         },
         "tokens": {
-          "queries": 2,
+          "queries": 7,
           "budget_compliance": 1,
-          "mean_used": 29,
-          "max_used": 29,
-          "p95_used": 29,
-          "mean_tokens_per_expected": 21.75
+          "mean_used": 25.57,
+          "max_used": 52,
+          "p95_used": 52,
+          "mean_tokens_per_expected": 23.58
         },
         "pollution": {
           "cross_project_top1_rate": 0,
@@ -335,10 +541,10 @@
           }
         },
         "contradiction": {
-          "groups": 1,
-          "resolved": 0,
-          "accuracy": 0,
-          "authority_top1": 0,
+          "groups": 6,
+          "resolved": 5,
+          "accuracy": 0.8333,
+          "authority_top1": 3,
           "silent_conflicts": 1
         },
         "consolidation": {
@@ -348,7 +554,9 @@
           "details": []
         }
       },
-      "warnings": []
+      "warnings": [
+        "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
+      ]
     },
     {
       "id": "pollution-cross-project",
@@ -365,26 +573,27 @@
       },
       "memories": 3,
       "superseded": 0,
+      "consolidation": null,
       "facts": [
         {
           "key": "alpha-postgres",
           "scenario": "project-scoped",
           "description": "Project alpha uses PostgreSQL + pgvector",
-          "memory_id": "01a10b87-4cca-7000-b173-f621e0e2acbb",
+          "memory_id": "01a10bda-320a-7000-8a51-fb1a5ccf0544",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "beta-mysql",
           "scenario": "cross-project",
           "description": "Project beta uses MySQL",
-          "memory_id": "01a10b87-4cd4-7000-9f31-1de38804be65",
+          "memory_id": "01a10bda-3210-7000-bbf1-1c50f0ea698c",
           "content": "Decision: use MySQL for the analytics service"
         },
         {
           "key": "global-tabs",
           "scenario": "cross-project",
           "description": "User-global preference for tabs over spaces",
-          "memory_id": "01a10b87-4cd8-7000-9c6d-50ff9a2ac470",
+          "memory_id": "01a10bda-3215-7000-ba32-1c3e7d67d18e",
           "content": "Preference: tabs over spaces in every project"
         }
       ],
@@ -393,17 +602,17 @@
           "id": "alpha-database",
           "kind": "pollution",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4cc1-7000-9460-45f4ddfca278",
+          "projectId": "01a10bda-3200-7000-8ad2-b8c23b46d72e",
           "returnedIds": [
-            "01a10b87-4cca-7000-b173-f621e0e2acbb",
-            "01a10b87-4cd4-7000-9f31-1de38804be65",
-            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+            "01a10bda-320a-7000-8a51-fb1a5ccf0544",
+            "01a10bda-3210-7000-bbf1-1c50f0ea698c",
+            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
           ],
           "expectedIds": [
-            "01a10b87-4cca-7000-b173-f621e0e2acbb"
+            "01a10bda-320a-7000-8a51-fb1a5ccf0544"
           ],
           "forbiddenIds": [
-            "01a10b87-4cd4-7000-9f31-1de38804be65"
+            "01a10bda-3210-7000-bbf1-1c50f0ea698c"
           ],
           "usedTokens": 41,
           "budget": 800,
@@ -416,17 +625,17 @@
           "id": "beta-database",
           "kind": "pollution",
           "projectKey": "beta",
-          "projectId": "01a10b87-4cc1-7001-b468-9603ab1ebc04",
+          "projectId": "01a10bda-3201-7000-be14-2523b47fb931",
           "returnedIds": [
-            "01a10b87-4cd4-7000-9f31-1de38804be65",
-            "01a10b87-4cca-7000-b173-f621e0e2acbb",
-            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+            "01a10bda-3210-7000-bbf1-1c50f0ea698c",
+            "01a10bda-320a-7000-8a51-fb1a5ccf0544",
+            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
           ],
           "expectedIds": [
-            "01a10b87-4cd4-7000-9f31-1de38804be65"
+            "01a10bda-3210-7000-bbf1-1c50f0ea698c"
           ],
           "forbiddenIds": [
-            "01a10b87-4cca-7000-b173-f621e0e2acbb"
+            "01a10bda-320a-7000-8a51-fb1a5ccf0544"
           ],
           "usedTokens": 41,
           "budget": 800,
@@ -439,12 +648,12 @@
           "id": "alpha-global-preference",
           "kind": "pollution",
           "projectKey": "alpha",
-          "projectId": "01a10b87-4cc1-7000-9460-45f4ddfca278",
+          "projectId": "01a10bda-3200-7000-8ad2-b8c23b46d72e",
           "returnedIds": [
-            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
           ],
           "expectedIds": [
-            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
           ],
           "forbiddenIds": [],
           "usedTokens": 12,
@@ -528,40 +737,41 @@
       },
       "memories": 6,
       "superseded": 0,
+      "consolidation": null,
       "facts": [
         {
           "key": "database-decision",
           "scenario": "project-scoped",
           "description": "PostgreSQL + pgvector chosen as the only database dialect",
-          "memory_id": "01a10b87-52f2-7000-9503-2c1c7f6214d5",
+          "memory_id": "01a10bda-3796-7000-a532-3e62aab7817b",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "test-runner-preference",
           "scenario": "other",
           "description": "bun test preferred over jest",
-          "memory_id": "01a10b87-52ff-7000-8a6e-ff15f5587578",
+          "memory_id": "01a10bda-37a9-7000-8a88-b5877352f892",
           "content": "Preference: bun test over jest because it is faster"
         },
         {
           "key": "ci-order-preference",
           "scenario": "procedural",
           "description": "bun install must run before bun test in CI",
-          "memory_id": "01a10b87-52fc-7000-8a71-afaee5ece250",
+          "memory_id": "01a10bda-37a4-7000-b8bc-c9107b72258d",
           "content": "Preference: bun install before bun test in CI"
         },
         {
           "key": "module-resolution-failure",
           "scenario": "failure-solution",
           "description": "MODULE_NOT_FOUND failure with its resolution command",
-          "memory_id": "01a10b87-52f9-7000-a893-69a5498c2ed9",
+          "memory_id": "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         },
         {
           "key": "terraform-procedure",
           "scenario": "procedural",
           "description": "Recurring terraform apply procedure",
-          "memory_id": "01a10b87-5307-7000-9874-94ff28abd8e9",
+          "memory_id": "01a10bda-37af-7000-bcec-66b2116b982a",
           "content": "Recurring command: `terraform apply` (used 2 times)"
         }
       ],
@@ -570,12 +780,12 @@
           "id": "which-database",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
           "returnedIds": [
-            "01a10b87-52f2-7000-9503-2c1c7f6214d5"
+            "01a10bda-3796-7000-a532-3e62aab7817b"
           ],
           "expectedIds": [
-            "01a10b87-52f2-7000-9503-2c1c7f6214d5"
+            "01a10bda-3796-7000-a532-3e62aab7817b"
           ],
           "forbiddenIds": [],
           "usedTokens": 17,
@@ -589,15 +799,15 @@
           "id": "which-test-runner",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
           "returnedIds": [
-            "01a10b87-52fc-7000-8a71-afaee5ece250",
-            "01a10b87-52ff-7000-8a6e-ff15f5587578",
-            "01a10b87-52f9-7000-a893-69a5498c2ed9",
-            "01a10b87-5302-7000-9655-5fa8bb97f402"
+            "01a10bda-37a4-7000-b8bc-c9107b72258d",
+            "01a10bda-37a9-7000-8a88-b5877352f892",
+            "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
+            "01a10bda-37ac-7000-b49d-4f361dca69ee"
           ],
           "expectedIds": [
-            "01a10b87-52ff-7000-8a6e-ff15f5587578"
+            "01a10bda-37a9-7000-8a88-b5877352f892"
           ],
           "forbiddenIds": [],
           "usedTokens": 54,
@@ -611,15 +821,15 @@
           "id": "ci-order",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
           "returnedIds": [
-            "01a10b87-52f9-7000-a893-69a5498c2ed9",
-            "01a10b87-52fc-7000-8a71-afaee5ece250",
-            "01a10b87-52ff-7000-8a6e-ff15f5587578",
-            "01a10b87-5302-7000-9655-5fa8bb97f402"
+            "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
+            "01a10bda-37a4-7000-b8bc-c9107b72258d",
+            "01a10bda-37a9-7000-8a88-b5877352f892",
+            "01a10bda-37ac-7000-b49d-4f361dca69ee"
           ],
           "expectedIds": [
-            "01a10b87-52fc-7000-8a71-afaee5ece250"
+            "01a10bda-37a4-7000-b8bc-c9107b72258d"
           ],
           "forbiddenIds": [],
           "usedTokens": 54,
@@ -633,12 +843,12 @@
           "id": "module-error",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
           "returnedIds": [
-            "01a10b87-52f9-7000-a893-69a5498c2ed9"
+            "01a10bda-379e-7000-ad43-3b6b9bce2a4b"
           ],
           "expectedIds": [
-            "01a10b87-52f9-7000-a893-69a5498c2ed9"
+            "01a10bda-379e-7000-ad43-3b6b9bce2a4b"
           ],
           "forbiddenIds": [],
           "usedTokens": 18,
@@ -652,12 +862,12 @@
           "id": "terraform-deploy",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
           "returnedIds": [
-            "01a10b87-5307-7000-9874-94ff28abd8e9"
+            "01a10bda-37af-7000-bcec-66b2116b982a"
           ],
           "expectedIds": [
-            "01a10b87-5307-7000-9874-94ff28abd8e9"
+            "01a10bda-37af-7000-bcec-66b2116b982a"
           ],
           "forbiddenIds": [],
           "usedTokens": 13,
@@ -741,26 +951,27 @@
       },
       "memories": 3,
       "superseded": 2,
+      "consolidation": null,
       "facts": [
         {
           "key": "node-20",
           "scenario": "outdated",
           "description": "Node 20 was the runtime version",
-          "memory_id": "01a10b87-5874-7000-8430-0ad182efdd40",
+          "memory_id": "01a10bda-3d20-7000-b13f-c0ad3df9df97",
           "content": "Version: Node 20"
         },
         {
           "key": "node-22",
           "scenario": "outdated",
           "description": "Node 22 replaced Node 20",
-          "memory_id": "01a10b87-587b-7000-a968-615d9af1cce9",
+          "memory_id": "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
           "content": "Version: Node 22"
         },
         {
           "key": "node-24",
           "scenario": "outdated",
           "description": "Node 24 replaced Node 22 (current truth)",
-          "memory_id": "01a10b87-5880-7000-9667-0bcfa64ace87",
+          "memory_id": "01a10bda-3d2f-7000-abd4-4040d6cdff1c",
           "content": "Version: Node 24"
         }
       ],
@@ -769,16 +980,16 @@
           "id": "node-current",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
           "returnedIds": [
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "expectedIds": [
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "forbiddenIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40",
-            "01a10b87-587b-7000-a968-615d9af1cce9"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -792,16 +1003,16 @@
           "id": "node-point-in-time-20",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
           "returnedIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
           ],
           "expectedIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
           ],
           "forbiddenIds": [
-            "01a10b87-587b-7000-a968-615d9af1cce9",
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -815,16 +1026,16 @@
           "id": "node-point-in-time-22",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
           "returnedIds": [
-            "01a10b87-587b-7000-a968-615d9af1cce9"
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
           ],
           "expectedIds": [
-            "01a10b87-587b-7000-a968-615d9af1cce9"
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
           ],
           "forbiddenIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40",
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -838,16 +1049,16 @@
           "id": "node-point-in-time-24",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
           "returnedIds": [
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "expectedIds": [
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "forbiddenIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40",
-            "01a10b87-587b-7000-a968-615d9af1cce9"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -861,16 +1072,16 @@
           "id": "node-history",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
           "returnedIds": [
-            "01a10b87-5880-7000-9667-0bcfa64ace87",
-            "01a10b87-587b-7000-a968-615d9af1cce9",
-            "01a10b87-5874-7000-8430-0ad182efdd40"
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c",
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
           ],
           "expectedIds": [
-            "01a10b87-5874-7000-8430-0ad182efdd40",
-            "01a10b87-587b-7000-a968-615d9af1cce9",
-            "01a10b87-5880-7000-9667-0bcfa64ace87"
+            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
+            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
+            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
           ],
           "forbiddenIds": [],
           "usedTokens": 12,
@@ -952,12 +1163,12 @@
       "mrr": 0.8333
     },
     "tokens": {
-      "queries": 18,
+      "queries": 23,
       "budget_compliance": 1,
-      "mean_used": 22.83,
+      "mean_used": 23.13,
       "max_used": 54,
       "p95_used": 54,
-      "mean_tokens_per_expected": 20.47
+      "mean_tokens_per_expected": 21.2
     },
     "pollution": {
       "cross_project_top1_rate": 0,
@@ -984,10 +1195,10 @@
       }
     },
     "contradiction": {
-      "groups": 1,
-      "resolved": 0,
-      "accuracy": 0,
-      "authority_top1": 0,
+      "groups": 6,
+      "resolved": 5,
+      "accuracy": 0.8333,
+      "authority_top1": 3,
       "silent_conflicts": 1
     },
     "consolidation": {
@@ -1024,7 +1235,9 @@
       "cross_project_top1_rate": 0,
       "retrieval_precision_at_k": 0.7,
       "retrieval_recall_at_k": 0.9,
-      "irrelevant_leakage_rate": 0.2
+      "irrelevant_leakage_rate": 0.2,
+      "contradiction_accuracy": 0.8,
+      "consolidation_quality": 0.3
     },
     "checks": [
       {
@@ -1068,12 +1281,22 @@
         "threshold": 0.2,
         "comparison": "max",
         "passed": true
+      },
+      {
+        "metric": "contradiction_accuracy",
+        "actual": 0.8333,
+        "threshold": 0.8,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "consolidation_quality",
+        "actual": 0.3333,
+        "threshold": 0.3,
+        "comparison": "min",
+        "passed": true
       }
-    ],
-    "reported_only": {
-      "contradiction_accuracy": 0,
-      "consolidation_quality": 0.3333
-    }
+    ]
   },
   "network_attempts": 0
 }

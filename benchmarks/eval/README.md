@@ -4,9 +4,10 @@ Memory-quality evaluation harness (backlog **M11**; the originating "spec §25" 
 file in this repository, so every metric below cites the architecture doc it is derived from).
 
 The harness drives the **real engine** — `@onememory/storage` (embedded PGlite), `@onememory/extraction`
-(heuristic, no-LLM) and `@onememory/retrieval` — over committed golden datasets. It never mocks the
-store, the extractor or the search engine. It runs offline and deterministically: no embedder, no
-model router, no network (AGENTS.md rule 4).
+(heuristic, no-LLM), `@onememory/retrieval` and, for datasets that opt in, `@onememory/consolidation`
+(the M14 automatic lifecycle) — over committed golden datasets. It never mocks the store, the
+extractor, the search engine or the consolidation passes. It runs offline and deterministically:
+no embedder, no model router, no network (AGENTS.md rule 4).
 
 ## Layout
 
@@ -48,19 +49,32 @@ refreshes `benchmarks/results/`).
 | tokens-per-answer, budget compliance | `docs/architecture/retrieval.md` §7 | yes |
 | pollution (cross-project top-1, declared-distractor leakage) | ADR-0004 consequences; `memory-model.md` §2/§8 | yes |
 | temporal accuracy (current / point-in-time / history) | `memory-model.md` §4–§5, `retrieval.md` §3 | yes |
-| contradiction accuracy | `memory-model.md` §9 authority order | reported (M14) |
-| consolidation quality | `memory-model.md` §9 | reported (M14) |
+| contradiction accuracy | `memory-model.md` §9 authority order | yes (post-M14) |
+| consolidation quality | `memory-model.md` §9 | yes (post-M14) |
 
-Contradiction accuracy and consolidation quality depend on **M14** (automatic contradiction
-resolution + consolidation). They are measured and published now; the coordinator flips those two
-gates on after M14 merges. The gated subset is exactly what the engine supports end-to-end today.
+Contradiction accuracy and consolidation quality were gated when M14 (automatic contradiction
+resolution + consolidation) merged: datasets opt in via `consolidation_pass`, so their
+contradiction groups measure the automatic authority resolution (explicit > decision > newer >
+confidence; a full tie marks both sides disputed) instead of declared supersessions. Both gates
+are set from the measured post-M14 offline baseline, and both baselines are honest but bounded:
+
+- **contradiction accuracy** 0.8333 (5/6 groups): the attribute-template heuristic cannot detect
+  cross-phrasing contradictions (the dataset carries one deliberately), so the gate tolerates
+  exactly the measured miss (threshold 0.8). Raising the metric needs the M14 follow-up LLM
+  conflict detector — the gate then rises with a fresh baseline.
+- **consolidation quality** 0.3333: the offline default wires no embedder, so the vector-gated
+  passes (episodic→semantic derivation, near-duplicate merge) skip with recorded warnings and
+  only ingest-time exact dedupe collapses repeats (threshold 0.3). The paraphrase pair in
+  `consolidation-repeats` documents that ceiling.
 
 ## Gates
 
 Thresholds are derived from the committed baseline with documented headroom (see
 `benchmarks/results/baseline.md` and `src/gates.ts`). Temporal accuracy, token-budget compliance and
 cross-project top-1 are correctness invariants (thresholds 1.0 / 1.0 / 0.0); retrieval
-precision/recall and declared-distractor leakage carry ~0.10 headroom.
+precision/recall and declared-distractor leakage carry ~0.10 headroom; the two post-M14 gates
+(contradiction accuracy ≥ 0.8, consolidation quality ≥ 0.3) sit one 0.05 step below their measured
+baselines, so any single passing group regressing (4/6 = 0.6667) fails the gate.
 
 ## Adding a dataset
 
@@ -68,3 +82,9 @@ Add a `*.json` file to `benchmarks/datasets/golden/`. Expected memories are refe
 `fact` key with a matcher (never by generated uuid). The loader rejects dangling references, and the
 harness fails loudly when a fact key stops resolving to exactly one extracted memory, so a stale
 fixture cannot silently shrink the benchmark. See any committed dataset for the shape.
+
+Datasets that should exercise the M14 automatic lifecycle (contradiction groups resolving by
+authority, decay) opt in with `"consolidation_pass": {}`; the pass runs after extraction and any
+declared supersessions, with the dataset's deterministic clock. Datasets without the field keep the
+declared-supersession-only behavior. Note the offline default wires no embedder: the vector-gated
+passes (derivation, near-duplicate merge) always skip with recorded warnings.
