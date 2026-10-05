@@ -5,13 +5,16 @@
  * The point (backlog M5.4 / M8 acceptance 5): the same real-world session must produce the same
  * memory through every adapter. The scenario is deliberately run through the adapters' own
  * translation entry points — `translateHookInput` (Claude), `translateCodexHook` (Codex),
- * `translateHookInput` (Cursor) — so the assertion covers the actual wire contracts, not a
- * shared normalization helper.
+ * `translateHookInput` (Cursor), `translatePiEvent` (Pi), and the OpenCode translator's three
+ * hook channels — so the assertion covers the actual wire contracts, not a shared normalization
+ * helper.
  *
  * Facts are timestamped once; every runtime's payload for a fact is translated with that fact's
  * clock, exactly as separate hook processes would fire in real time. Claude delivers conversation
  * text from the transcript at `Stop` (its only conversation channel), so the scenario carries the
- * same utterances through Claude's transcript entries with their canonical timestamps.
+ * same utterances through Claude's transcript entries with their canonical timestamps. Pi stamps
+ * its `message_end` payloads with the canonical fact time as the message timestamp (its
+ * `occurred_at` source); OpenCode carries no per-payload time, so its clock is the fact time.
  *
  * Runtime-specific payload details that are NOT the same fact:
  * - Claude `PostToolUse` fires only on success; failures arrive as `PostToolUseFailure` with an
@@ -21,15 +24,22 @@
  * - Cursor reports a successful Shell exit code inside the JSON-stringified `tool_output`, has NO
  *   exit code for a failed command (documented gap), and delivers conversation turns via
  *   `beforeSubmitPrompt` / `afterAgentResponse`.
+ * - Pi reports the exit code in the bash tool_result's `structuredContent.exit_code` and delivers
+ *   conversation turns as `message_end` events.
+ * - OpenCode splits the session across three hook channels: `session.created`/`message.part.updated`
+ *   on the event hook, `tool.execute.after` for tools, and `chat.message` for user turns (the
+ *   user's parts are claimed by that channel, so the part channel never double-captures them).
  */
 
 import { translateCodexHook } from '@onememory/adapter-codex';
 import { translateHookInput as translateClaudeHook, type TranscriptTextEntry } from '@onememory/adapter-claude';
 import { translateHookInput as translateCursorHook } from '@onememory/adapter-cursor';
+import { translatePiEvent } from '@onememory/adapter-pi';
+import { createOpenCodeTranslator } from '@onememory/adapter-opencode';
 import type { OnememoryEvent } from '@onememory/core';
 
-export type RuntimeName = 'claude-code' | 'codex' | 'cursor';
-export const RUNTIMES: readonly RuntimeName[] = ['claude-code', 'codex', 'cursor'];
+export type RuntimeName = 'claude-code' | 'codex' | 'cursor' | 'pi' | 'opencode';
+export const RUNTIMES: readonly RuntimeName[] = ['claude-code', 'codex', 'cursor', 'pi', 'opencode'];
 
 /** The canonical fact ids, in session order. Evidence is normalized against these indices. */
 export const FACT_IDS = [
@@ -86,7 +96,14 @@ export interface ScenarioContext {
 
 interface NativePayload {
   fact: FactId;
+  /**
+   * The hook channel OpenCode fires this fact on (`event`, `tool.execute.after`, `chat.message`);
+   * the single-process runtimes leave it unset and receive the payload as their one argument.
+   */
+  channel?: 'event' | 'tool' | 'chat';
   payload: unknown;
+  /** OpenCode's two-argument hooks only: the hook's output object. */
+  output?: unknown;
   /** Claude only: the transcript entries its `Stop` hook reads (with canonical timestamps). */
   transcriptEntries?: readonly TranscriptTextEntry[];
 }
@@ -340,11 +357,221 @@ function cursorPayloads(ctx: ScenarioContext): NativePayload[] {
   ];
 }
 
+function piPayloads(ctx: ScenarioContext): NativePayload[] {
+  const session = SCENARIO.sessionId;
+  return [
+    { fact: 'session-start', payload: { type: 'session_start', reason: 'startup' } },
+    {
+      fact: 'user-question',
+      payload: {
+        type: 'message_end',
+        message: {
+          role: 'user',
+          content: [{ type: 'text', text: SCENARIO.userPrompt }],
+          timestamp: factTime('user-question'),
+        },
+      },
+    },
+    {
+      fact: 'assistant-1',
+      payload: {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: SCENARIO.assistantFirst }],
+          timestamp: factTime('assistant-1'),
+        },
+      },
+    },
+    {
+      fact: 'success-1',
+      payload: {
+        type: 'tool_result',
+        toolCallId: 'call-success-1',
+        toolName: 'bash',
+        input: { command: SCENARIO.successCommand },
+        content: [{ type: 'text', text: SCENARIO.successOutput }],
+        structuredContent: { output: SCENARIO.successOutput, truncated: false, exit_code: 0, wall_time_seconds: 0.41 },
+        isError: false,
+      },
+    },
+    {
+      fact: 'file-edit',
+      payload: {
+        type: 'tool_result',
+        toolCallId: 'call-edit',
+        toolName: 'edit',
+        input: { path: `${ctx.root}/${SCENARIO.editPath}`, edits: [{ oldText: SCENARIO.editOld, newText: SCENARIO.editNew }] },
+        content: [{ type: 'text', text: 'Successfully replaced 1 block(s).' }],
+        isError: false,
+      },
+    },
+    {
+      fact: 'failure',
+      payload: {
+        type: 'tool_result',
+        toolCallId: 'call-failure',
+        toolName: 'bash',
+        input: { command: SCENARIO.failureCommand },
+        content: [{ type: 'text', text: `${SCENARIO.failureError}\n\nCommand exited with code 1` }],
+        structuredContent: { output: SCENARIO.failureError, truncated: false, exit_code: 1, wall_time_seconds: 0.2 },
+        isError: true,
+      },
+    },
+    {
+      fact: 'remember',
+      payload: {
+        type: 'message_end',
+        message: {
+          role: 'user',
+          content: [{ type: 'text', text: SCENARIO.rememberPrompt }],
+          timestamp: factTime('remember'),
+        },
+      },
+    },
+    {
+      fact: 'assistant-2',
+      payload: {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: SCENARIO.assistantFinal }],
+          timestamp: factTime('assistant-2'),
+        },
+      },
+    },
+    {
+      fact: 'success-2',
+      payload: {
+        type: 'tool_result',
+        toolCallId: 'call-success-2',
+        toolName: 'bash',
+        input: { command: SCENARIO.successCommand },
+        content: [{ type: 'text', text: SCENARIO.successOutputFinal }],
+        structuredContent: { output: SCENARIO.successOutputFinal, truncated: false, exit_code: 0, wall_time_seconds: 0.38 },
+        isError: false,
+      },
+    },
+    { fact: 'session-end', payload: { type: 'session_shutdown', reason: 'quit' } },
+  ];
+}
+
+function opencodePayloads(ctx: ScenarioContext): NativePayload[] {
+  const session = SCENARIO.sessionId;
+  const agent = 'build';
+  // OpenCode session/part ids are ULID-shaped; the canonical session id rides the SDK's
+  // sessionID fields (the engine's scope.session_id, same as the other runtimes).
+  const sessionPart = (id: string) => ({
+    id,
+    sessionID: session,
+    messageID: `msg-${id}`,
+    type: 'text' as const,
+    text: '',
+    time: { start: Date.parse(SCENARIO_NOW), end: Date.parse(SCENARIO_NOW) },
+  });
+  const userTurn = (fact: FactId, messageId: string, text: string): NativePayload => ({
+    fact,
+    channel: 'chat',
+    payload: { sessionID: session, agent, messageID: messageId },
+    output: {
+      message: { id: messageId, sessionID: session, role: 'user', time: { created: Date.parse(SCENARIO_NOW) }, agent },
+      parts: [{ ...sessionPart(`prt-${messageId}`), messageID: messageId, text }],
+    },
+  });
+  const assistantPart = (fact: FactId, messageId: string, text: string): NativePayload => ({
+    fact,
+    channel: 'event',
+    payload: {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          id: `prt-${messageId}`,
+          sessionID: session,
+          messageID: messageId,
+          type: 'text',
+          text,
+          time: { start: Date.parse(SCENARIO_NOW), end: Date.parse(SCENARIO_NOW) },
+        },
+      },
+    },
+  });  return [
+    {
+      fact: 'session-start',
+      channel: 'event',
+      payload: {
+        type: 'session.created',
+        properties: {
+          info: {
+            id: session,
+            projectID: 'prj-conformance',
+            directory: ctx.root,
+            title: 'wire the protected route',
+            version: 'opencode-conformance',
+            time: { created: Date.parse(SCENARIO_NOW), updated: Date.parse(SCENARIO_NOW) },
+          },
+        },
+      },
+    },
+    userTurn('user-question', 'msg-user-1', SCENARIO.userPrompt),
+    assistantPart('assistant-1', 'msg-asst-1', SCENARIO.assistantFirst),
+    {
+      fact: 'success-1',
+      channel: 'tool',
+      payload: { tool: 'bash', sessionID: session, callID: 'call-success-1', args: { command: SCENARIO.successCommand } },
+      output: {
+        title: 'Bash',
+        output: SCENARIO.successOutput,
+        metadata: { output: SCENARIO.successOutput, exit: 0, truncated: false, duration: 410 },
+      },
+    },
+    {
+      fact: 'file-edit',
+      channel: 'tool',
+      payload: {
+        tool: 'edit',
+        sessionID: session,
+        callID: 'call-edit',
+        args: { filePath: `${ctx.root}/${SCENARIO.editPath}`, oldString: SCENARIO.editOld, newString: SCENARIO.editNew },
+      },
+      output: { title: 'Edit', output: 'Edit applied successfully.', metadata: {} },
+    },
+    {
+      fact: 'failure',
+      channel: 'tool',
+      payload: { tool: 'bash', sessionID: session, callID: 'call-failure', args: { command: SCENARIO.failureCommand } },
+      output: {
+        title: 'Bash',
+        output: SCENARIO.failureError,
+        metadata: { output: SCENARIO.failureError, exit: 1, truncated: false, duration: 200 },
+      },
+    },
+    userTurn('remember', 'msg-user-2', SCENARIO.rememberPrompt),
+    assistantPart('assistant-2', 'msg-asst-2', SCENARIO.assistantFinal),
+    {
+      fact: 'success-2',
+      channel: 'tool',
+      payload: { tool: 'bash', sessionID: session, callID: 'call-success-2', args: { command: SCENARIO.successCommand } },
+      output: {
+        title: 'Bash',
+        output: SCENARIO.successOutputFinal,
+        metadata: { output: SCENARIO.successOutputFinal, exit: 0, truncated: false, duration: 380 },
+      },
+    },
+    {
+      fact: 'session-end',
+      channel: 'event',
+      payload: { type: 'session.idle', properties: { sessionID: session } },
+    },
+  ];
+}
+
 /** The native payloads one runtime would actually receive, in session order. */
 export function nativePayloads(runtime: RuntimeName, ctx: ScenarioContext): NativePayload[] {
   if (runtime === 'claude-code') return claudePayloads(ctx);
   if (runtime === 'codex') return codexPayloads(ctx);
-  return cursorPayloads(ctx);
+  if (runtime === 'cursor') return cursorPayloads(ctx);
+  if (runtime === 'pi') return piPayloads(ctx);
+  return opencodePayloads(ctx);
 }
 
 export interface TranslatedScenario {
@@ -361,6 +588,9 @@ export function translateScenario(runtime: RuntimeName, ctx: ScenarioContext): T
   // signal: every fact has one instant, and each runtime stamps its events with it (Claude emits
   // the transcript turns while handling `Stop`, but with the turn's own timestamp).
   const factByTime = new Map(FACT_IDS.map((fact) => [factTime(fact), fact as FactId]));
+  // One translator per OpenCode run, exactly like the real plugin holds (the user-message claim
+  // set is instance state — a fresh translator per payload would double-capture user turns).
+  const opencode = createOpenCodeTranslator({ projectId: ctx.projectId, projectRoot: ctx.root });
 
   for (const entry of nativePayloads(runtime, ctx)) {
     const now = new Date(factTime(entry.fact));
@@ -374,7 +604,24 @@ export function translateScenario(runtime: RuntimeName, ctx: ScenarioContext): T
           })
         : runtime === 'codex'
           ? translateCodexHook(entry.payload, { now, projectId: ctx.projectId })
-          : translateCursorHook(entry.payload, { now, projectId: ctx.projectId, projectRoot: ctx.root });
+          : runtime === 'cursor'
+            ? translateCursorHook(entry.payload, { now, projectId: ctx.projectId, projectRoot: ctx.root })
+            : runtime === 'pi'
+              ? translatePiEvent(entry.payload, {
+                  now,
+                  projectId: ctx.projectId,
+                  cwd: ctx.root,
+                  // Pi's wire payloads carry no session id; its real extension reads one from
+                  // Pi's sessionManager and passes it in the context — the scenario renders that
+                  // same production shape (the canonical session's id).
+                  sessionId: SCENARIO.sessionId,
+                })
+              : entry.channel === 'tool'
+                ? opencode.translateToolAfter(entry.payload, entry.output, { now })
+                : entry.channel === 'chat'
+                  ? opencode.translateChatMessage(entry.payload, entry.output, { now })
+                  : // The event hook receives `{ event }` — the same wrapper the plugin passes.
+                    opencode.translateEvent({ event: entry.payload }, { now });
 
     const dropped = 'drops' in result ? result.drops : result.dropped;
     for (const event of result.events) {
