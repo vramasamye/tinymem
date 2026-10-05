@@ -1,5 +1,11 @@
+#!/usr/bin/env bun
 /**
  * `onemem-claude-hook` — the Claude Code hook binary.
+ *
+ * Invoked directly (the settings.json scaffold points hooks at this bin through the published
+ * install's `node_modules/.bin/` link), so the shebang is load-bearing: without it the bin link
+ * is not executable and every scaffolded hook fails. The file mode must stay 0755 for the same
+ * reason (npm preserves it in the published tarball).
  *
  * Claude Code invokes it per hook event (`.claude/settings.json`), delivering the event JSON on
  * stdin; the event name arrives IN the payload (`hook_event_name`), so one bin serves every

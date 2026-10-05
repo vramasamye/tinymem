@@ -17,8 +17,8 @@ import {
   buildClaudeHooksConfig,
   buildMcpJson,
   buildMemoryPointerBlock,
-  defaultHookArgs,
-  defaultMcpServerArgs,
+  defaultHookCommand,
+  defaultMcpServerCommand,
   mergeMemoryPointerBlock,
   MEMORY_POINTER_BEGIN,
   MEMORY_POINTER_END,
@@ -30,18 +30,28 @@ import {
 const PROJECT_ID = '0195a7f0-9f5e-7a1d-bc2d-0000000000aa';
 
 describe('.mcp.json scaffold', () => {
-  test('default entry: bun + workspace bin path, embedded data dir via the ${VAR:-default} form', () => {
+  test('default entry: the published bin link, embedded data dir via the ${VAR:-default} form', () => {
     const document = buildMcpJson({ projectId: PROJECT_ID });
     expect(() => z.strictObject({ mcpServers: z.record(z.string(), z.unknown()) }).parse(document)).not.toThrow();
-    expect(document.mcpServers.onememory!.command).toBe('bun');
-    expect(document.mcpServers.onememory!.args).toEqual(defaultMcpServerArgs());
-    expect(document.mcpServers.onememory!.args![0]).toContain('${CLAUDE_PROJECT_DIR:-.}');
+    // The published contract: Claude Code expands ${VAR} in `command` of a project-scoped
+    // .mcp.json stdio entry (the ${CLAUDE_PROJECT_DIR:-.} form); the command IS the `bin`
+    // entry npm links into node_modules/.bin — directly executable via its bun shebang, so no
+    // interpreter wrapper and no src/*.ts source-path assumption survives in the entry.
+    expect(document.mcpServers.onememory!.command).toBe(defaultMcpServerCommand());
+    expect(document.mcpServers.onememory!.command).toBe('${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp');
+    expect(document.mcpServers.onememory!.args).toBeUndefined();
     expect(document.mcpServers.onememory!.env).toEqual({
       CLAUDE_PROJECT_DIR: '${CLAUDE_PROJECT_DIR}',
       ONEMEMORY_MCP_AGENT_ID: 'claude-code',
       ONEMEMORY_PROJECT_ID: PROJECT_ID,
       ONEMEMORY_DATA_DIR: '${CLAUDE_PROJECT_DIR:-.}/.onememory',
     });
+  });
+
+  test('an explicit command/args invocation is honored (source-checkout installs)', () => {
+    const entry = buildMcpJson({ command: 'bun', args: ['src/bin.ts'] }).mcpServers.onememory!;
+    expect(entry.command).toBe('bun');
+    expect(entry.args).toEqual(['src/bin.ts']);
   });
 
   test('server storage passes the URL through by NAME (never committed)', () => {
@@ -86,13 +96,19 @@ describe('settings.json hooks scaffold', () => {
     expect(config.hooks.Stop[0]!.matcher).toBeUndefined();
   });
 
-  test('every handler is exec form (command + args) referencing the path placeholder unquoted', () => {
+  test('every handler is exec form (args set) invoking the published bin link', () => {
     const config = buildClaudeHooksConfig();
     for (const group of Object.values(config.hooks)) {
       const handler = group[0]!.hooks[0]!;
       expect(handler.type).toBe('command');
-      expect(handler.args).toEqual(defaultHookArgs());
-      expect(handler.args![0]).toContain('${CLAUDE_PROJECT_DIR}/');
+      // Exec form (args present) with the ${CLAUDE_PROJECT_DIR} placeholder inside `command` —
+      // Claude Code substitutes path placeholders into command and args as plain strings.
+      expect(handler.command).toBe(defaultHookCommand());
+      expect(handler.args).toEqual([]);
+      expect(handler.command).toContain('${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook');
+      // The published contract: no repository-relative source path in any invocation.
+      expect(handler.command).not.toContain('src/');
+      expect(handler.command).not.toContain('@onememory/');
     }
   });
 

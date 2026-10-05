@@ -11,6 +11,7 @@ import {
   buildMcpJson,
   buildMcpServerEntry,
   buildClaudeHooksConfig,
+  defaultMcpServerCommand,
   isLoopbackHostname,
   McpJsonDocumentSchema,
   McpServerEntrySchema,
@@ -49,7 +50,9 @@ describe('.mcp.json http entry (daemon-backed)', () => {
 
   test('absent transport keeps the stdio entry (backward compatible)', () => {
     const entry = buildMcpServerEntry({});
-    expect(entry.command).toBe('bun');
+    // The stdio default IS the published bin link (backlog cross-follow-up #9): the contract
+    // holds with or without the daemon-backed http transport being requested.
+    expect(entry.command).toBe(defaultMcpServerCommand());
     expect('type' in entry).toBeFalse();
   });
 

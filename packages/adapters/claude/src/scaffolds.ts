@@ -7,15 +7,19 @@
  * a test failure, never a broken runtime config). Shapes follow the Claude Code references:
  * - `.mcp.json`: `{"mcpServers": {"onememory": {"type": "http", "url": …}}}` for the daemon's
  *   Streamable HTTP `/mcp` surface (what `onemem init` emits — ADR-0010 amendment 2026-10-04), or
- *   the stdio `{command, args, env}` form, which needs no `type`
- *   (https://code.claude.com/docs/en/mcp). `${VAR}` expansion is used for values that must come
- *   from the user's environment (never committed); project-scoped entries referencing
- *   `CLAUDE_PROJECT_DIR` in command/args require the `${VAR:-default}` form, which Claude Code
- *   itself sets for stdio servers.
+ *   the stdio `{command, args?, env}` form, which needs no `type`
+ *   (https://code.claude.com/docs/en/mcp). `${VAR}` expansion works in `command` and `args` of
+ *   project-scoped entries; values referencing `CLAUDE_PROJECT_DIR` require the `${VAR:-default}`
+ *   form, which Claude Code itself sets for stdio servers. The stdio `command` is the `onemem-mcp`
+ *   `bin` entry as a clean install links it (`node_modules/.bin/`), directly executable via its
+ *   bun shebang — the invocation survives a clean external install (backlog cross-follow-up #9:
+ *   never a monorepo-relative `src/*.ts` path).
  * - `.claude/settings.json` hooks: `{Event: [{matcher?, hooks: [{type: "command", …}]}]}`
- *   (https://code.claude.com/docs/en/hooks). Exec form (`command` + `args`) is used because every
- *   invocation references the `${CLAUDE_PROJECT_DIR}` path placeholder, and exec form passes it
- *   without shell quoting.
+ *   (https://code.claude.com/docs/en/hooks). Exec form (`args` set) with the
+ *   `${CLAUDE_PROJECT_DIR}` path placeholder inside `command` — Claude Code substitutes path
+ *   placeholders into `command` and each `args` element as plain strings, and its own docs use
+ *   exactly this shape (`"command": "${CLAUDE_PROJECT_DIR}/…", "args": []`). The handler invokes
+ *   the `onemem-claude-hook` bin link from the published install's `node_modules/.bin`.
  * - AGENTS.md / MEMORY.md pointer block: ADR-0010 §7 — interop, not competition. A compact,
  *   generated pointer that states onememory owns project memory; never a duplicate knowledge base.
  */
@@ -41,11 +45,14 @@ export interface McpJsonOptions {
    */
   url?: string;
   /**
-   * Executable that launches the MCP server (stdio). Default `"bun"` — the onememory install
-   * requires Bun; pass e.g. `"node"` with a compiled entry when the coordinator publishes JS.
+   * Executable that launches the MCP server (stdio). Default: the `onemem-mcp` bin link in the
+   * PUBLISHED install (`${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp`) — every `bin`
+   * declared in package.json is linked into `node_modules/.bin` by npm/bun, and the entrypoint
+   * carries a `bun` shebang so it is directly executable. Pass e.g. `{command: 'bun', args:
+   * ['src/bin.ts']}` only for a source checkout.
    */
   command?: string;
-  /** Args for the server invocation. Default: the workspace-relative bin path (mission-5 bin). */
+  /** Args for the server invocation. Default: none (the bin is env-configured, no wrapper). */
   args?: string[];
   /** Extra env entries merged under `env` (win over the defaults on key collision). */
   env?: Record<string, string>;
@@ -103,9 +110,19 @@ export const McpJsonDocumentSchema = z.strictObject({
 });
 export type McpJsonDocument = z.infer<typeof McpJsonDocumentSchema>;
 
-/** The default server entry path (the workspace package bin; Bun runs the TS directly). */
-export function defaultMcpServerArgs(): string[] {
-  return ['${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory/mcp/src/bin.ts'];
+/**
+ * The default stdio server command: the `onemem-mcp` bin entry as a clean install links it.
+ *
+ * npm/bun link every `bin` declared in a published package's package.json into
+ * `node_modules/.bin/`, so this path exists in ANY external project that installed onememory
+ * (hoisted layout) — the invocation never assumes the onememory monorepo or a `src/*.ts` source
+ * path. The `${CLAUDE_PROJECT_DIR:-.}` form is required: project-scoped `.mcp.json` entries
+ * expand `${VAR}` in `command`/`args`, and `CLAUDE_PROJECT_DIR` is set for stdio servers by
+ * Claude Code itself (its own docs mandate the `:-default` for exactly this reference). The bin
+ * entrypoint is directly executable through its `#!/usr/bin/env bun` shebang.
+ */
+export function defaultMcpServerCommand(): string {
+  return '${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp';
 }
 
 type StdioMcpJsonOptions = McpJsonOptions & { transport?: 'stdio' };
@@ -144,8 +161,8 @@ export function buildMcpServerEntry(options: McpJsonOptions = {}): McpServerEntr
     ...options.env,
   };
   return McpStdioServerEntrySchema.parse({
-    command: options.command ?? 'bun',
-    args: options.args ?? defaultMcpServerArgs(),
+    command: options.command ?? defaultMcpServerCommand(),
+    ...(options.args === undefined ? {} : { args: options.args }),
     env,
   });
 }
@@ -159,20 +176,31 @@ export function renderMcpJson(options: McpJsonOptions = {}): string {
 // ---------------------------------------------------------------------------
 
 export interface HookInvocation {
-  /** Executable (exec form: spawned directly, `args` as the argv — no shell quoting). */
+  /**
+   * Executable (exec form: `args` present → spawned directly with `args` as the argv, no shell;
+   * path placeholders are substituted as plain strings). Default: the `onemem-claude-hook` bin
+   * link from the published install (`${CLAUDE_PROJECT_DIR}/node_modules/.bin/…`).
+   */
   command: string;
-  /** Argument vector; pass the hook script path here. */
+  /**
+   * Argument vector; omit for a shell-form command string, pass `[]` to run a path-only command
+   * in exec form (the Claude Code docs' own pattern). Default: `[]`.
+   */
   args?: string[];
 }
 
 export interface HooksConfigOptions {
-  /** How to invoke the hook script; default `{command: "bun", args: [<adapter bin path>]}`. */
+  /** How to invoke the hook bin; default: exec form on the published bin link. */
   hook?: HookInvocation;
 }
 
-/** The adapter's hook bin (one bin handles every event — the event name arrives on stdin). */
-export function defaultHookArgs(): string[] {
-  return ['${CLAUDE_PROJECT_DIR}/node_modules/@onememory/adapter-claude/src/bin.ts'];
+/**
+ * The default hook invocation's command: the `onemem-claude-hook` bin entry as a clean install
+ * links it (`node_modules/.bin/`), expanded by Claude Code — the same published-layout rule as
+ * `defaultMcpServerCommand`, so the generated hooks survive a clean external install.
+ */
+export function defaultHookCommand(): string {
+  return '${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook';
 }
 
 const HookHandlerSchema = z.looseObject({
@@ -197,7 +225,9 @@ export const HooksConfigSchema = z.strictObject({
 export type HooksConfig = z.infer<typeof HooksConfigSchema>;
 
 export function buildClaudeHooksConfig(options: HooksConfigOptions = {}): HooksConfig {
-  const invocation = options.hook ?? { command: 'bun', args: defaultHookArgs() };
+  // Exec form (`args` set) per the hooks reference: placeholders are substituted into `command`
+  // and each `args` element as plain strings, with no shell to misquote the project path.
+  const invocation = options.hook ?? { command: defaultHookCommand(), args: [] as string[] };
   const handler = {
     type: 'command' as const,
     command: invocation.command,
