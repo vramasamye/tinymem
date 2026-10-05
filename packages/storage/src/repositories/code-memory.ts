@@ -41,7 +41,7 @@ import type {
 } from '@onememory/core';
 
 import type { Database } from '../drivers/client';
-import { pgTextArray, toIso, toIsoOrNull } from '../drivers/client';
+import { pgTextArray, pgUuidArray, toIso, toIsoOrNull } from '../drivers/client';
 
 import { NotFoundError, parseInput } from './util';
 
@@ -402,6 +402,100 @@ export async function listCodeRefs(
   query += ' ORDER BY memory_id, path';
   const result = await db.query<CodeRefRow>(query, params);
   return result.rows.map(mapCodeRef);
+}
+
+// ---------------------------------------------------------------------------
+// Code-ref hydration (M4g2 — the retrieval read side: refs WITH their anchors)
+// ---------------------------------------------------------------------------
+
+/**
+ * One `memory_code_refs` row hydrated with everything the search response surfaces: the commit
+ * the cited blob was last observed under, and the cited file's symbol names in document order
+ * (the caller matches them against the memory's content — SQL never guesses a symbol).
+ */
+export interface HydratedCodeRef {
+  memory_id: string;
+  repository_id: string;
+  path: string;
+  blob_sha: string;
+  /**
+   * The commit under which the cited worktree-tier blob was last observed
+   * (`file_fingerprints.last_seen_commit`, pinned to the ref's own blob) — the empty string
+   * when no commit anchor exists: the worktree content has drifted past the cited blob, the
+   * path's fingerprint row is gone, or the capture's HEAD was unborn. Never a newer capture's
+   * HEAD misattributed to older evidence.
+   */
+  commit_sha: string;
+  /** The cited file's symbol names in document order (line_start, then name); may be empty. */
+  symbols: string[];
+  created_at: string;
+}
+
+type HydratedCodeRefRow = {
+  memory_id: string;
+  repository_id: string;
+  path: string;
+  blob_sha: string;
+  commit_sha: string | null;
+  symbols: unknown;
+  created_at: Date | string;
+};
+
+/** Coerce the aggregated symbol-name json cell (drivers parse json, but never trust the shape). */
+function symbolNamesOf(cell: unknown): string[] {
+  if (Array.isArray(cell)) return cell.map((entry) => String(entry));
+  if (typeof cell === 'string' && cell.trim() !== '') {
+    try {
+      const parsed: unknown = JSON.parse(cell);
+      return Array.isArray(parsed) ? parsed.map((entry) => String(entry)) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function mapHydratedCodeRef(row: HydratedCodeRefRow): HydratedCodeRef {
+  return {
+    memory_id: row.memory_id,
+    repository_id: row.repository_id,
+    path: row.path,
+    blob_sha: row.blob_sha,
+    commit_sha: row.commit_sha ?? '',
+    symbols: symbolNamesOf(row.symbols),
+    created_at: toIso(row.created_at),
+  };
+}
+
+/**
+ * The code refs of MANY memories in ONE batched query (M4g2 — the retrieval engine's
+ * post-scoring hydration; never one query per memory). Each row joins the commit anchor the
+ * same way the normative drift query pins evidence (worktree tier, database-schema.md §4) and
+ * aggregates the cited file's symbol names in document order. Rows come back ordered by
+ * (memory_id, repository_id, path) so grouping in the caller is deterministic.
+ */
+export async function listCodeRefsForMemories(
+  db: Database,
+  memoryIds: readonly string[],
+): Promise<HydratedCodeRef[]> {
+  if (memoryIds.length === 0) return [];
+  const result = await db.query<HydratedCodeRefRow>(
+    `SELECT mcr.memory_id, mcr.repository_id, mcr.path, mcr.blob_sha, mcr.created_at,
+            CASE WHEN ff.blob_sha = mcr.blob_sha THEN ff.last_seen_commit END AS commit_sha,
+            COALESCE(
+              (SELECT json_agg(cs.name ORDER BY cs.line_start NULLS LAST, cs.name)
+                 FROM code_symbols cs
+                WHERE cs.repository_id = mcr.repository_id AND cs.path = mcr.path),
+              '[]'
+            ) AS symbols
+       FROM memory_code_refs mcr
+       LEFT JOIN file_fingerprints ff
+         ON ff.repository_id = mcr.repository_id AND ff.path = mcr.path AND ff.tier = 'worktree'
+      WHERE mcr.memory_id = ANY($1::uuid[])
+      ORDER BY mcr.memory_id, mcr.repository_id, mcr.path`,
+    [pgUuidArray(memoryIds)],
+  );
+  return result.rows.map(mapHydratedCodeRef);
 }
 
 // ---------------------------------------------------------------------------

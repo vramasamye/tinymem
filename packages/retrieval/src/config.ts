@@ -85,6 +85,14 @@ export interface RetrievalConfig {
   nearDuplicate: { cosineThreshold: number };
   /** Cap for derived (sentence-boundary) summaries of memories without a stored content_summary. */
   summaryMaxChars: number;
+  /**
+   * Code-ref hydration (M4g2): the refs budget of a returned memory — its own cap, independent
+   * of the packed token budget (refs are structured metadata riding the response, not packed
+   * text). `maxPerMemory` real entries surface, ordered (repository, path); a memory with more
+   * refs than the cap gets ONE `<N more refs>` placeholder entry appended (never a silent
+   * mid-list truncation).
+   */
+  codeRefs: { maxPerMemory: number };
   sessionContext: {
     budget: number;
     digestTokens: number;
@@ -128,6 +136,7 @@ export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   rerank: { enabled: false, limit: 50 },
   nearDuplicate: { cosineThreshold: 0.97 },
   summaryMaxChars: 160,
+  codeRefs: { maxPerMemory: 5 },
   sessionContext: {
     budget: 750,
     digestTokens: 200,
@@ -176,6 +185,7 @@ export interface RetrievalConfigInput {
   rerank?: { enabled?: boolean; limit?: number };
   nearDuplicate?: { cosineThreshold?: number };
   summaryMaxChars?: number;
+  codeRefs?: { maxPerMemory?: number };
   sessionContext?: {
     budget?: number;
     digestTokens?: number;
@@ -214,6 +224,7 @@ export function mergeConfig(partial?: RetrievalConfigInput): RetrievalConfig {
     rerank: { ...base.rerank, ...partial.rerank },
     nearDuplicate: { ...base.nearDuplicate, ...partial.nearDuplicate },
     summaryMaxChars: partial.summaryMaxChars ?? base.summaryMaxChars,
+    codeRefs: { ...base.codeRefs, ...partial.codeRefs },
     sessionContext: { ...base.sessionContext, ...partial.sessionContext },
     caches: { ...base.caches, ...partial.caches },
   };

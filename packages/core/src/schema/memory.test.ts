@@ -8,7 +8,7 @@ import {
   SkillPayloadSchema,
 } from './memory';
 import { ExtractionResultSchema } from './extraction';
-import { MemorySearchRequestSchema, MemorySearchResponseSchema } from './search';
+import { MemorySearchRequestSchema, MemorySearchResponseSchema, CodeRefEntrySchema } from './search';
 import { NewMemorySchema } from './persistence';
 
 const evidence = [
@@ -253,6 +253,15 @@ describe('retrieval request/response (§6)', () => {
             status: 'active',
           },
           provenance: { source_kind: 'conversation' },
+          codeRefs: [
+            {
+              repoId: '0192f3c0-0000-7000-8000-000000000021',
+              commitSha: 'a'.repeat(40),
+              path: 'src/auth/login.ts',
+              symbol: 'verifyCredentials',
+              evidence: 'b'.repeat(40),
+            },
+          ],
         },
       ],
       tokens: { budget: 800, used: 42, packing: 'summary' },
@@ -270,6 +279,44 @@ describe('retrieval request/response (§6)', () => {
         ],
       }).success,
     ).toBe(false);
+  });
+
+  test('codeRefs is required on every result but may be empty (M4g2 — clients always see the field)', () => {
+    const memory = {
+      id: '0192f3c0-0000-7000-8000-000000000001',
+      type: 'decision',
+      summary: 'Uses Node 22.',
+      relevance: 0.93,
+      explain: [],
+      temporal: { valid_from: '2025-06-01T00:00:00.000Z', status: 'active' },
+      provenance: { source_kind: 'conversation' },
+    };
+    const response = {
+      query_understanding: { intent: 'fact', entities: [], keywords: [] },
+      memories: [{ ...memory, codeRefs: [] }],
+      tokens: { budget: 800, used: 42, packing: 'summary' },
+      warnings: [],
+    };
+    expect(MemorySearchResponseSchema.safeParse(response).success).toBe(true);
+    expect(MemorySearchResponseSchema.safeParse({ ...response, memories: [memory] }).success).toBe(
+      false,
+    );
+  });
+
+  test('malformed code ref entries are rejected; the honest empty commitSha is not', () => {
+    const entry = {
+      repoId: '0192f3c0-0000-7000-8000-000000000021',
+      commitSha: 'a'.repeat(40),
+      path: 'src/auth/login.ts',
+    };
+    expect(CodeRefEntrySchema.safeParse(entry).success).toBe(true);
+    // '' is the documented "no commit anchor" value, not a malformed entry.
+    expect(CodeRefEntrySchema.safeParse({ ...entry, commitSha: '' }).success).toBe(true);
+    expect(CodeRefEntrySchema.safeParse({ ...entry, repoId: 'not-a-uuid' }).success).toBe(false);
+    expect(CodeRefEntrySchema.safeParse({ ...entry, commitSha: 42 }).success).toBe(false);
+    expect(CodeRefEntrySchema.safeParse({ ...entry, path: '' }).success).toBe(false);
+    expect(CodeRefEntrySchema.safeParse({ ...entry, symbol: '' }).success).toBe(false);
+    expect(CodeRefEntrySchema.safeParse({ ...entry, evidence: '' }).success).toBe(false);
   });
 });
 

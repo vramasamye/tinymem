@@ -73,6 +73,14 @@ export {
   type FusionContext,
   type ScoredCandidate,
 } from './fusion';
-export { applyRerank, type RerankOutcome } from './rerank';
+export {
+  applyRerank,
+  type RerankOutcome,
+} from './rerank';
+export {
+  matchingSymbol,
+  moreRefsPlaceholder,
+  toCodeRefEntries,
+} from './code-refs';
 export { packResults, type PackOptions, type PackResult, type PackableItem, type PackedItem } from './packing';
 export { estimateTokens, deriveSummary, deriveLabel, truncateAtWordBoundary, sentencesOf } from './tokens';
