@@ -107,7 +107,6 @@ const QueryFixtureSchema = z.strictObject({
   project: z.string().optional(),
   query: z.string().min(1),
   max_tokens: z.number().int().min(1).default(800),
-  max_memories: z.number().int().min(1).optional(),
   as_of: z.iso.datetime().optional(),
   temporal_mode: z.enum(['current', 'historical']).optional(),
   /** Fact keys that MUST appear in the results. */
@@ -165,6 +164,17 @@ export type SupersessionFixture = z.infer<typeof SupersessionFixtureSchema>;
 export type ContradictionGroup = z.infer<typeof ContradictionGroupSchema>;
 export type ConsolidationGroup = z.infer<typeof ConsolidationGroupSchema>;
 
+/** Canonical, stable rendering of a matcher — used to detect degenerate supersession pairs. */
+function matcherKey(matcher: MemoryMatcher): string {
+  return JSON.stringify({
+    type: matcher.type ?? null,
+    subtype: matcher.subtype ?? null,
+    project: matcher.project ?? null,
+    content_equals: matcher.content_equals ?? null,
+    content_contains: matcher.content_contains ?? null,
+  });
+}
+
 /** Parse and validate one dataset document, reporting the JSON path of every issue. */
 export function parseDataset(raw: unknown, source = '<inline>'): GoldenDataset {
   const result = GoldenDatasetSchema.safeParse(raw);
@@ -204,8 +214,15 @@ function validateReferences(dataset: GoldenDataset, source: string): GoldenDatas
   }
   for (const group of dataset.consolidation) requireFacts(group.facts, `consolidation '${group.id}'`);
   for (const supersession of dataset.supersessions) {
-    // matchers are validated structurally; resolution happens against the live corpus
-    void supersession;
+    // Supersession matchers reference the live corpus, not fact keys, so there is nothing to
+    // cross-reference. What can be checked here is that the pair is not degenerate: identical
+    // loser/winner matchers would resolve to the same memory, which can never be a valid
+    // supersession (a memory cannot replace itself) and would otherwise fail obscurely at run time.
+    if (matcherKey(supersession.loser) === matcherKey(supersession.winner)) {
+      throw new Error(
+        `dataset ${source}: supersession loser and winner use the same matcher (${matcherKey(supersession.loser)}) — a memory cannot supersede itself`,
+      );
+    }
   }
 
   const baseMs = Date.parse(dataset.base_time);

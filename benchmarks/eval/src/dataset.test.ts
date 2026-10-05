@@ -96,6 +96,25 @@ describe('parseDataset', () => {
     ];
     expect(() => parseDataset(raw)).toThrow(/not before now/);
   });
+
+  test('rejects a supersession whose loser and winner use the same matcher', () => {
+    const raw = minimal();
+    const matcher = { type: 'episodic', content_equals: 'Version: Node 20' };
+    raw.supersessions = [{ loser: matcher, winner: matcher, reason: 'self' }];
+    expect(() => parseDataset(raw)).toThrow(/cannot supersede itself/);
+  });
+
+  test('accepts a supersession with distinct matchers', () => {
+    const raw = minimal();
+    raw.supersessions = [
+      {
+        loser: { content_equals: 'Version: Node 20' },
+        winner: { content_equals: 'Version: Node 22' },
+        reason: 'upgrade',
+      },
+    ];
+    expect(() => parseDataset(raw)).not.toThrow();
+  });
 });
 
 describe('golden datasets', () => {
