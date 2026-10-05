@@ -10,33 +10,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { main } from './bin';
-
-interface Captured {
-  out: string;
-  err: string;
-  exitCode: number;
-}
-
-const DEPS = { interactive: false, env: {} } as const;
+import { jsonOf, runMain, type Captured } from './test-support';
 
 async function cli(argv: string[]): Promise<Captured> {
-  let out = '';
-  let err = '';
-  const exitCode = await main(argv, {
-    ...DEPS,
-    write: (text) => {
-      out += text;
-    },
-    writeErr: (text) => {
-      err += text;
-    },
-  });
-  return { out, err, exitCode };
-}
-
-function jsonOf(captured: Captured): any {
-  return JSON.parse(captured.out);
+  return runMain(argv);
 }
 
 let root: string;
