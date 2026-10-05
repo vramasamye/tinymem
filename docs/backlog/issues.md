@@ -410,13 +410,16 @@ with provenance.
 
 M4g added an honest end-to-end acceptance test (`docs/plan/mission-reports/mission-4g-procedures-acceptance.md`).
 It proves that the real extraction and retrieval pipeline returns a procedural answer and that
-the answer's code refs can be persisted against real repository blobs. The Phase 2 DoD remains
-incomplete because the search response does not include those refs.
+the answer's code refs can be persisted against real repository blobs. Item 1 below is the
+Phase 2 blocker that M4g2 closed; the remaining items are honest residuals.
 
-1. **Expose code refs on retrieval responses** [P1] — `MemorySearchResponse` and the retrieval
-   engine do not surface persisted `memory_code_refs`; consumers cannot get the cited files with
-   the answer. Review the response contract/ADR, then add a validated code-ref field and load it
-   through the appropriate storage port.
+1. ~~**Expose code refs on retrieval responses**~~ ✅ Closed by M4g2 (merged 2026-10-06,
+   mission report: `docs/plan/mission-reports/mission-4g2-retrieval-code-refs.md`).
+   `MemorySearchResponse` now carries a non-optional `codeRefs: CodeRefEntry[]` on every result
+   (Zod-validated `{repoId, commitSha, path, symbol?, evidence?}`), hydrated through a single
+   batched `Storage.listCodeRefsForMemories` call and shape-trimmed against a per-config
+   `codeRefs.maxPerMemory` budget. The M4g acceptance test flipped from "refs absent" to "refs
+   present and correct" (`apps/api/src/runtime/procedures-acceptance.test.ts`).
 2. **Procedure extraction from code/document text** [P2] — the real heuristic extractor produces
    no procedural memories from the auth-code fixture; current procedure results come from
    `explicit.remember` or recurring commands. Decide whether to add a safe heuristic or extend the
@@ -427,6 +430,28 @@ incomplete because the search response does not include those refs.
    memory when file extraction produces no same-type procedure; depends on resolving item 2.
 5. **Default-profile paraphrase recall** [P3] — without an embedder, lexical search does not stem
    or resolve paraphrases that do not share key terms; assess an offline embedding profile.
+
+---
+
+## Cross-mission follow-ups — raised by M4g2 (retrieval code-ref surfacing)
+
+Merged 2026-10-06, mission report: `docs/plan/mission-reports/mission-4g2-retrieval-code-refs.md`.
+Code refs now travel on the wire (P1 closed). Honest residual items below.
+
+1. **`codeRefs.maxPerMemory` is a config knob** [P3] — the field exists and is honored, but the
+   default (`Phased-plan`'s token-budget discipline) needs a documented policy in
+   `docs/architecture/retrieval.md`: shape-trim summary vs. drop-the-overflow vs. paginate.
+   Open as a coordinator ADR amendment.
+2. **Code-ref evidence overflow on big repos** [P3] — when a procedure gathers dozens of
+   distinct code refs (`maxPerMemory` cascades), the consumer still sees the full list but the
+   per-memory token budget shrinks the memory body further. Add a runtime warning when this
+   triggers, mirroring `degradedSearch`.
+3. **MCP `memory_search` and REST `/v1/projects/:id/search` already pass through, but
+   `memory_get`** [P3] — when a caller has already received `codeRefs` on a search result and asks
+   `memory_get` for the same row, the response should *not* re-emit the same refs (would double
+   tokens). Confirm / fix at the API surface.
+4. **Heuristic procedure extractor** is still a separate item (M4g item 2 above) — M4g2 only
+   surfaces refs; it does not generate them.
 
 ---
 

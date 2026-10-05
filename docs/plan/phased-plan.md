@@ -53,16 +53,20 @@ Definition of done (Phase 2):
 - "How does authentication work?" returns procedures with code refs; project digest answers "what is this project" in < 300 tokens.
 - Session lifecycle: session start injects compact context; session end sweeps working memory with promotion filter.
 
-**Status (2026-10-05):** session-end promotion + sweep shipped (`mission/14a-session-sweep`, merged
+**Status (2026-10-06):** session-end promotion + sweep shipped (`mission/14a-session-sweep`, merged
 `642787e`; semantics synced in `docs/architecture/memory-model.md` §10). Drift marking, the
 zero-token oracle, rename retargeting, and code-symbol staleness shipped with M4a–4e; re-index
 orchestration (drift-scan scheduling, drifted-path-only reindex) and the <300-token architecture
 digest shipped with `mission/4f-reindex-digest` (merged `56d67f2`). M4g added an end-to-end
-acceptance test (`docs/plan/mission-reports/mission-4g-procedures-acceptance.md`): the real
-pipeline returns a procedural answer and stores code refs for real fixture files, but the
-retrieval response does not expose those refs. The "How does authentication work?" →
-procedures-with-code-refs DoD line therefore remains **incomplete**; see the M4g follow-up in
-`docs/backlog/issues.md`.
+acceptance test (`docs/plan/mission-reports/mission-4g-procedures-acceptance.md`) that proves
+the real pipeline returns a procedural answer and stores code refs against real fixture blobs.
+M4g2 (`mission/4g2-retrieval-code-refs`, merged 2026-10-06, mission report
+`docs/plan/mission-reports/mission-4g2-retrieval-code-refs.md`) closed the residual blocker:
+`MemorySearchResponse` now carries a non-optional `codeRefs: CodeRefEntry[]` on every result,
+hydrated through a single batched storage query. The
+"How does authentication work? → procedures with code refs" DoD line is now
+demonstrated end to end; only the heuristic procedure extractor (M4g item 2) remains open as
+non-blocking backlog scope.
 
 ## Phase 3 — Intelligent memory
 
