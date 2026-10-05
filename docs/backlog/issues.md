@@ -136,6 +136,17 @@ honestly rather than fabricated.
 ## M9 — Pi + OpenCode adapters [P4] [integration]
 Branch: `mission/9-pi-opencode` · pi extension/config; opencode.json MCP + skills; conformance green.
 
+Status: ✅ Completed 2026-10-06 (merged `d95efc4`). Mission report at
+`docs/plan/mission-reports/mission-9-pi-opencode.md`. New packages
+`@onememory/adapter-pi` (Pi extension adapter, 96 tests) and
+`@onememory/adapter-opencode` (OpenCode plugin adapter, 147 tests).
+The shared 5-runtime conformance suite now runs Claude + Cursor + Codex +
+Pi + OpenCode: byte-identical memory results across the canonical
+10-fact session (with one pinned edit-line-count landscape
+[Claude=2/3, Cursor=1/2, Codex=none, Pi/OpenCode=Claude]). Secrets
+test fixture (`b.repeat(40)` runtime assembly, no literal `sk-ant-`
+pattern in source) — Droid-Shield unblocked.
+
 ## M10 — Web UI [P6] [epic] [ui]
 Branch: `mission/10-web-ui` · Deps: REST API · App: `apps/web`
 
