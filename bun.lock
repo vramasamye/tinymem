@@ -104,6 +104,19 @@
         "@types/bun": "^1.4.2",
       },
     },
+    "packages/adapters/opencode": {
+      "name": "@onememory/adapter-opencode",
+      "version": "0.1.0",
+      "dependencies": {
+        "@onememory/config": "workspace:*",
+        "@onememory/core": "workspace:*",
+        "@onememory/security": "workspace:*",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
     "packages/adapters/pi": {
       "name": "@onememory/adapter-pi",
       "version": "0.1.0",
@@ -384,6 +397,8 @@
     "@onememory/adapter-claude": ["@onememory/adapter-claude@workspace:packages/adapters/claude"],
 
     "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
+
+    "@onememory/adapter-opencode": ["@onememory/adapter-opencode@workspace:packages/adapters/opencode"],
 
     "@onememory/adapter-pi": ["@onememory/adapter-pi@workspace:packages/adapters/pi"],
 
