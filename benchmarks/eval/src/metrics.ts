@@ -172,8 +172,9 @@ export function computePollutionMetrics(
   outcomes: readonly QueryOutcome[],
   corpusById: ReadonlyMap<string, CorpusMemory>,
 ): PollutionMetrics {
-  // Contradiction probes are excluded: unresolved contradictions are M14's domain (reported, not
-  // gated) and would otherwise mask a genuine retrieval regression in the pollution gate.
+  // Contradiction probes are excluded: unresolved contradictions are measured by the gated
+  // contradiction_accuracy (post-M14) and would otherwise mask a genuine retrieval regression in
+  // the pollution gate.
   const scoped = outcomes.filter(
     (outcome) => outcome.projectId !== null && outcome.kind !== 'contradiction',
   );
@@ -283,9 +284,10 @@ export function computeContradictionMetrics(outcomes: readonly QueryOutcome[]): 
 }
 
 /**
- * Consolidation quality: how well repeated observations of one concept collapsed. Pre-M14 the
- * only mechanism is exact content-hash dedupe (memory-model.md §8 stage 6), so paraphrases stay
- * separate; the metric is reported, not gated, until M14 ships episodic→semantic derivation.
+ * Consolidation quality: how well repeated observations of one concept collapsed. Gated since
+ * M14: offline the only collapse mechanism is exact content-hash dedupe (memory-model.md §8
+ * stage 6) — the vector-gated M14 passes (episodic→semantic derivation, near-duplicate merge)
+ * skip without an embedder — so paraphrases stay separate at the gate's honest offline ceiling.
  */
 export function computeConsolidationMetrics(
   groups: ReadonlyArray<{ id: string; observations: number; distinct: number }>,
