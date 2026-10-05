@@ -98,11 +98,13 @@ and a direct-mode CLI call run the same code:
 
 - **`tick()`** registers the project root (`ensureRepository`, resolving the canonical root the
   same way capture does) and enqueues exactly one `drift_scan` job per repository with a
-  singleton key (`drift_scan:<repository_id>`), so overlapping ticks coalesce instead of piling
-  up jobs. A repository whose scan is already queued or running is `existing`, not an error.
+  singleton key (`drift_scan:<project_id>:<repository_id>`), so overlapping ticks coalesce into
+  `existing` instead of piling up jobs.
 - **`runDriftScan`** (the `drift_scan` handler's body) captures a snapshot, persists it
-  (`saveSnapshot`), applies drift through the M4e applier, and then enqueues one chained `reindex`
-  job per repository when anything was applied — the handler never sleeps mid-job.
+  (`saveSnapshot`), applies drift through the M4e applier, and then enqueues one chained
+  `reindex` job for the project — unconditionally, not only when drift was applied, so a fresh
+  project still gets its architecture digest on the first pass. The handler never sleeps
+  mid-job.
 - **`runReindex`** (the `reindex` handler's body) is the minimal re-index below; it also persists
   or refreshes the architecture digest.
 - **`status()`** reports the project id, the last drift scan, and the last re-index pass.
@@ -146,37 +148,59 @@ Zero cost for unchanged files, real work only for drift:
    `sources` row the re-index creates plus a `file:<path>` evidence locator (`fileEvidence`) —
    the FILE is the source of truth, not the synthetic event.
 4. **Resolve** each stale memory against its file's fresh candidates, classified by the injected
-   classifier:
+   classifier (the status change precedes the ref re-record, so a failed refresh degrades into a
+   retry, never into a permanently stale memory whose refs quietly match current state):
    - reproduces the memory's knowledge (same durable type, same content hash) → audited
-     `stale → active` (`restored`), refs re-recorded against the current blobs, and `re_embed`
-     enqueued when the content changed and an embedder is registered;
+     `stale → active` (`restored`, reason `code_reindexed`) with refs re-recorded against the
+     current blobs;
    - different knowledge of the same type → the fresh candidate supersedes it through the
-     audited `Store.supersede` (actor `job:reindex`, reason `code_drift_reindex`), the winner's
+     audited `Store.supersede` (actor `job:reindex`, reason `code_reindexed`), the winner's
      ref is tracked on the current blob, and the loser keeps its own code refs for the trail;
    - nothing reproducible → the memory honestly stays `stale` and is reported `deferred` — never
      a silent un-stale;
    - the path is unreadable → `gone` with a warning, the memory stays `stale`.
    - unexpected failure → `failed`, reported, never thrown.
+   - `re_embed` (reason `backfill`) is enqueued for every refreshed and superseded memory when an
+     embedder is registered — an idempotent upsert, so a memory that was never embedded gains its
+     vector (the embedder may be newly enabled) and an already-correct one is written
+     identically;
 5. **Digest**: build the architecture digest (below) and persist it through the normal insertion
    path — created, refreshed via supersede when the code shape changed, or left untouched when
    identical.
 
-### The architecture digest (the ≤300-token project summary)
+### The architecture digest (the <300-token project summary)
 
 `buildArchitectureDigest` composes the persisted symbol tables into one compact, deterministic
 project summary: a header (project name, repository/module/file/symbol totals, language mix) and
-one line per top-level directory (module) — its file count, its responsibilities (the
-declaration-kind mix, most frequent first), and its entry points (the most entry-like declared
-names) — modules sorted most-substantial first. Budget enforcement is line-level, never
-mid-line: the header is always kept, whole module lines are dropped from the least-substantial
-end until the estimate fits, and an honest `truncated` flag reports that something was dropped.
+one line per module — `moduleOfPath` groups each file by its containing directory (root-level
+files under `(root)`), so `packages/codememory/src` is one module, not all of `packages` — with
+its file count, its responsibilities (the declaration-kind mix, most frequent first), and its
+entry points (the most entry-like declared names), modules sorted most-substantial first. Budget
+enforcement is line-level, never mid-line, and strictly-less-than (the Phase 2 DoD says "< 300
+tokens"): the header is always kept, whole module lines are dropped from the least-substantial
+end until the estimate fits strictly below the budget, and an honest `truncated` flag reports
+that something was dropped.
 It is deterministic: the same code shape yields the same text and the same content hash, so it
 persists through the normal insertion path with full provenance (a `sources` row +
 `code_symbols:<repository ids>` evidence span for the files it summarizes) and is NOT refreshed
 unless the code shape actually changed. The budget is `DEFAULT_DIGEST_BUDGET_TOKENS` = 300 tokens
 by default (`estimateDigestTokens` ≈ chars/4, the same order of magnitude OpenAI reports for
-English text; the budget is an argument, so a different surface can tighten it). `moduleOfPath`
-maps a repository-relative path to its module label.
+English text; the budget is an argument, so a different surface can tighten it).
+
+Locating the existing digest is deterministic where it matters: an unchanged digest is found
+through the Store's exact-dedupe probe (`findDuplicate` on the content hash — indexed, no
+recency window, so a long-unchanged digest in a busy project is found at any age), and
+`insertMemory`'s own dedupe outcome means an exact-text digest is never re-inserted or
+mislabeled `created`. The one windowed lookup left is finding a CHANGED digest's predecessor
+for supersession: the Store port has no tag/subtype-filtered query, so that lookup is bounded
+by the port's query limit (1 000, its maximum). In daemon mode that window cannot miss — every
+re-index pass refreshes the digest, so it is always the newest semantic memory; only a project
+whose re-index passes are more than 1 000 semantic memories apart could age a digest past it
+(a `tags` filter on `MemoryQuery` in core+storage would make this lookup deterministic too).
+`loadDigestInputs` is the one assembly of digest inputs from persisted state, shared by the
+re-index pass and the doctor's digest probe so the probe's expected text is byte-identical to
+the text the pass persists; `isCurrentArchitectureDigest` is the one predicate that recognizes
+a current digest row.
 
 ## Symbol extraction (tree-sitter, WASM, offline)
 
@@ -260,8 +284,11 @@ offline invariant (zero network calls under the guard). The M4f fixtures pin the
 a real Git repository and real embedded storage — scheduler pass → drift scan (audited stale +
 checkpoint advance) → chained re-index that re-reads ONLY the drifted path, refreshes the memory,
 and persists the digest — plus the synthetic `document.added` bridge flowing through the REAL
-heuristic extractor offline, and every re-index/scheduler/digest edge (supersede, deferred,
-degraded extractor/symbols, unreadable path, `re_embed` gating, digest create/unchanged/refresh).
+heuristic extractor offline, and every re-index/scheduler/digest edge: supersede, deferred,
+degraded extractor/symbols, unreadable path, `re_embed` gating, digest create/unchanged/refresh,
+the strictly-less-than token budget, the windowless unchanged-digest location (a digest buried
+under 1 100 newer semantic memories is still found `unchanged`), and refresh failure safety
+(a failed status write or ref re-record degrades into a retry, never a permanently stale memory).
 
 The pure comparison benchmark checks 1k/10k/100k exact renames; it reports local timings, not a
 hardware-independent latency promise.

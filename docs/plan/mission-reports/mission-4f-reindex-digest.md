@@ -59,10 +59,12 @@ makes sure they do not stay stale forever, and that the daemon does the work on 
        embedder is registered — an idempotent upsert, so a memory that was never embedded (the
        embedder may be newly enabled) gains its vector.
   - **Architecture digest** (`digest.ts`, M4.6): `buildArchitectureDigest` composes the persisted
-    symbol tables into one ≤300-token project summary — a header (project name, repository /
-    module / file / symbol totals, language mix) and one line per top-level directory (module):
-    its file count, its responsibilities (the declaration-kind mix, most frequent first), and
-    its entry points (the most entry-like declared names), modules sorted most-substantial
+    symbol tables into one <300-token project summary — a header (project name, repository /
+    module / file / symbol totals, language mix) and one line per module, where `moduleOfPath`
+    groups each file by its containing directory (root-level files under `(root)`, so
+    `packages/codememory/src` is one module, not all of `packages`): its file count, its
+    responsibilities (the declaration-kind mix, most frequent first), and its entry points (the
+    most entry-like declared names), modules sorted most-substantial
     first. Deterministic (same code shape ⇒ same text ⇒ same content hash). Budget enforcement is
     line-level, never mid-line: the header is always kept, whole module lines are dropped from
     the least-substantial end until the estimate fits, and an honest `truncated` flag reports the
@@ -78,7 +80,8 @@ makes sure they do not stay stale forever, and that the daemon does the work on 
   enqueued while storage closes. `OnememoryRuntime.code_memory` exposes the live state
   (`scheduler_running`, interval, project id, `status()`, `runDriftScan`, `runReindex`).
 - **Doctor** (`apps/api/src/runtime/doctor.ts`): a `code-memory / drift` section — repositories,
-  tracked refs, stale memories, digest presence, last fingerprint, last drift scan, scheduler
+  tracked refs, stale memories, digest presence (probed deterministically against the current
+  code shape, not scavenged from a recency window), last fingerprint, last drift scan, scheduler
   state. `pass` when a repository is registered and the scheduler is armed; `warn` for
   no-project / no-repository / direct-mode (no scheduler); `fail` on a storage read failure. It
   is never `info`, so the report's informational count stays owned by the runtime-wiring group
@@ -160,5 +163,46 @@ All touched files were inside the assigned list (`packages/codememory/**` includ
   primer) is the retrieval mission's seam, not this one's.
 - Symbol-level (`span_hash`) drift resolution; chunked/queued re-index batches for a
   whole-repository rewrite; a tokenizer-backed token estimate (the current one is chars/4).
+- A `tags`/`subtype` filter on `MemoryQuery` (core + storage): the ONLY windowed lookup left is
+  finding a CHANGED digest's predecessor for supersession (bounded by the port's query limit,
+  1 000); with a tag filter that lookup would be deterministic too.
 - Server-mode (Docker Postgres) verification of the full loop — the embedded leg is covered by
   the fixtures above; the server scenarios remain skipped without a live server, as before.
+
+## Post-review fixes (coordinator review round)
+
+Three P1 correctness gaps and a set of P2 quality fixes, applied test-first after the first
+review pass:
+
+- **Doctor lookup contract (P1)**: `queryCurrent`/`findDuplicate` (and the new digest probe)
+  now sit inside the check's guarded section — a store failure fails the code-memory check
+  (`fail`), never `inspectRuntime` itself.
+- **Digest lookup (P1)**: an unchanged digest is located through the Store's exact-dedupe
+  probe (`findDuplicate` on the content hash) — windowless, so a long-unchanged digest in a
+  busy project is found at any age, in both the re-index pass and the doctor (which now
+  rebuilds the expected digest from the same persisted inputs via the shared
+  `loadDigestInputs`). The `duplicate`-insert outcome is labeled `unchanged`, never
+  `created`. The one windowed lookup left is a CHANGED digest's predecessor for supersession
+  (the port has no tag/subtype filter; see the follow-up above) — in daemon mode that window
+  cannot miss, because every re-index pass refreshes the digest.
+- **Refresh order (P1)**: the audited `stale → active` status change now precedes the ref
+  re-record. A failed status write leaves the refs naming the OLD blob (the drift oracle sees
+  the memory again — retry, never permanent staleness); a failed ref re-record after a
+  successful status change leaves the memory active with old refs (the next drift scan
+  re-marks it stale — self-healing).
+- **P2**: README now matches the code (tick key `drift_scan:<project_id>:<repository_id>`,
+  the chained `reindex` job is enqueued once per project unconditionally, `re_embed` is a
+  backfill for every refreshed/superseded memory, the supersede reason is `code_reindexed`);
+  the digest budget is strictly-less-than (`< 300` tokens, per the Phase 2 DoD); this report's
+  module wording matches `moduleOfPath`'s containing-directory grouping; one shared
+  `describeError`/`compareText` (`internal.ts`); the supersede-winner evidence uses
+  `fileEvidence` (bounded excerpts) instead of a re-implemented inline shape; the
+  `event.payload` round-trip is replaced by an in-scope event-id → path map; the redundant
+  `stopped` flag in the scheduler is gone (`isRunning()` ≡ `running`); and the re-index test
+  helpers (`candidate`, `scriptedExtractor`, `classifyAs`, `emptySymbolTable`) are shared
+  through `testing.ts` by both test files.
+
+New tests: refresh failure safety ×2, the windowless digest location (a digest buried under
+1 100 newer semantic memories is still found `unchanged`), the strictly-less-than budget edge,
+the doctor's failing-lookup `fail` (unit + report-survives integration), and the doctor's
+deterministic digest-presence probe (×2).
