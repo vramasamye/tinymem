@@ -1,8 +1,10 @@
 /**
  * The near-duplicate merge pass (memory-model.md §12 stage CONSOLIDATE; M14 mission scope):
  * same scope, same type, cosine ≥ 0.97 (the retrieval-dedupe threshold, retrieval.md §4) → one
- * surviving memory. Candidates come from the existing vector search channel
- * (`EmbeddingIndex.search`) driven with the pool's embeddings — no new SQL.
+ * surviving memory — PAIRWISE: every absorbed member must be ≥ the threshold to the keeper it
+ * closes into (a transitive A–B–C chain does not qualify; see mergeCluster). Candidates come
+ * from the existing vector search channel (`EmbeddingIndex.search`) driven with the pool's
+ * embeddings — no new SQL.
  *
  * HOW a merge is expressed over the Store port — a deliberate design decision:
  * the exact-dedupe invariant ((scope, type, content_hash) unique) means a merge product that
@@ -17,7 +19,7 @@
 import type { EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
 
 import { authorityViewOf, mergeKeeperOrder } from './authority';
-import { contradictsHeuristically, type ContradictionDetector } from './contradiction';
+import { contradictsHeuristically, pairKey, type ContradictionDetector } from './contradiction';
 import type { MergeRecord } from './types';
 
 export interface MergePassResult {
@@ -119,7 +121,13 @@ export async function runMergePass(
         );
         continue;
       }
-      await mergeCluster(store, component, pairCosine, { actor: options.actor, nowIso, records, warnings });
+      await mergeCluster(store, component, pairCosine, {
+        actor: options.actor,
+        nowIso,
+        cosineThreshold: options.cosineThreshold,
+        records,
+        warnings,
+      });
     }
   }
 
@@ -151,6 +159,7 @@ async function mergeCluster(
   sink: {
     actor: string;
     nowIso: string;
+    cosineThreshold: number;
     records: MergeRecord[];
     warnings: string[];
   },
@@ -172,7 +181,20 @@ async function mergeCluster(
       skippedSources.push({ id: source.id, reason: 'valid_from is after the merge time (inverted window)' });
       continue;
     }
-    const cosineKey = source.id < keeper.id ? `${source.id}|${keeper.id}` : `${keeper.id}|${source.id}`;
+    // Pairwise gating (review finding P2-3): every absorbed member must be near-duplicate to
+    // the KEEPER it closes into — a transitive chain is not pairwise near-duplication (A–B and
+    // B–C at ≥ threshold must not merge A–C below it). An absent pair key means the channel
+    // never certified this pair at the threshold.
+    const certified = pairCosine.get(pairKey(source.id, keeper.id));
+    if (certified === undefined || certified < sink.cosineThreshold) {
+      skippedSources.push({
+        id: source.id,
+        reason:
+          `pairwise cosine to the keeper ${certified === undefined ? 'not certified' : certified.toFixed(4)}` +
+          ` is below the threshold ${sink.cosineThreshold}`,
+      });
+      continue;
+    }
     try {
       await store.updateMemoryStatus(source.id, 'superseded', {
         actor: sink.actor,
@@ -181,10 +203,10 @@ async function mergeCluster(
         superseded_by_id: keeper.id,
         details: {
           merged_into: keeper.id,
-          cosine: pairCosine.get(cosineKey) ?? null,
+          cosine: certified,
         },
       });
-      mergedSources.push({ id: source.id, from_status: source.status, cosine: pairCosine.get(cosineKey) ?? 0 });
+      mergedSources.push({ id: source.id, from_status: source.status, cosine: certified });
     } catch (error) {
       if (error instanceof Error && error.name === 'InvalidTransitionError') {
         skippedSources.push({ id: source.id, reason: `illegal transition ${source.status} → superseded` });

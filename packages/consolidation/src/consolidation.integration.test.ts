@@ -65,12 +65,25 @@ const VECTORS: Record<string, number[]> = {
   'Max depth: 20': E(14),
   'Retry limit: 3': E(15),
   'Retry limit: 5': E(16),
+  // The pairwise-gating cluster: A–B and B–C ≈ 0.98 (≥ 0.97), A–C ≈ 0.92 (below) — on axes
+  // 380/381 (pad() owns 382/383; the single-axis E(k) owns the rest).
+  'Reindexed the search archive': axisPair(1, 0.2),
+  'Search archive reindex finished': axisPair(1, 0),
+  'The search archive got reindexed': axisPair(1, -0.2),
 };
 
 /** Place a short vector on the last axes (zero-padded to VECTOR_DIM). */
 function pad(head: number[]): number[] {
   const vector = Array.from({ length: VECTOR_DIM }, () => 0);
   for (let i = 0; i < head.length; i++) vector[VECTOR_DIM - head.length + i] = head[i]!;
+  return vector;
+}
+
+/** Place a 2-axis vector on the axes 380/381 — `pad` owns 382/383, the single axes own the rest. */
+function axisPair(x: number, y: number): number[] {
+  const vector = Array.from({ length: VECTOR_DIM }, () => 0);
+  vector[380] = x;
+  vector[381] = y;
   return vector;
 }
 
@@ -572,6 +585,51 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     expect(asOf.filter((memory) => memory.content.startsWith('Retry limit')).map((m) => m.content)).toEqual([
       'Retry limit: 3',
     ]);
+  });
+
+  test('pairwise keeper gating: a member below threshold to the keeper never merges transitively', async () => {
+    // A–B and B–C are near-duplicates (cosine ≈ 0.98 ≥ 0.97); A–C is NOT (≈ 0.92). Transitive
+    // closure would absorb C into keeper A anyway — the spec's pairwise reading (P2 review
+    // finding 3): every absorbed member must be ≥ the threshold to the KEEPER it closes into.
+    const a = await insert(
+      world,
+      memoryOf(world, { content: 'Reindexed the search archive', observed_at: '2026-09-26T00:00:00.000Z' }),
+    );
+    const b = await insert(
+      world,
+      memoryOf(world, { content: 'Search archive reindex finished', observed_at: '2026-09-25T00:00:00.000Z' }),
+    );
+    const c = await insert(
+      world,
+      memoryOf(world, { content: 'The search archive got reindexed', observed_at: '2026-09-24T00:00:00.000Z' }),
+    );
+
+    const report = await runConsolidation({
+      store: world.storage.store,
+      vectors: world.storage.vectors,
+      embedder: world.embedder,
+      scope: { project_id: world.projectId },
+      actor: 'test:consolidation',
+      now: () => NOW,
+    });
+    expect(report.merge.clusters).toBe(1);
+    const record = report.merge.records[0]!;
+    expect(record.keeper_id).toBe(a.id); // the newest row is the cluster's highest authority
+    expect(record.merged_sources.map((source) => source.id)).toEqual([b.id]);
+    expect(record.merged_sources[0]!.cosine).toBeCloseTo(0.9806, 3);
+    expect(record.skipped_sources.length).toBe(1);
+    expect(record.skipped_sources[0]!.id).toBe(c.id);
+    expect(record.skipped_sources[0]!.reason).toContain('pairwise');
+
+    // B closed into its keeper; C stayed active — never absorbed transitively through B.
+    const absorbedB = await world.storage.store.getMemory(b.id);
+    expect(absorbedB?.status).toBe('superseded');
+    expect(absorbedB?.superseded_by).toBe(a.id);
+    const keptC = await world.storage.store.getMemory(c.id);
+    expect(keptC?.status).toBe('active');
+    expect(keptC?.superseded_by).toBeUndefined();
+    const cAudit = await world.storage.store.listMemoryEvents(c.id);
+    expect(cAudit.some((event) => event.action === 'status_changed' || event.action === 'merged')).toBeFalse();
   });
 
   test('the merge pass refuses a contradictory cluster handed to it directly (defense in depth)', async () => {
