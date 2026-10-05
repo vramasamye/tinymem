@@ -319,9 +319,8 @@ guard asserting 0 attempts); five golden datasets; committed baseline
    nightly job that runs `bench:run` and commits refreshed results; the diffable drift signal is
    the `metrics` + `gates` blocks, because `baseline.json` embeds per-run timestamps and uuidv7
    ids (see item 3).
-2. **Thin contradiction coverage** [P2] — one contradiction group (n=1) today; expand to several
-   groups before flipping the post-M14 gate, or the gate will be noisy (fold into M11b's larger
-   judged dataset).
+2. ~~**Thin contradiction coverage** [P2]~~ ✅ Completed by M11b (merged 2026-10-05): six
+   groups cover the authority order, a disputed full tie, and a cross-phrasing detector miss.
 3. **Deterministic baseline snapshot** [P3] — strip or freeze per-run timestamps/uuids from the
    committed baseline so a raw file diff shows real drift (small M11b change).
 4. ~~**Hard project scoping in retrieval**~~ ✅ Declined by design review (2026-10-05): project
@@ -330,9 +329,11 @@ guard asserting 0 attempts); five golden datasets; committed baseline
    means cross-project/user-level by design ("one memory across every agent"). The benchmark
    correctly gates what the design calls correct — top-1 cross-project rate held at 0. If
    pollution complaints ever arrive, the lever is `w_proj` tuning, not a hard filter.
-5. **Post-M14 gate flip** [P1] — once M14 lands, set and enable the `contradiction_accuracy` and
-   `consolidation_quality` gates from a fresh post-M14 baseline (pre-M14 reported values: 0.0 and
-   0.3333). Coordinator-owned.
+5. ~~**Post-M14 gate flip** [P1]~~ ✅ Completed by M11b (merged 2026-10-05): fresh baseline gates
+   `contradiction_accuracy ≥ 0.8` (measured 0.8333, 5/6 groups) and
+   `consolidation_quality ≥ 0.3` (measured 0.3333). The cross-phrasing miss and offline
+   consolidation ceiling remain visible in the benchmark report; the deterministic-baseline
+   snapshot remains open under item 3.
 
 ---
 
@@ -352,7 +353,8 @@ Merged 2026-10-05 as `bc8bf24` (mission report:
    query; today's query shape requires a project.
 4. **Paginated pool enumeration** [P3] — `runConsolidation` processes ≤1000-memory windows.
 5. **LLM conflict detector** [P3] — cross-phrasing contradictions (attribute-template heuristic
-   only today).
+   only today). M11b measures the current miss: PostgreSQL/pgvector vs MySQL remains unresolved,
+   leaving `contradiction_accuracy` at 5/6 (0.8333).
 6. **Config wiring** [P3] — consolidation thresholds/decay settings via `onememory.config.yaml`
    (M16 profile defaults).
 7. **M14.5/M14.6 remain** — project digest rollup feeding `memory_project_context` and events
