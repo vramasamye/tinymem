@@ -12,5 +12,8 @@ export * from './schema/index';
 // Memory model (ADR-0003): types, transitions, hashing, temporal predicates, ids
 export * from './model/index';
 
+// Shared pure defaults used across engine packages
+export * from './shared';
+
 // Ports (repository-structure.md): the contract every other package codes against
 export * from './ports/index';

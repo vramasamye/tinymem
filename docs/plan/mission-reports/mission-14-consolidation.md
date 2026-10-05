@@ -151,8 +151,8 @@ Two post-review merge rules:
 
 `prominence = effectiveImportance^0.5 × confidence × 0.5^(ageDays/halfLifeDays[type]) ×
 (1 + log(1 + access_count))` — the memory-model §7 formula, with the SAME per-type half-life table
-retrieval scores with (`DEFAULT_HALF_LIFE_DAYS` imported from `@onememory/retrieval`: episodic
-30d, decision/failure 180d/400d…) so decay and ranking age a memory identically. The access
+retrieval scores with (`DEFAULT_HALF_LIFE_DAYS` from `@onememory/core`: episodic 30d,
+decision/failure 400d/180d…) so decay and ranking age a memory identically. The access
 factor is ≥ 1 — reinforcement only ever raises prominence. Decisions and procedures with
 verification evidence (`provenance.verified_at`) are decay-resistant via an importance floor
 (default 0.6). Below `archiveThreshold` (default 0.05) → `store.updateMemoryStatus(id,

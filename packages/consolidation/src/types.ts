@@ -9,8 +9,7 @@
 
 import { z } from 'zod';
 
-import { DEFAULT_HALF_LIFE_DAYS } from '@onememory/retrieval';
-import type { MemoryStatus } from '@onememory/core';
+import { DEFAULT_HALF_LIFE_DAYS, type MemoryStatus } from '@onememory/core';
 
 // ---------------------------------------------------------------------------
 // Configuration

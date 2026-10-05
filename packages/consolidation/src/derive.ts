@@ -20,7 +20,14 @@ import { extractTechMentions } from '@onememory/extraction';
 import type { ModelRouter } from '@onememory/llm';
 import { z } from 'zod';
 
-import type { EmbeddingIndex, EvidenceSpan, MemoryRecord, NewMemory, Store } from '@onememory/core';
+import {
+  estimateTokens,
+  type EmbeddingIndex,
+  type EvidenceSpan,
+  type MemoryRecord,
+  type NewMemory,
+  type Store,
+} from '@onememory/core';
 
 import { mergeKeeperOrder, authorityViewOf } from './authority';
 import { cosineComponents, scopeKeyOf } from './cluster';
@@ -276,7 +283,7 @@ export function buildDerivedMemory(input: {
       adapter: 'consolidation',
     },
     tags: ['consolidated'],
-    token_estimate: Math.ceil(input.merged.content.length / 4),
+    token_estimate: estimateTokens(input.merged.content),
   };
 }
 

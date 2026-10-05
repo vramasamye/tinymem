@@ -1,13 +1,9 @@
 /**
- * Token estimation and text shaping. The packer's hard invariant is `used ≤ budget` with a
- * CONSERVATIVE estimator: ceil(chars/4) never undercounts a token-dense packing (code snippets,
- * identifiers) by much and is the acknowledged industry approximation.
+ * Retrieval text shaping. Token estimation remains re-exported here for API compatibility; the
+ * canonical implementation is shared from `@onememory/core`.
  */
 
-/** Conservative token estimate: ceil(chars / 4). */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
-}
+export { estimateTokens } from '@onememory/core';
 
 /** Split text into sentences (terminator + following whitespace). Empty sentences dropped. */
 export function sentencesOf(text: string): string[] {

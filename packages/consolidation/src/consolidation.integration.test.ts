@@ -20,7 +20,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { MemoryRecord, NewMemory } from '@onememory/core';
+import { estimateTokens, type MemoryRecord, type NewMemory } from '@onememory/core';
 import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
 
 import { runConsolidation } from './run';
@@ -132,7 +132,7 @@ function memoryOf(
     evidence,
     extraction: { method: 'heuristic', prompt_version: 'fixture-v1', adapter: 'extraction' },
     tags: ['extracted'],
-    token_estimate: Math.ceil(overrides.content.length / 4),
+    token_estimate: estimateTokens(overrides.content),
   };
 }
 

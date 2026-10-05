@@ -17,6 +17,7 @@
  */
 
 import {
+  estimateTokens,
   memoryContentHash,
   type DurableMemoryType,
   type EvidenceSpan,
@@ -205,7 +206,7 @@ export function createExtractHandler(
             'extracted',
             ...(classified.awaiting_consolidation ? ['semantic_candidate'] : []),
           ],
-          token_estimate: Math.ceil(candidate.content.length / 4),
+          token_estimate: estimateTokens(candidate.content),
         });
 
         if (write.outcome === 'duplicate') {

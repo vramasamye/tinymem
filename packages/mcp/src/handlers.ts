@@ -17,6 +17,7 @@
 
 import {
   actionFor,
+  estimateTokens,
   memoryContentHash,
   normalizeEntityName,
   uuidv7,
@@ -28,7 +29,7 @@ import type {
   MemorySearchRequest,
   MemorySearchResponse,
 } from '@onememory/core';
-import { buildSessionContext, deriveSummary, estimateTokens } from '@onememory/retrieval';
+import { buildSessionContext, deriveSummary } from '@onememory/retrieval';
 import { searchRepo } from '@onememory/storage';
 
 import type { OnememoryMcpContext } from './context';

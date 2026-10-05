@@ -32,13 +32,12 @@
  * network - local-first invariant holds), and it is bounded by the session's working rows.
  */
 
-import type {
-  EvidenceSpan,
-  SessionRecord,
-  WorkingMemoryRecord,
+import {
+  estimateTokens,
+  type EvidenceSpan,
+  type SessionRecord,
+  type WorkingMemoryRecord,
 } from '@onememory/core';
-
-import { estimateTokens } from '@onememory/retrieval';
 
 import type { OnememoryRuntime } from './composition';
 

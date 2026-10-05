@@ -101,14 +101,12 @@ compare-and-set `advanceCheckpoint` — the only writer of `last_ingested_commit
 as a side effect of any save). Storage binds the CodeMemoryStore port — the sole writer of
 repositories/file_fingerprints/code_symbols; symbol rows are anchored to live worktree-tier
 fingerprint rows and die with their anchor.
-As-built (M14 + M4f): two further engine-to-engine imports exist, both pure stateless helpers
-(not ports, no SQL): consolidation → retrieval (the shared decay half-life table) and
-consolidation → extraction (the tech-mention scanner used for entity grouping); codememory holds
-a test-only devDependency on extraction (runtime code uses the core Extractor port); apps/api
-imports @onememory/codememory directly for the drift scheduler/reindex wiring, matching its
-existing engine imports. Hoisting the half-life table and the chars/4 token estimator into core —
-the proper shared home — is a logged coordinator follow-up; until then these named imports are the
-sanctioned exceptions to "the one engine-to-engine import".
+As-built (M14 + M4f): one further engine-to-engine import remains: consolidation → extraction
+(the tech-mention scanner used for entity grouping). Shared pure defaults and helpers — the decay
+half-life table, chars/4 token estimator, and document extraction cap — live in core; codememory
+holds a test-only devDependency on extraction (runtime code uses the core Extractor port);
+apps/api imports @onememory/codememory directly for the drift scheduler/reindex wiring, matching
+its existing engine imports.
 ```
 
 1. **`core` declares ports, does not import implementations.** `Storage`, `Searcher`, `Embedder`,

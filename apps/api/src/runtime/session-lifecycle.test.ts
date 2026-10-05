@@ -14,6 +14,7 @@ import { join } from 'node:path';
 
 import {
   eventContentHash,
+  estimateTokens,
   uuidv7,
   type EvidenceSpan,
   type WorkingMemoryKind,
@@ -425,7 +426,7 @@ describe('runSessionEndLifecycle (direct)', () => {
       source_id: source.id,
       evidence: [span(source.id)],
       extraction: { method: 'heuristic', prompt_version: 'fixture' },
-      token_estimate: Math.ceil(content.length / 4),
+      token_estimate: estimateTokens(content),
     });
     expect(preexisting.outcome).toBe('inserted');
     const eligible = await seedWorking(sessionId, source, {

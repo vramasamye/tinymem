@@ -22,6 +22,7 @@ import {
   FILE_CHANGE_KINDS,
   REDACTION_KINDS,
 } from '../model/types';
+import { MAX_DOCUMENT_CHARS } from '../shared';
 import { SCHEMA_VERSION } from './version';
 
 // ---------------------------------------------------------------------------
@@ -210,7 +211,7 @@ export const DocumentAddedPayloadSchema = z
     uri: z.string().optional(),
     mime: z.string(),
     title: z.string().optional(),
-    content_digest: z.string().max(8000),
+    content_digest: z.string().max(MAX_DOCUMENT_CHARS),
     full_text_ref: z.string().optional(),
   })
   .check((ctx) => {

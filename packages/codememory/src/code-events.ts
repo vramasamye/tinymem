@@ -16,14 +16,14 @@
 
 import {
   eventContentHash,
+  MAX_DOCUMENT_CHARS,
   uuidv7,
   validateOnememoryEvent,
   type EvidenceSpan,
   type OnememoryEvent,
 } from '@onememory/core';
 
-/** `document.added.content_digest` max from the event schema — the extraction text bound. */
-export const MAX_DOCUMENT_CHARS = 8000;
+export { MAX_DOCUMENT_CHARS };
 
 export interface CodeDocumentEventInput {
   project_id: string;

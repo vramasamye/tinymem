@@ -10,8 +10,8 @@
  * lowest-signal end, never truncated mid-line.
  */
 
-import type { StoredSymbol } from '@onememory/core';
-import type { CodeMemoryStore, CodeRepositoryRecord } from '@onememory/core';
+import { estimateTokens } from '@onememory/core';
+import type { CodeMemoryStore, CodeRepositoryRecord, StoredSymbol } from '@onememory/core';
 
 import { compareText } from './internal';
 
@@ -60,10 +60,8 @@ export interface ArchitectureDigest {
   modules: DigestModule[];
 }
 
-/** The repo's token heuristic: a quarter of the character count (retrieval's own estimate). */
-export function estimateDigestTokens(text: string): number {
-  return Math.ceil(text.length / 4);
-}
+/** Compatibility name for the shared token estimator. */
+export const estimateDigestTokens = estimateTokens;
 
 /**
  * The module a path belongs to: its containing directory (POSIX), or `(root)` for top-level files.

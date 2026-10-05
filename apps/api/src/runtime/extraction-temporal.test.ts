@@ -19,7 +19,7 @@ import {
 } from '@onememory/extraction';
 import { createRetrievalEngine } from '@onememory/retrieval';
 import { createEmbeddedDb } from '@onememory/storage';
-import type { NewMemory } from '@onememory/core';
+import { estimateTokens, type NewMemory } from '@onememory/core';
 
 import {
   FIXTURE_PROJECT_ID,
@@ -132,7 +132,7 @@ test('transcript extraction and explicit supersession yield correct current and 
         prompt_version: later.extraction_meta.prompt_version,
       },
       tags: ['extracted', 'semantic_candidate'],
-      token_estimate: Math.ceil(newer.content.length / 4),
+      token_estimate: estimateTokens(newer.content),
     };
     const superseded = await storage.store.supersede({
       winner,

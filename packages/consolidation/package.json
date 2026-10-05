@@ -18,7 +18,6 @@
     "@onememory/core": "workspace:*",
     "@onememory/extraction": "workspace:*",
     "@onememory/llm": "workspace:*",
-    "@onememory/retrieval": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

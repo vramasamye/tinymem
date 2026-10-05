@@ -27,6 +27,7 @@
  */
 
 import {
+  estimateTokens,
   memoryContentHash,
   type CodeMemoryStore,
   type DurableMemoryType,
@@ -306,7 +307,7 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
         'code_reindex',
         ...(candidate.classification.awaiting_consolidation ? ['semantic_candidate'] : []),
       ],
-      token_estimate: Math.ceil(candidate.candidate.content.length / 4),
+      token_estimate: estimateTokens(candidate.candidate.content),
     };
 
     try {

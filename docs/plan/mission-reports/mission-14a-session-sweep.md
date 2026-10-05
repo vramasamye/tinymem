@@ -155,8 +155,8 @@ extraction pipeline stays parked while the synchronous pass is exercised determi
 Post-review (standards + spec, two independent reviewers) fixes applied on the branch before
 merge (`54f635a`):
 
-- promoted token estimates reuse `estimateTokens` from `@onememory/retrieval` (the sibling
-  durable-write path's estimator) instead of a local `content.length / 4`;
+- promoted token estimates reuse the shared `estimateTokens` from `@onememory/core` instead of a
+  local `content.length / 4`;
 - `SessionEndLifecycleResult.skipped_total` is computed by the pass, so callers cannot undercount
   by omitting a skip reason;
 - the unused injectable-clock option was removed (no caller, no test) and the ingest warning now

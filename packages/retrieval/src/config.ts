@@ -6,7 +6,9 @@
  * deviations in mission-2.md.
  */
 
-import type { MemoryType, SearchIntent } from '@onememory/core';
+import { DEFAULT_HALF_LIFE_DAYS, type MemoryType, type SearchIntent } from '@onememory/core';
+
+export { DEFAULT_HALF_LIFE_DAYS };
 
 /** Additive scoring weights (retrieval.md §5). `w_type` lives in the affinity matrix itself. */
 export interface RetrievalWeights {
@@ -40,20 +42,6 @@ export const DEFAULT_WEIGHTS: RetrievalWeights = {
   w_acc: 0.05,
   w_proj: 0.1,
   w_ent: 0.1,
-};
-
-/**
- * Recency half-life per type, in days (retrieval.md §5 names episodic 30d, decision 400d,
- * failure 180d; the rest are this mission's documented defaults — all overridable).
- */
-export const DEFAULT_HALF_LIFE_DAYS: Record<MemoryType, number> = {
-  episodic: 30,
-  semantic: 400,
-  procedural: 180,
-  decision: 400,
-  failure: 180,
-  preference: 400,
-  working: 7,
 };
 
 /**

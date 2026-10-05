@@ -7,13 +7,14 @@
  * model or open the network (AGENTS.md rule 4 cuts both ways).
  */
 
-import type {
-  Embedder,
-  EmbeddingIndex,
-  EvidenceSpan,
-  MemoryRecord,
-  MemoryStatus,
-  MemoryType,
+import {
+  estimateTokens,
+  type Embedder,
+  type EmbeddingIndex,
+  type EvidenceSpan,
+  type MemoryRecord,
+  type MemoryStatus,
+  type MemoryType,
 } from '@onememory/core';
 import type { ModelRouter, ResolvedRoute, ModelOperation, StructuredGenerationResult } from '@onememory/llm';
 import type { GenerateStructuredRequest } from '@onememory/llm';
@@ -272,7 +273,7 @@ export function memoryFixture(overrides: MemoryFixtureOverrides = {}): MemoryRec
     },
     entities: overrides.entities ?? [],
     tags: overrides.tags ?? ['extracted'],
-    token_estimate: Math.ceil(content.length / 4),
+    token_estimate: estimateTokens(content),
   };
 }
 
