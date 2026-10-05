@@ -4,14 +4,15 @@
  *
  * - Detection is filesystem-only (no spawning): Claude Code when `~/.claude` or `<root>/.claude`
  *   exists, Codex when `$CODEX_HOME`, `~/.codex` or `<root>/.codex` exists, Cursor when `~/.cursor`
- *   or `<root>/.cursor` exists. HOME comes from the injected environment, never from the OS, so
- *   tests cannot see the developer's real home.
- * - Consent: explicit `--with-claude` / `--with-codex` / `--with-cursor` flags, or the interactive
- *   multi-select (detected runtimes preselected). Without either, nothing is written — init never
- *   creates runtime files the user did not ask for.
- * - Writes: Claude Code files are merged here through the adapter's pure builders; Codex and Cursor
- *   files are written by the adapters' own scaffolds. Every step is idempotent, so the phase is
- *   safe to re-run, and files that cannot be parsed are reported and left untouched.
+ *   or `<root>/.cursor` exists, Pi when `~/.pi` or `<root>/.pi` exists, OpenCode when
+ *   `~/.config/opencode`, `<root>/.opencode` or `<root>/opencode.json` exists. HOME comes from the
+ *   injected environment, never from the OS, so tests cannot see the developer's real home.
+ * - Consent: explicit `--with-claude` / `--with-codex` / `--with-cursor` / `--with-pi` /
+ *   `--with-opencode` flags, or the interactive multi-select (detected runtimes preselected).
+ *   Without either, nothing is written — init never creates runtime files the user did not ask for.
+ * - Writes: Claude Code files are merged here through the adapter's pure builders; Codex, Cursor,
+ *   Pi and OpenCode files are written by the adapters' own scaffolds. Every step is idempotent, so
+ *   the phase is safe to re-run, and files that cannot be parsed are reported and left untouched.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -28,24 +29,30 @@ import {
 } from '@onememory/adapter-claude';
 import { scaffoldCodex } from '@onememory/adapter-codex';
 import { scaffoldCursor } from '@onememory/adapter-cursor';
+import { scaffoldPi } from '@onememory/adapter-pi';
+import { scaffoldOpenCode } from '@onememory/adapter-opencode';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';
 
-export type AgentRuntime = 'claude-code' | 'codex' | 'cursor';
+export type AgentRuntime = 'claude-code' | 'codex' | 'cursor' | 'pi' | 'opencode';
 
-export const AGENT_RUNTIMES: readonly AgentRuntime[] = ['claude-code', 'codex', 'cursor'];
+export const AGENT_RUNTIMES: readonly AgentRuntime[] = ['claude-code', 'codex', 'cursor', 'pi', 'opencode'];
 
 export const RUNTIME_TITLES: Record<AgentRuntime, string> = {
   'claude-code': 'Claude Code',
   codex: 'Codex',
   cursor: 'Cursor',
+  pi: 'Pi',
+  opencode: 'OpenCode',
 };
 
 export const RUNTIME_FLAGS: Record<AgentRuntime, string> = {
   'claude-code': '--with-claude',
   codex: '--with-codex',
   cursor: '--with-cursor',
+  pi: '--with-pi',
+  opencode: '--with-opencode',
 };
 
 export type PathExists = (path: string) => boolean;
@@ -73,6 +80,14 @@ export function detectRuntimes(
       join(root, '.codex'),
     ],
     cursor: [...(home === null ? [] : [join(home, '.cursor')]), join(root, '.cursor')],
+    pi: [...(home === null ? [] : [join(home, '.pi')]), join(root, '.pi')],
+    opencode: [
+      // OpenCode's global config dir (opencode.ai/docs/config: ~/.config/opencode/opencode.json)
+      // plus the project-scope surfaces (.opencode/ dir or a project opencode.json).
+      ...(home === null ? [] : [join(home, '.config', 'opencode')]),
+      join(root, '.opencode'),
+      join(root, 'opencode.json'),
+    ],
   };
   return AGENT_RUNTIMES.map((runtime) => {
     const evidence = [...new Set(candidates[runtime])].filter((path) => pathExists(path));
@@ -189,6 +204,26 @@ export function wireCursor(root: string, mcpUrl: string, projectName: string): W
   };
 }
 
+/** Delegate to the Pi adapter's own scaffold (`.pi/mcp.json`, the extension, APPEND_SYSTEM.md). */
+export function wirePi(root: string, mcpUrl: string, projectName: string): WiredRuntime {
+  const result = scaffoldPi({ scope: 'project', root, transport: 'http', url: mcpUrl, projectName });
+  return {
+    runtime: 'pi',
+    files: result.files.map((file) => ({ path: file.path, action: file.action })),
+    warnings: [...result.warnings],
+  };
+}
+
+/** Delegate to the OpenCode adapter's own scaffold (opencode.json, the plugin, the pointer). */
+export function wireOpenCode(root: string, mcpUrl: string, projectName: string): WiredRuntime {
+  const result = scaffoldOpenCode({ root, transport: 'http', url: mcpUrl, projectName });
+  return {
+    runtime: 'opencode',
+    files: result.files.map((file) => ({ path: file.path, action: file.action })),
+    warnings: [...result.warnings],
+  };
+}
+
 /** Run the scaffold phase for the consented runtimes. */
 export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseResult {
   const notes: string[] = [];
@@ -204,7 +239,7 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
   if (options.runtimes.length === 0) {
     if (options.detected.length === 0) {
       notes.push(
-        'no agent runtime was detected (~/.claude, ~/.codex, ~/.cursor, .claude/, .codex/, .cursor/) and none was requested — nothing was wired; pass --with-claude, --with-codex and/or --with-cursor to wire one',
+        'no agent runtime was detected (~/.claude, ~/.codex, ~/.cursor, ~/.pi, ~/.config/opencode, .claude/, .codex/, .cursor/, .pi/, .opencode/, opencode.json) and none was requested — nothing was wired; pass --with-claude, --with-codex, --with-cursor, --with-pi and/or --with-opencode to wire one',
       );
     }
     return result;
@@ -224,7 +259,11 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
         ? wireClaude(options.root, options.mcpUrl, options.projectName)
         : runtime === 'codex'
           ? wireCodex(options.root, options.mcpUrl, options.projectId)
-          : wireCursor(options.root, options.mcpUrl, options.projectName),
+          : runtime === 'cursor'
+            ? wireCursor(options.root, options.mcpUrl, options.projectName)
+            : runtime === 'pi'
+              ? wirePi(options.root, options.mcpUrl, options.projectName)
+              : wireOpenCode(options.root, options.mcpUrl, options.projectName),
     );
   }
   return result;
@@ -235,7 +274,7 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
  * multi-select (detected runtimes preselected); otherwise none.
  */
 export async function chooseRuntimes(
-  flags: { withClaude?: boolean; withCodex?: boolean; withCursor?: boolean },
+  flags: { withClaude?: boolean; withCodex?: boolean; withCursor?: boolean; withPi?: boolean; withOpenCode?: boolean },
   detection: RuntimeDetection[],
   io: Io,
   prompt: Prompt,
@@ -244,6 +283,8 @@ export async function chooseRuntimes(
     ...(flags.withClaude === true ? (['claude-code'] as const) : []),
     ...(flags.withCodex === true ? (['codex'] as const) : []),
     ...(flags.withCursor === true ? (['cursor'] as const) : []),
+    ...(flags.withPi === true ? (['pi'] as const) : []),
+    ...(flags.withOpenCode === true ? (['opencode'] as const) : []),
   ];
   if (flagged.length > 0 || !io.interactive) return flagged;
   const chosen = await prompt.multiselect<AgentRuntime>(

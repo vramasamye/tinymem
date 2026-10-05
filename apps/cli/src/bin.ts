@@ -152,6 +152,11 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
     .option('--with-claude', 'wire Claude Code: .mcp.json (daemon MCP), .claude/settings.json hooks, CLAUDE.md pointer')
     .option('--with-codex', 'wire Codex: .codex/config.toml (daemon MCP), .codex/hooks.json, AGENTS.md pointer')
     .option('--with-cursor', 'wire Cursor: .cursor/mcp.json (daemon MCP), .cursor/hooks.json, .cursor/rules/onememory.mdc')
+    .option('--with-pi', 'wire Pi: .pi/mcp.json (daemon MCP), .pi/extensions/onememory.ts, .pi/APPEND_SYSTEM.md pointer')
+    .option(
+      '--with-opencode',
+      'wire OpenCode: opencode.json (daemon MCP), .opencode/plugins/onememory.ts, .opencode/onememory.md pointer',
+    )
     .action(async (options) => {
       const io = ioFor(options);
       const preset = options.preset === undefined ? undefined : String(options.preset);
@@ -176,6 +181,9 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.withClaude === true ? { withClaude: true } : {}),
             ...(options.withCodex === true ? { withCodex: true } : {}),
             ...(options.withCursor === true ? { withCursor: true } : {}),
+            ...(options.withPi === true ? { withPi: true } : {}),
+            // Commander camelCases --with-opencode to withOpencode (not withOpenCode).
+            ...(options.withOpencode === true ? { withOpenCode: true } : {}),
           },
           io,
           prompt,

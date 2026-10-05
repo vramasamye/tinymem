@@ -17,6 +17,9 @@
         "@modelcontextprotocol/server": "2.3.0",
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
+        "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/codememory": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
@@ -44,6 +47,9 @@
         "@clack/prompts": "^1.8.1",
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
+        "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/api": "workspace:*",
         "@onememory/config": "workspace:*",
         "@onememory/consolidation": "workspace:*",
@@ -61,6 +67,11 @@
       "name": "@onememory/benchmarks",
       "version": "0.1.0",
       "dependencies": {
+        "@onememory/adapter-claude": "workspace:*",
+        "@onememory/adapter-codex": "workspace:*",
+        "@onememory/adapter-cursor": "workspace:*",
+        "@onememory/adapter-opencode": "workspace:*",
+        "@onememory/adapter-pi": "workspace:*",
         "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/extraction": "workspace:*",
@@ -98,6 +109,20 @@
         "@onememory/core": "workspace:*",
         "@onememory/security": "workspace:*",
         "smol-toml": "^1.9.0",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+      },
+    },
+    "packages/adapters/cursor": {
+      "name": "@onememory/adapter-cursor",
+      "version": "0.1.0",
+      "bin": {
+        "onemem-cursor-hook": "./src/bin.ts",
+      },
+      "dependencies": {
+        "@onememory/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -397,6 +422,8 @@
     "@onememory/adapter-claude": ["@onememory/adapter-claude@workspace:packages/adapters/claude"],
 
     "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
+
+    "@onememory/adapter-cursor": ["@onememory/adapter-cursor@workspace:packages/adapters/cursor"],
 
     "@onememory/adapter-opencode": ["@onememory/adapter-opencode@workspace:packages/adapters/opencode"],
 
