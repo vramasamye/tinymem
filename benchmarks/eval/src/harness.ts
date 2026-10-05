@@ -22,7 +22,7 @@ import {
   temporalBucketFor,
   type QueryOutcome,
 } from './metrics';
-import { openBenchRuntime, type CorpusMemory } from './runtime';
+import { openBenchRuntime, type BenchRuntime, type CorpusMemory } from './runtime';
 
 export interface DatasetRunReport {
   id: string;
@@ -77,7 +77,6 @@ function searchRequest(
     query: string;
     project?: string | undefined;
     max_tokens: number;
-    max_memories?: number | undefined;
     as_of?: string | undefined;
     temporal_mode?: 'current' | 'historical' | undefined;
   },
@@ -94,9 +93,66 @@ function searchRequest(
     query: input.query,
     max_tokens: input.max_tokens,
     ...(projectId === undefined ? {} : { project_id: projectId }),
-    ...(input.max_memories === undefined ? {} : { max_memories: input.max_memories }),
     ...(input.as_of === undefined ? {} : { as_of: input.as_of }),
     ...(input.temporal_mode === undefined ? {} : { temporal_mode: input.temporal_mode }),
+  };
+}
+
+/** Everything one probe needs: the request plus the fact keys it must and must not return. */
+interface ProbeSpec {
+  /** Outcome id, unique within a dataset run. */
+  id: string;
+  kind: QueryOutcome['kind'];
+  /** Dataset project key (undefined = unscoped). */
+  project?: string | undefined;
+  query: string;
+  max_tokens: number;
+  as_of?: string | undefined;
+  temporal_mode?: 'current' | 'historical' | undefined;
+  /** Fact keys that must appear in the results. */
+  expected: readonly string[];
+  /** Fact keys that must not appear in the results. */
+  forbidden: readonly string[];
+}
+
+/**
+ * Run one probe against the real engine: resolve the expected/forbidden fact keys to memory ids,
+ * search, and record the raw outcome the metrics consume. Both declared queries and contradiction
+ * probes go through here — they differ only in what they declare, not in how they are measured.
+ */
+async function runProbe(
+  dataset: GoldenDataset,
+  runtime: BenchRuntime,
+  spec: ProbeSpec,
+): Promise<QueryOutcome> {
+  const expectedIds = spec.expected.map((key) => factId(dataset, runtime, key));
+  const forbiddenIds = spec.forbidden.map((key) => factId(dataset, runtime, key));
+  const response = await runtime.engine.search(
+    searchRequest(dataset, runtime, {
+      query: spec.query,
+      project: spec.project,
+      max_tokens: spec.max_tokens,
+      as_of: spec.as_of,
+      temporal_mode: spec.temporal_mode,
+    }),
+  );
+  const projectId =
+    spec.project === undefined || spec.project === GLOBAL_PROJECT_KEY
+      ? null
+      : (runtime.project_ids.get(spec.project) ?? null);
+  return {
+    id: spec.id,
+    kind: spec.kind,
+    projectKey: spec.project ?? null,
+    projectId,
+    returnedIds: response.memories.map((memory) => memory.id),
+    expectedIds,
+    forbiddenIds,
+    usedTokens: response.tokens.used,
+    budget: response.tokens.budget,
+    packing: response.tokens.packing,
+    warnings: response.warnings,
+    ...(spec.kind === 'temporal' ? { temporal_bucket: temporalBucketFor(spec) } : {}),
   };
 }
 
@@ -113,61 +169,33 @@ export async function runDataset(
   const outcomes: QueryOutcome[] = [];
   try {
     for (const query of dataset.queries) {
-      const expectedIds = query.expected.map((key) => factId(dataset, runtime, key));
-      const forbiddenIds = query.forbidden.map((key) => factId(dataset, runtime, key));
-      const response = await runtime.engine.search(
-        searchRequest(dataset, runtime, {
-          query: query.query,
+      outcomes.push(
+        await runProbe(dataset, runtime, {
+          id: query.id,
+          kind: query.kind,
           project: query.project,
+          query: query.query,
           max_tokens: query.max_tokens,
-          max_memories: query.max_memories,
           as_of: query.as_of,
           temporal_mode: query.temporal_mode,
+          expected: query.expected,
+          forbidden: query.forbidden,
         }),
       );
-      const projectId =
-        query.project === undefined || query.project === GLOBAL_PROJECT_KEY
-          ? null
-          : (runtime.project_ids.get(query.project) ?? null);
-      outcomes.push({
-        id: query.id,
-        kind: query.kind,
-        projectKey: query.project ?? null,
-        projectId,
-        returnedIds: response.memories.map((memory) => memory.id),
-        expectedIds,
-        forbiddenIds,
-        usedTokens: response.tokens.used,
-        budget: response.tokens.budget,
-        packing: response.tokens.packing,
-        warnings: response.warnings,
-        ...(query.kind === 'temporal' ? { temporal_bucket: temporalBucketFor(query) } : {}),
-      });
     }
 
     for (const group of dataset.contradictions) {
-      const expectedIds = [factId(dataset, runtime, group.authority)];
-      const forbiddenIds = group.contradicted.map((key) => factId(dataset, runtime, key));
-      const response = await runtime.engine.search(
-        searchRequest(dataset, runtime, {
-          query: group.query,
+      outcomes.push(
+        await runProbe(dataset, runtime, {
+          id: `contradiction-${group.id}`,
+          kind: 'contradiction',
           project: group.project,
+          query: group.query,
           max_tokens: 800,
+          expected: [group.authority],
+          forbidden: group.contradicted,
         }),
       );
-      outcomes.push({
-        id: `contradiction-${group.id}`,
-        kind: 'contradiction',
-        projectKey: group.project,
-        projectId: runtime.project_ids.get(group.project) ?? null,
-        returnedIds: response.memories.map((memory) => memory.id),
-        expectedIds,
-        forbiddenIds,
-        usedTokens: response.tokens.used,
-        budget: response.tokens.budget,
-        packing: response.tokens.packing,
-        warnings: response.warnings,
-      });
     }
 
     const consolidation = dataset.consolidation.map((group) => {

@@ -62,8 +62,6 @@ export interface ResolvedFact {
 export interface BenchRuntimeOptions {
   /** Install the process-wide network guard around the run and record attempted calls. */
   enforceNetworkGuard?: boolean;
-  /** Where the PGlite data directory lives (default: a fresh temp dir). */
-  dataDir?: string;
 }
 
 export interface BenchRuntime {
@@ -222,8 +220,8 @@ export async function openBenchRuntime(
     }
   }
 
-  const dataDir = options.dataDir ?? (await mkdtemp(join(tmpdir(), `onemem-bench-${dataset.id}-`)));
-  const ownsDataDir = options.dataDir === undefined;
+  // Each dataset run owns a fresh PGlite data directory, removed when the runtime closes.
+  const dataDir = await mkdtemp(join(tmpdir(), `onemem-bench-${dataset.id}-`));
   const storage: OnememoryStorage = await createEmbeddedDb(dataDir);
 
   // The retrieval engine fires `void store.reinforce(...)`; PGlite's close waits for in-flight
@@ -327,7 +325,7 @@ export async function openBenchRuntime(
         inflight.clear();
         await storage.close();
         networkGuard?.restore();
-        if (ownsDataDir) await rm(dataDir, { recursive: true, force: true });
+        await rm(dataDir, { recursive: true, force: true });
       },
     };
   } catch (error) {
@@ -335,7 +333,7 @@ export async function openBenchRuntime(
     await Promise.allSettled([...inflight]);
     await storage.close().catch(() => {});
     networkGuard?.restore();
-    if (ownsDataDir) await rm(dataDir, { recursive: true, force: true }).catch(() => {});
+    await rm(dataDir, { recursive: true, force: true }).catch(() => {});
     throw error;
   }
 }

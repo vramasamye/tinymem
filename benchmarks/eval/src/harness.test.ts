@@ -1,27 +1,29 @@
 /**
  * The CI gate: run the real harness over the committed golden datasets and fail below threshold.
  *
- * This is the regression gate the mission calls for (the repository has no CI config yet, so
- * `bun test` is the gate). It also asserts the dataset-conformance contract — every declared fact
- * must still resolve to exactly one extracted memory — so a fixture that silently stops being
- * produced fails here instead of quietly shrinking the benchmark.
+ * `.github/workflows/ci.yaml` runs `bun test` on every push to `main` and every pull request, so
+ * this file *is* the regression gate in CI. It also asserts the dataset-conformance contract —
+ * every declared fact must still resolve to exactly one extracted memory — so a fixture that
+ * silently stops being produced fails here instead of quietly shrinking the benchmark.
+ *
+ * Each test is self-contained (no shared mutable state), so the file stays correct under any
+ * runner ordering or isolation behaviour. The live-report assertions and the breach proof share
+ * one harness run because they need the same measured report.
  */
 
 import { describe, expect, test } from 'bun:test';
 
 import { GOLDEN_DATASETS_DIR, loadDatasets } from './dataset';
 import { DEFAULT_GATE_THRESHOLDS, evaluateGates } from './gates';
-import { runBenchmark, runDataset, type BenchmarkReport } from './harness';
+import { runBenchmark, runDataset } from './harness';
 
 const TIMEOUT_MS = 240_000;
 
 describe('benchmark harness gate', () => {
-  let report: BenchmarkReport;
-
   test(
     'the golden datasets run through the real engine and every gate passes',
     async () => {
-      report = await runBenchmark({ datasetsDir: GOLDEN_DATASETS_DIR });
+      const report = await runBenchmark({ datasetsDir: GOLDEN_DATASETS_DIR });
 
       // Gated metrics.
       expect(report.gates.passed).toBe(true);
@@ -49,21 +51,19 @@ describe('benchmark harness gate', () => {
       expect(report.metrics.temporal.current.probes).toBeGreaterThan(0);
       expect(report.metrics.temporal.point_in_time.probes).toBeGreaterThan(0);
       expect(report.metrics.temporal.history.probes).toBeGreaterThan(0);
+
+      // The gate is not decorative: the same measured report fails once a threshold is breached.
+      const breached = evaluateGates(report.metrics, {
+        ...DEFAULT_GATE_THRESHOLDS,
+        retrieval_precision_at_k: 0.99,
+      });
+      expect(breached.passed).toBe(false);
+      expect(breached.checks.find((check) => check.metric === 'retrieval_precision_at_k')?.passed).toBe(
+        false,
+      );
     },
     TIMEOUT_MS,
   );
-
-  test('a breached threshold fails the live report (the gate is not decorative)', () => {
-    // `report` is assigned by the previous test in this file.
-    const evaluation = evaluateGates(report.metrics, {
-      ...DEFAULT_GATE_THRESHOLDS,
-      retrieval_precision_at_k: 0.99,
-    });
-    expect(evaluation.passed).toBe(false);
-    expect(evaluation.checks.find((check) => check.metric === 'retrieval_precision_at_k')?.passed).toBe(
-      false,
-    );
-  });
 
   test(
     'a single dataset run is deterministic across runs',

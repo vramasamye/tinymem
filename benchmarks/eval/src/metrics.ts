@@ -222,7 +222,8 @@ export function temporalBucketFor(request: { as_of?: string; temporal_mode?: str
   return 'current';
 }
 
-function satisfies(outcome: QueryOutcome): boolean {
+/** True when every expected fact is returned and no forbidden fact is (the probe's pass condition). */
+function meetsExpectations(outcome: QueryOutcome): boolean {
   const returned = new Set(outcome.returnedIds);
   const allExpected = outcome.expectedIds.every((id) => returned.has(id));
   const noForbidden = outcome.forbiddenIds.every((id) => !returned.has(id));
@@ -240,7 +241,7 @@ export function computeTemporalMetrics(outcomes: readonly QueryOutcome[]): Tempo
   for (const outcome of probes) {
     const bucket = outcome.temporal_bucket ?? 'current';
     buckets[bucket].probes += 1;
-    if (satisfies(outcome)) {
+    if (meetsExpectations(outcome)) {
       correct += 1;
       buckets[bucket].correct += 1;
     }
@@ -262,13 +263,13 @@ export function computeContradictionMetrics(outcomes: readonly QueryOutcome[]): 
   let silent = 0;
   for (const outcome of groups) {
     const returned = new Set(outcome.returnedIds);
-    const authorityPresent = outcome.expectedIds.every((id) => returned.has(id));
-    const noContradicted = outcome.forbiddenIds.every((id) => !returned.has(id));
-    if (authorityPresent && noContradicted) resolved += 1;
+    // Authority returned, contradicted side absent — exactly the probe pass condition.
+    if (meetsExpectations(outcome)) resolved += 1;
     const first = outcome.returnedIds[0];
     if (first !== undefined && outcome.expectedIds.includes(first)) top1 += 1;
     // Both sides surfaced with no resolution: the engine returned an authority and a contradicted
     // memory together (pre-M14 the only possible state).
+    const authorityPresent = outcome.expectedIds.every((id) => returned.has(id));
     const contradictedPresent = outcome.forbiddenIds.some((id) => returned.has(id));
     if (authorityPresent && contradictedPresent) silent += 1;
   }
