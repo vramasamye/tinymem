@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { contradictionTemplate, contradictsHeuristically, numericValues, temporalOverlap } from './contradiction';
+import { contradictionTemplate, contradictsHeuristically, numericValues, supersessionValidUntil, temporalOverlap } from './contradiction';
 import { memoryFixture } from './testing';
 
 const PROJECT = '00000000-0000-7000-8002-000000000001';
@@ -54,6 +54,28 @@ describe('temporalOverlap', () => {
     });
     const next = memoryFixture({ valid_from: '2026-06-01T00:00:00.000Z' });
     expect(temporalOverlap(old, next)).toBeFalse();
+  });
+});
+
+describe('supersessionValidUntil', () => {
+  test("closes the loser's window at the winner's observation when it falls inside the window", () => {
+    // The Node 20 → 22 chain shape: the newer fact was observed inside the older fact's window.
+    expect(supersessionValidUntil('2026-06-10T00:00:00.000Z', '2026-01-10T00:00:00.000Z')).toBe(
+      '2026-06-10T00:00:00.000Z',
+    );
+  });
+
+  test("closes the loser's window at its own start when the winner predates it (zero-width: never valid)", () => {
+    // An OLDER explicit user statement beating a newer inference: the wrong claim was never valid.
+    expect(supersessionValidUntil('2026-04-01T00:00:00.000Z', '2026-09-26T00:00:00.000Z')).toBe(
+      '2026-09-26T00:00:00.000Z',
+    );
+  });
+
+  test('an equal-time winner (confidence decided, not time) also closes the loser zero-width', () => {
+    expect(supersessionValidUntil('2026-09-27T00:00:00.000Z', '2026-09-27T00:00:00.000Z')).toBe(
+      '2026-09-27T00:00:00.000Z',
+    );
   });
 });
 

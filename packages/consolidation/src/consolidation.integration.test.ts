@@ -56,6 +56,10 @@ const VECTORS: Record<string, number[]> = {
   'Decision: use PostgreSQL for the main store': E(7),
   'Cache TTL: 300 seconds': E(9),
   'Cache TTL: 900 seconds': E(10),
+  'Max depth: 10': E(13),
+  'Max depth: 20': E(14),
+  'Retry limit: 3': E(15),
+  'Retry limit: 5': E(16),
 };
 
 /** Place a short vector on the last axes (zero-padded to VECTOR_DIM). */
@@ -70,6 +74,8 @@ interface World {
   dataDir: string;
   projectId: string;
   sourceId: string;
+  /** An `explicit`-kind source — user statements outrank agent inference (memory-model §9). */
+  explicitSourceId: string;
   inserted: Map<string, MemoryRecord>;
   embedder: TableEmbedder;
 }
@@ -124,8 +130,22 @@ beforeAll(async () => {
     title: 'consolidation fixture',
     project_id: project.id,
   });
+  const explicitSource = await storage.store.createSource({
+    kind: 'explicit',
+    uri: 'session/consolidation-fixture-explicit',
+    title: 'consolidation fixture (explicit user statements)',
+    project_id: project.id,
+  });
   const embedder = new TableEmbedder(VECTORS, VECTOR_MODEL, VECTOR_DIM);
-  world = { storage, dataDir, projectId: project.id, sourceId: source.id, inserted: new Map(), embedder };
+  world = {
+    storage,
+    dataDir,
+    projectId: project.id,
+    sourceId: source.id,
+    explicitSourceId: explicitSource.id,
+    inserted: new Map(),
+    embedder,
+  };
 
   // The Node 20 → 22 → 24 chain: same attribute, incompatible values, escalating time.
   await insert(world, memoryOf(world, { content: 'Version: Node 20', subtype: 'semantic.version', observed_at: '2026-01-10T00:00:00.000Z' }));
@@ -368,5 +388,91 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     const superseded = await world.storage.store.getMemory(ttl300.id);
     expect(superseded?.status).toBe('superseded');
     expect(superseded?.superseded_by).toBe(world.inserted.get('Cache TTL: 900 seconds')!.id);
+  });
+
+  test('authority always resolves: an older explicit statement beats a newer inference; equal time falls to confidence', async () => {
+    // An explicit user statement from August vs a newer, MORE confident inference from
+    // September: only rule 1 (explicit > inference) can decide — never a temporal shape, never
+    // a skip. (August keeps the explicit row above the decay threshold — the winner must be
+    // older than the loser's window, not old enough to archive.)
+    const explicitRow = await insert(
+      world,
+      {
+        ...memoryOf(world, { content: 'Max depth: 10', observed_at: '2026-08-01T00:00:00.000Z', confidence: 0.9 }),
+        source_id: world.explicitSourceId,
+        evidence: [
+          {
+            source_id: world.explicitSourceId,
+            kind: 'message',
+            locator: 'session.jsonl:explicit-1',
+            excerpt: 'Max depth: 10',
+          },
+        ],
+      },
+    );
+    const inferredRow = await insert(
+      world,
+      memoryOf(world, { content: 'Max depth: 20', observed_at: '2026-09-26T00:00:00.000Z', confidence: 0.95 }),
+    );
+
+    // Equal time, different confidence: rule 4 decides — nothing is skipped for tying on recency.
+    await insert(
+      world,
+      memoryOf(world, { content: 'Retry limit: 3', observed_at: '2026-09-27T00:00:00.000Z', confidence: 0.9 }),
+    );
+    await insert(
+      world,
+      memoryOf(world, { content: 'Retry limit: 5', observed_at: '2026-09-27T00:00:00.000Z', confidence: 0.6 }),
+    );
+
+    const report = await runConsolidation({
+      store: world.storage.store,
+      vectors: world.storage.vectors,
+      embedder: world.embedder,
+      scope: { project_id: world.projectId },
+      actor: 'test:consolidation',
+      now: () => NOW,
+    });
+    expect(report.contradictions.resolved).toBe(2);
+    expect(report.contradictions.skipped).toEqual([]);
+    const byRule = new Map(report.contradictions.records.map((record) => [record.rule, record]));
+    expect(byRule.get('explicit')?.winner_id).toBe(explicitRow.id);
+    expect(byRule.get('confidence')?.winner_id).toBe(world.inserted.get('Retry limit: 3')!.id);
+
+    // The explicit winner closed the newer, more confident inference into a zero-width window
+    // (valid_until === valid_from): the losing claim was never valid — no point-in-time view
+    // ever shows it, and exactly one row stays current.
+    const loser = await world.storage.store.getMemory(inferredRow.id);
+    expect(loser?.status).toBe('superseded');
+    expect(loser?.superseded_by).toBe(explicitRow.id);
+    expect(loser?.valid_until).toBe('2026-09-26T00:00:00.000Z'); // its own valid_from — zero-width
+    const loserAudit = await world.storage.store.listMemoryEvents(inferredRow.id);
+    const loserTransition = loserAudit.find((event) => event.action === 'status_changed');
+    expect(loserTransition?.details['rule']).toBe('explicit');
+    expect(loserTransition?.details['window']).toBe('zero-width-never-valid');
+
+    // The equal-time confidence pair: the confident row won, the other closed zero-width too.
+    const retryLoser = await world.storage.store.getMemory(world.inserted.get('Retry limit: 5')!.id);
+    expect(retryLoser?.status).toBe('superseded');
+    expect(retryLoser?.superseded_by).toBe(world.inserted.get('Retry limit: 3')!.id);
+    expect(retryLoser?.valid_until).toBe('2026-09-27T00:00:00.000Z');
+    const retryAudit = await world.storage.store.listMemoryEvents(world.inserted.get('Retry limit: 5')!.id);
+    expect(retryAudit.find((event) => event.action === 'status_changed')?.details['rule']).toBe('confidence');
+
+    // Exactly one row of each pair is current; no point-in-time view ever shows a zero-width loser.
+    const current = await world.storage.store.queryCurrent({ project_id: world.projectId });
+    expect(current.filter((memory) => memory.content.startsWith('Max depth')).map((m) => m.content)).toEqual([
+      'Max depth: 10',
+    ]);
+    expect(current.filter((memory) => memory.content.startsWith('Retry limit')).map((m) => m.content)).toEqual([
+      'Retry limit: 3',
+    ]);
+    const asOf = await world.storage.store.queryAsOf('2026-09-27T00:00:00.000Z', { project_id: world.projectId });
+    expect(asOf.filter((memory) => memory.content.startsWith('Max depth')).map((m) => m.content)).toEqual([
+      'Max depth: 10',
+    ]);
+    expect(asOf.filter((memory) => memory.content.startsWith('Retry limit')).map((m) => m.content)).toEqual([
+      'Retry limit: 3',
+    ]);
   });
 });

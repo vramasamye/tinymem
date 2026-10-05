@@ -12,9 +12,16 @@
  *
  * Resolution (the pass below): authority order explicit > decision > newer > confidence. The
  * winner supersedes the loser through the audited status-transition supersession fields
- * (`valid_until` = winner's observed_at, `superseded_by` = winner) and the pair is linked with a
- * `contradicts` edge (what retrieval's conflict labels read). A full tie marks BOTH memories
- * `disputed` — never resolved by picking silently (M14 rule).
+ * (`superseded_by` = winner, `valid_until` per {@link supersessionValidUntil}) and the pair is
+ * linked with a `contradicts` edge (what retrieval's conflict labels read). A full tie marks
+ * BOTH memories `disputed` — never resolved by picking silently (M14 rule).
+ *
+ * The resolution invariant (review finding): after the pass processes a detected pair, exactly
+ * one row is current (the winner closed the loser via audited supersession) OR both are
+ * `disputed` on a full authority tie. A detected pair is NEVER left silently unresolved: no
+ * cross-field temporal shape (loser `valid_from` vs winner `observed_at`) can skip the
+ * arbitration — the winner is recomputed from the authority fields alone, and the only temporal
+ * choice left is WHERE the loser's window closes ({@link supersessionValidUntil}).
  */
 
 import type { MemoryRecord, Store } from '@onememory/core';
@@ -74,6 +81,22 @@ export type ContradictionDetector = (a: MemoryRecord, b: MemoryRecord) => boolea
 /** Stable unordered pair key. */
 export function pairKey(aId: string, bId: string): string {
   return aId < bId ? `${aId}|${bId}` : `${bId}|${aId}`;
+}
+
+/**
+ * WHERE a resolved loser's validity window closes — the only temporal choice the pass makes
+ * (the winner itself is decided by the authority fields alone, never by window shapes):
+ *
+ * - at the winner's observation, when that moment falls inside the loser's window — the
+ *   point-in-time handoff (queryAsOf answers with the loser before it, the winner after; the
+ *   Node 20 → 22 → 24 chain works this way);
+ * - at the loser's own `valid_from` otherwise (an older authority — an explicit user statement,
+ *   a decision, an equal-time higher-confidence row — predates the loser's window opening):
+ *   the window becomes zero-width (`valid_until === valid_from`), so no point-in-time view ever
+ *   shows the losing claim. It was never valid.
+ */
+export function supersessionValidUntil(winnerObservedAt: string, loserValidFrom: string): string {
+  return Date.parse(winnerObservedAt) > Date.parse(loserValidFrom) ? winnerObservedAt : loserValidFrom;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,23 +197,21 @@ export async function runContradictionPass(
     const { winner, loser, rule } = outcome;
     const winnerRecord = winner.id === a.id ? a : b;
     const loserRecord = winner.id === a.id ? b : a;
-    // Supersession closes the loser at the winner's observation. A window that would invert
-    // (the loser became valid after the winner was observed) is skipped, not forced.
-    if (Date.parse(loserRecord.valid_from) >= Date.parse(winner.observedAt)) {
-      skipped.push({
-        a_id: a.id,
-        b_id: b.id,
-        reason: `winner observed at ${winner.observedAt} but loser valid from ${loserRecord.valid_from} (inverted window)`,
-      });
-      continue;
-    }
+    // The loser's window closes at the winner's observation when that falls inside it, else at
+    // its own start (zero-width — the losing claim was never valid). Either way exactly one row
+    // stays current; a detected pair is never skipped for a temporal shape: an older explicit
+    // statement or decision still beats a newer inference, and an equal-time pair falls to
+    // confidence.
+    const validUntil = supersessionValidUntil(winner.observedAt, loserRecord.valid_from);
+    const window: 'closed-at-winner-observation' | 'zero-width-never-valid' =
+      validUntil === winner.observedAt ? 'closed-at-winner-observation' : 'zero-width-never-valid';
     try {
       await store.updateMemoryStatus(loserRecord.id, 'superseded', {
         actor: options.actor,
         reason: `contradiction resolved by authority (${rule})`,
-        valid_until: winner.observedAt,
+        valid_until: validUntil,
         superseded_by_id: winnerRecord.id,
-        details: { contradiction: true, template: pair.template, rule, counterpart: winnerRecord.id },
+        details: { contradiction: true, template: pair.template, rule, counterpart: winnerRecord.id, window },
       });
       await store.addEdge({
         from_memory_id: loserRecord.id,
