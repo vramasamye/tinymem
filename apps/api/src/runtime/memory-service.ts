@@ -43,6 +43,10 @@ import { searchRepo, sourcesRepo } from '@onememory/storage';
 
 import type { OnememoryRuntime } from './composition';
 import {
+  runSessionEndLifecycle,
+  type SessionEndObservation,
+} from './session-lifecycle';
+import {
   BackendError,
   type ForgetInput,
   type ForgetOutcome,
@@ -526,6 +530,8 @@ export async function ingestEvents(
   const project = await requireProject(runtime, projectId);
   const outcomes: IngestOutcome[] = [];
   const warnings: string[] = [];
+  /** Distinct observed session ends (by session id) - one lifecycle pass each, after the loop. */
+  const sessionEnds = new Map<string, SessionEndObservation>();
   let stored = 0;
   let duplicates = 0;
   let excluded = 0;
@@ -609,6 +615,29 @@ export async function ingestEvents(
         redactions: redacted.redactions,
       });
     }
+
+    // A stored OR duplicate session end observes the session's end. Duplicates deliberately
+    // re-run the pass: it is idempotent (session-lifecycle.ts), and re-running heals a crash
+    // between storing the event and running the pass - or picks up working rows the async
+    // extraction pipeline inserted after an earlier end was observed.
+    if (event.payload.kind === 'session.end') {
+      const sessionId = event.scope.session_id;
+      if (sessionId === undefined) {
+        warnings.push(
+          `session.end at index ${index} carries no scope.session_id - no session-end lifecycle pass can run`,
+        );
+      } else {
+        sessionEnds.set(sessionId, {
+          session_id: sessionId,
+          runtime: event.source.runtime,
+          ended_at: event.payload.ended_at ?? event.occurred_at,
+          ...(event.payload.started_at === undefined
+            ? {}
+            : { started_at: event.payload.started_at }),
+          ...(event.payload.summary === undefined ? {} : { summary: event.payload.summary }),
+        });
+      }
+    }
   }
 
   let normalizeJobId: string | null = null;
@@ -623,6 +652,22 @@ export async function ingestEvents(
     });
     normalizeJobId = enqueued.job.id;
   }
+
+  // Session-end lifecycle passes (memory-model.md §10): promote + sweep per observed end. The
+  // pass summary rides the warnings channel - the only IngestResult field that can carry it
+  // without a type change (types.ts is coordinator-owned).
+  for (const observation of sessionEnds.values()) {
+    const lifecycle = await runSessionEndLifecycle(runtime, project.id, observation);
+    warnings.push(
+      `session-end lifecycle for session ${observation.session_id}: ` +
+        `promoted ${lifecycle.promoted} (inserted ${lifecycle.inserted}, ` +
+        `linked_existing ${lifecycle.linked_existing}), ` +
+        `skipped ${lifecycle.skipped_total} (promotion filter), failed ${lifecycle.failed}, ` +
+        `expired_purged ${lifecycle.expired_purged} (global TTL sweep)` +
+        (lifecycle.failures.length > 0 ? `; first failure: ${lifecycle.failures[0]}` : ''),
+    );
+  }
+
   if (stored === 0 && duplicates > 0) {
     warnings.push('every event in this batch was a duplicate — nothing new was queued');
   }
