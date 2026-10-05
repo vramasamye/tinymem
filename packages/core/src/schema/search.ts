@@ -59,6 +59,34 @@ export const MemorySearchRequestSchema = z.looseObject({
 });
 export type MemorySearchRequest = z.infer<typeof MemorySearchRequestSchema>;
 
+/**
+ * One persisted code ref surfaced with a returned memory (M4g2 — closing M4g's finding F5): the
+ * `memory_code_refs` row a memory rests on (`recordCodeRefs`, M4c), hydrated with its commit
+ * anchor and the cited file's symbol table.
+ *
+ * Field semantics (the hydration policy, deterministic everywhere):
+ * - `repoId` — the `repositories.id` the cited file lives in.
+ * - `commitSha` — the commit under which the cited worktree-tier blob was last observed
+ *   (`file_fingerprints.last_seen_commit`, pinned to the ref's own blob). The empty string is
+ *   the honest "no commit anchor": the evidence blob is no longer the current worktree content
+ *   (drift-stale) or the capture's HEAD was unborn. A commit is never guessed or borrowed from
+ *   a newer capture.
+ * - `path` — repository-relative path the memory's evidence was extracted against.
+ * - `symbol` — the symbol within the cited file that the memory's content names (word-boundary
+ *   match, first in document order); absent when the content names none. Never fabricated.
+ * - `evidence` — the worktree-tier blob SHA the memory's evidence was verified against.
+ *
+ * Malformed entries (non-uuid repoId, non-string commitSha, empty path) are rejected.
+ */
+export const CodeRefEntrySchema = z.looseObject({
+  repoId: z.uuid(),
+  commitSha: z.string(),
+  path: z.string().min(1),
+  symbol: z.string().min(1).optional(),
+  evidence: z.string().min(1).optional(),
+});
+export type CodeRefEntry = z.infer<typeof CodeRefEntrySchema>;
+
 export const MemorySearchResponseSchema = z.looseObject({
   query_understanding: z.looseObject({
     intent: z.enum(SEARCH_INTENTS),
@@ -113,6 +141,15 @@ export const MemorySearchResponseSchema = z.looseObject({
           }),
         )
         .optional(),
+      /**
+       * The persisted code refs this memory rests on (M4g2): ALWAYS present, empty when none are
+       * recorded — a consumer of the search response can always reach the cited files. Entries
+       * are deterministic (repository, then path order) and capped per memory; when more refs
+       * exist than the cap allows, the tail is summarized by one `<N more refs>` placeholder
+       * entry (its `path`) rather than a silent mid-list truncation. Refs are structured
+       * metadata: they ride the response alongside (not inside) the packed token budget.
+       */
+      codeRefs: z.array(CodeRefEntrySchema),
     }),
   ),
   tokens: z.looseObject({
