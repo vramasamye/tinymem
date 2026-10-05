@@ -36,7 +36,7 @@
  * - `tool.execute.after` tool `bash`, `metadata.exit == null`→ terminal.output (exit_code null)
  *   + error.raised (abort/timeout — shell.ts returns null exactly there)
  * - `tool.execute.after` tool `edit`   → file.changed (modified; line counts from
- *   `oldString`/`newString` — the same math as the Claude/Cursor adapters, byte-identical deltas)
+ *   `oldString`/`newString` — the Claude baseline's formula, byte-identical deltas)
  * - `tool.execute.after` tool `write`   → file.changed (`metadata.exists === false` → 'created'
  *   with lines_added from the content, else 'modified' — the create/overwrite signal write.ts
  *   reports and Pi cannot)
@@ -123,14 +123,14 @@ export interface OpenCodeTranslationResult {
 const clampText = (text: string, max: number): string => (text.length <= max ? text : text.slice(0, max));
 
 /**
- * Line counts with the Claude/Cursor semantics: one trailing newline does not open a phantom
- * line (a normal file's content ends with one). This is the exact math the sibling adapters use,
- * so `file.changed` deltas are byte-identical across runtimes.
+ * Line counts with the Claude baseline's formula (the conformance reference runtime): a trailing
+ * newline still counts as a split boundary, so `old\n` is 2. Codex/Cursor count the git-true 1 by
+ * trimming — a pre-existing, pipeline-tolerated divergence in line-count fields (pipeline.ts);
+ * this adapter matches the Claude baseline so the canonical edit is byte-identical to it.
  */
 function lineCount(text: string): number {
   if (text.length === 0) return 0;
-  const normalized = text.endsWith('\n') ? text.slice(0, -1) : text;
-  return normalized.length === 0 ? 0 : normalized.split('\n').length;
+  return text.split('\n').length;
 }
 
 /** Normalize a path for `file.changed`: forward slashes, project-relative when under the root. */
@@ -429,8 +429,8 @@ export class OpenCodeTranslator {
       return [];
     }
     // oldString/newString are the literally replaced content — their line counts are exact deltas
-    // with the sibling adapters' math (Claude/Cursor/Pi); edit.ts's metadata.filediff reports the
-    // same numbers but arg-derived counts keep cross-runtime identity provable.
+    // with the Claude baseline's formula (the conformance reference); edit.ts's metadata.filediff
+    // reports the same numbers, but arg-derived counts keep cross-runtime identity provable.
     const changed = this.mint(
       'file.changed',
       {

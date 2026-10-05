@@ -285,7 +285,7 @@ describe('translateToolAfter — bash', () => {
 });
 
 describe('translateToolAfter — edit and write', () => {
-  test('edit → file.changed modified with the Claude/Cursor line math (trailing newline stripped)', () => {
+  test('edit → file.changed modified with the Claude baseline line math (byte-identical deltas)', () => {
     const pair = editToolAfter({
       filePath: `${FIXTURE_CWD}/packages/api/src/server.ts`,
       oldString: 'const port = 3000;',
@@ -303,14 +303,14 @@ describe('translateToolAfter — edit and write', () => {
     });
   });
 
-  test('edit line counts strip ONE trailing newline (a normal replacement ends with one)', () => {
+  test('edit line counts use the Claude baseline formula (a trailing newline is a split boundary)', () => {
     const pair = editToolAfter({
       filePath: `${FIXTURE_CWD}/a.ts`,
       oldString: 'old block\n',
       newString: 'new block\n',
     });
     const { events } = createOpenCodeTranslator(BASE).translateToolAfter(pair.input, pair.output, CALL);
-    expect(payloadOf(events[0]!)).toMatchObject({ lines_removed: 1, lines_added: 1 });
+    expect(payloadOf(events[0]!)).toMatchObject({ lines_removed: 2, lines_added: 2 });
   });
 
   test('edit of a path outside the project root keeps its path untouched', () => {
@@ -335,7 +335,7 @@ describe('translateToolAfter — edit and write', () => {
       kind: 'file.changed',
       path: 'docs/notes.md',
       change: 'created',
-      lines_added: 2,
+      lines_added: 3, // the Claude baseline formula: 'a\nb\n' splits into 3
     });
   });
 

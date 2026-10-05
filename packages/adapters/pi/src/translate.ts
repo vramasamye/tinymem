@@ -104,10 +104,11 @@ const clampText = (text: string, max: number): string => (text.length <= max ? t
 
 function lineCount(text: string): number {
   if (text.length === 0) return 0;
-  // One trailing newline does not introduce a line (Claude/Cursor semantics): edits ending in a
-  // newline count the lines they actually contain, so a one-line replacement stays
-  // lines_removed 1 — not 2 (the conformance canonical edit is pinned to 1/2 against Claude).
-  return text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+  // The Claude baseline's formula (the conformance reference runtime): a trailing newline still
+  // counts as a split boundary, so `old\n` is 2. Codex/Cursor count the git-true 1 by trimming —
+  // a pre-existing, pipeline-tolerated divergence in line-count fields (pipeline.ts); Pi matches
+  // the Claude baseline so the canonical edit is byte-identical to it.
+  return text.split('\n').length;
 }
 
 /**
