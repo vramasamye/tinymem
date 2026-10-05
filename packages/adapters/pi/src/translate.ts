@@ -104,7 +104,10 @@ const clampText = (text: string, max: number): string => (text.length <= max ? t
 
 function lineCount(text: string): number {
   if (text.length === 0) return 0;
-  return text.split('\n').length;
+  // One trailing newline does not introduce a line (Claude/Cursor semantics): edits ending in a
+  // newline count the lines they actually contain, so a one-line replacement stays
+  // lines_removed 1 — not 2 (the conformance canonical edit is pinned to 1/2 against Claude).
+  return text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
 }
 
 /**
