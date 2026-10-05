@@ -15,7 +15,9 @@
  *    knowledge, or an audited `supersede` when the drifted file now states something different.
  *    Knowledge that cannot be reproduced stays `stale` and is reported `deferred` — never a
  *    silent un-stale;
- * 4. re-embeds changed content (`re_embed`, reason `backfill`) when an embedder is registered;
+ * 4. re-embeds refreshed and superseded memories (`re_embed`, reason `backfill`) when an embedder
+ *    is registered — the handler upserts, so a memory that was never embedded (the embedder may
+ *    be newly enabled) gains its vector and an already-correct one is written identically;
  * 5. rebuilds and persists the architecture digest ({@link buildArchitectureDigest}) as a durable
  *    project memory with provenance.
  *

@@ -164,17 +164,19 @@ Zero cost for unchanged files, real work only for drift:
 ### The architecture digest (the ≤300-token project summary)
 
 `buildArchitectureDigest` composes the persisted symbol tables into one compact, deterministic
-project summary: grouped modules (top-level directories) → responsibilities (per-file symbol
-names, responsibilities first to keep the "what is this" signal in budget) → entry points
-(bins/servers/cli), plus a language mix and an honest `truncated` flag when the token budget
-forced drops (responsibilities → entry points → modules, in that order). It is deterministic:
-the same code shape yields the same text and the same content hash, so it persists through the
-normal insertion path with full provenance (a `sources` row + `file:` evidence for the files it
-summarizes) and is NOT refreshed unless the code shape actually changed. The budget is
-`DEFAULT_DIGEST_TOKEN_BUDGET` = 300 tokens by default (`estimateDigestTokens` ≈ chars/4, the
-same order of magnitude OpenAI reports for English text; the budget is an argument, so a
-different surface can tighten it). `moduleOfPath` maps a repository-relative path to its module
-label.
+project summary: a header (project name, repository/module/file/symbol totals, language mix) and
+one line per top-level directory (module) — its file count, its responsibilities (the
+declaration-kind mix, most frequent first), and its entry points (the most entry-like declared
+names) — modules sorted most-substantial first. Budget enforcement is line-level, never
+mid-line: the header is always kept, whole module lines are dropped from the least-substantial
+end until the estimate fits, and an honest `truncated` flag reports that something was dropped.
+It is deterministic: the same code shape yields the same text and the same content hash, so it
+persists through the normal insertion path with full provenance (a `sources` row +
+`code_symbols:<repository ids>` evidence span for the files it summarizes) and is NOT refreshed
+unless the code shape actually changed. The budget is `DEFAULT_DIGEST_BUDGET_TOKENS` = 300 tokens
+by default (`estimateDigestTokens` ≈ chars/4, the same order of magnitude OpenAI reports for
+English text; the budget is an argument, so a different surface can tighten it). `moduleOfPath`
+maps a repository-relative path to its module label.
 
 ## Symbol extraction (tree-sitter, WASM, offline)
 
