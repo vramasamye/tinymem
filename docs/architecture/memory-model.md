@@ -199,13 +199,30 @@ be queryable, a later migration adds the column; no query consumer exists today.
 
 ## 9. Consolidation & promotion rules
 
-- **Episodic → semantic**: ≥ 3 episodes with embedding similarity ≥ threshold, same project, same
-  primary entity, no contradictions → derive one semantic memory (cheap LLM merge, or templated
-  merge without LLM). New memory carries `derived_from` edges to all cluster members; cluster
-  members stay (they are the evidence).
-- **Contradiction resolution authority order**: (1) explicit user statement beats agent inference;
-  (2) explicit decision memory beats observation; (3) newer `observed_at` wins within same class;
-  (4) higher confidence wins; (5) tie → both `disputed`, surfaced with conflict context.
+- **Episodic → semantic** (as-built, mission 14): ≥ 3 episodes with embedding similarity ≥ the
+  configured threshold (default 0.97, validated floor 0.9), same project, same primary entity, no
+  contradictions among them → derive one semantic memory (templated offline merge by default;
+  optional LLM merge via the model router). The new memory carries `derived_from` edges to all
+  cluster members; cluster members stay (they are the evidence). Near-identical episodes
+  corroborate into the semantic memory before the merge pass collapses the duplicates.
+- **Contradiction resolution authority order** (as-built, mission 14): (1) explicit user statement
+  beats agent inference; (2) explicit decision memory beats observation; (3) newer `observed_at`
+  wins within same class; (4) higher confidence wins; (5) a full tie marks both `disputed` with a
+  `contradicts` edge (excluded from current answers, retained in history). Resolution is never
+  skipped — an older explicit statement beats a newer inference, and equal-time pairs fall to
+  confidence. The winner closes the loser through audited supersession: `valid_until` = the
+  winner's observation time when inside the loser's window, else the loser's own `valid_from`
+  (zero-width — never valid); the chosen rule is recorded on the audit row.
+- **Pass order and merge semantics** (as-built, mission 14): the pass runs contradiction →
+  derivation → merge → decay (arbitration before absorption; the merge pass also refuses
+  contradictory clusters as defense in depth). Near-duplicate merge is keeper-gated: only
+  channel-certified cosine ≥ threshold to the keeper absorbs (transitive pairs below threshold
+  never merge); absorbed rows close into the survivor and the evidence union is recorded on the
+  `merged` audit event (the Store port has no evidence-append primitive — backlog follow-up).
+- **Decay/archive** (as-built, mission 14): prominence = importance^0.5 × confidence ×
+  0.5^(age/half-life) × (1 + log(1 + access count)); decisions and verified procedures carry a
+  0.6 floor; below-threshold memories move to `archived` with an audit row — archive, never
+  delete.
 - **Failure → skill candidate**: same failure signature (problem embedding similarity ≥ threshold)
   solved ≥ 2 times with an equivalent solution AND at least one verification evidence → generate
   `skills/<slug>/SKILL.md` (when to use, prerequisites, procedure, commands, validation, known

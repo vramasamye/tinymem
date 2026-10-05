@@ -55,9 +55,11 @@ Definition of done (Phase 2):
 
 **Status (2026-10-05):** session-end promotion + sweep shipped (`mission/14a-session-sweep`, merged
 `642787e`; semantics synced in `docs/architecture/memory-model.md` §10). Drift marking, the
-zero-token oracle, rename retargeting, and code-symbol staleness shipped with M4a–4e. Remaining
-Phase 2 items — re-index orchestration, the architecture digest, and the procedures-with-code-refs
-retrieval check — are in flight in `mission/4f-reindex-digest`.
+zero-token oracle, rename retargeting, and code-symbol staleness shipped with M4a–4e; re-index
+orchestration (drift-scan scheduling, drifted-path-only reindex) and the <300-token architecture
+digest shipped with `mission/4f-reindex-digest` (merged `56d67f2`). One Phase 2 check remains
+undemonstrated: the "How does authentication work?" → procedures-with-code-refs retrieval query
+(needs an explicit acceptance test — backlog follow-up).
 
 ## Phase 3 — Intelligent memory
 
@@ -70,12 +72,16 @@ Definition of done (Phase 3): Node 20→22→24 scenario answers current vs. his
 contradictions become `disputed` or supersede with authority rules; repeated facts consolidate to
 one semantic memory; benchmark thresholds enforced in CI.
 
-**Status (2026-10-05):** M11a shipped — golden datasets, the metrics harness, and thresholds
-enforced by a gate test that CI runs on every push (`bun test` discovers it), with a committed
-baseline (`mission/11-benchmarks`, merged). The consolidation/contradiction DoD items remain M14
-work (in flight); the two M14-dependent metrics (contradiction accuracy, consolidation quality)
-are measured and published but deliberately ungated until M14 merges and a post-M14 baseline is
-taken (backlog: "raised by M11a").
+**Status (2026-10-05):** Phase 3 DoD met. M11a shipped the golden datasets, metrics harness, and
+CI-enforced thresholds (`mission/11-benchmarks`); M14 shipped the consolidation core —
+authority-ordered contradiction resolution with audited supersession (full ties `disputed`),
+episodic→semantic derivation with `derived_from` edges, keeper-gated near-dup merge, and
+decay/archive — plus the Node 20→22→24 anchor scenario (`mission/14-consolidation`, merged
+`bc8bf24`; semantics synced in `docs/architecture/memory-model.md` §9). The two M14-dependent
+benchmark metrics (contradiction accuracy, consolidation quality) are measured and published but
+deliberately ungated until the harness runs consolidation and a post-M14 baseline is taken
+(backlog: "raised by M11a" item 5). M14.5 (project digest rollup) and M14.6 (events compaction)
+remain open scope.
 
 ## Phase 4 — Universal agents
 

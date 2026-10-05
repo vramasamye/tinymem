@@ -333,3 +333,52 @@ guard asserting 0 attempts); five golden datasets; committed baseline
 5. **Post-M14 gate flip** [P1] — once M14 lands, set and enable the `contradiction_accuracy` and
    `consolidation_quality` gates from a fresh post-M14 baseline (pre-M14 reported values: 0.0 and
    0.3333). Coordinator-owned.
+
+---
+
+## Cross-mission follow-ups — raised by M14 (consolidation core)
+
+Merged 2026-10-05 as `bc8bf24` (mission report:
+`docs/plan/mission-reports/mission-14-consolidation.md`). `packages/consolidation` + the
+`onemem consolidate` CLI; pass order contradiction → derivation → merge → decay; no migration
+(the schema already carried every status, edge relation, and audit action).
+
+1. **Daemon scheduling + REST route** [P1] — job kinds `consolidate`/`decay` exist with no
+   handler; `onemem consolidate` runs direct-mode only (and refuses while a daemon owns the data
+   dir). Wire the job handlers, a `/v1/.../consolidate` route, and daemon-mode invocation.
+2. **Evidence-append Store primitive** [P2] — near-dup merge records the evidence union on the
+   `merged` audit event because the port cannot append evidence to an existing memory row.
+3. **`MemoryQuery` null-scope probe** [P3] — user-scope-only passes need a null-`project_id`
+   query; today's query shape requires a project.
+4. **Paginated pool enumeration** [P3] — `runConsolidation` processes ≤1000-memory windows.
+5. **LLM conflict detector** [P3] — cross-phrasing contradictions (attribute-template heuristic
+   only today).
+6. **Config wiring** [P3] — consolidation thresholds/decay settings via `onememory.config.yaml`
+   (M16 profile defaults).
+7. **M14.5/M14.6 remain** — project digest rollup feeding `memory_project_context` and events
+   compaction are still open backlog scope.
+
+---
+
+## Cross-mission follow-ups — raised by M4f (reindex + digest orchestration)
+
+Merged 2026-10-05 as `56d67f2` (mission report:
+`docs/plan/mission-reports/mission-4f-reindex-digest.md`). Daemon scheduler (5-minute default
+drift scans, injectable timer), `drift_scan`/`reindex` job execution, drifted-path-only reindex,
+and the strictly-<300-token architecture digest persisted as a `semantic/project_digest` memory
+with provenance.
+
+1. **CLI/MCP commands for manual scans** [P2] — the runtime handle
+   (`runDriftScan`/`runReindex`/`status`) exists; no `onemem` command or MCP tool calls it yet.
+2. **Retrieval-time digest injection** [P2] — the digest is stored and queryable; session context
+   does not yet preferentially include it.
+3. **`MemoryQuery` tags/subtype filter** [P2] — finding a *changed* digest's predecessor for
+   supersession still uses a windowed scan at the port's 1000 limit; a deterministic tag/subtype
+   filter (core + storage) removes the window (unchanged digests are already located
+   deterministically via `findDuplicate`).
+4. **Storage: dedupe index vs supersession** [P2] — `memories_dedupe_idx` spans superseded rows,
+   so a content hash that ever existed cannot be re-inserted as a current row, and
+   `supersedeMemory`'s winner-duplicate handling assumes `findDuplicate`'s `existing` row is
+   current (not guaranteed). Needs a core/storage review + tests.
+5. **Symbol-level drift resolution, chunked re-index for whole-repo rewrites, and server-mode
+   verification of the loop** [P3].
