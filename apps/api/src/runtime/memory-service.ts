@@ -658,17 +658,12 @@ export async function ingestEvents(
   // without a type change (types.ts is coordinator-owned).
   for (const observation of sessionEnds.values()) {
     const lifecycle = await runSessionEndLifecycle(runtime, project.id, observation);
-    const skippedTotal =
-      lifecycle.skipped.already_promoted +
-      lifecycle.skipped.no_source +
-      lifecycle.skipped.no_evidence +
-      lifecycle.skipped.below_importance_threshold;
     warnings.push(
       `session-end lifecycle for session ${observation.session_id}: ` +
         `promoted ${lifecycle.promoted} (inserted ${lifecycle.inserted}, ` +
         `linked_existing ${lifecycle.linked_existing}), ` +
-        `skipped ${skippedTotal} (promotion filter), failed ${lifecycle.failed}, ` +
-        `expired_purged ${lifecycle.expired_purged}` +
+        `skipped ${lifecycle.skipped_total} (promotion filter), failed ${lifecycle.failed}, ` +
+        `expired_purged ${lifecycle.expired_purged} (global TTL sweep)` +
         (lifecycle.failures.length > 0 ? `; first failure: ${lifecycle.failures[0]}` : ''),
     );
   }

@@ -38,6 +38,8 @@ import type {
   WorkingMemoryRecord,
 } from '@onememory/core';
 
+import { estimateTokens } from '@onememory/retrieval';
+
 import type { OnememoryRuntime } from './composition';
 
 /**
@@ -99,11 +101,6 @@ export interface SessionEndObservation {
   summary?: string;
 }
 
-export interface SessionEndLifecycleOptions {
-  /** Injectable clock for the sweep cutoff (default: real now). */
-  now?: () => string;
-}
-
 export interface SessionEndLifecycleResult {
   session_id: string;
   /** The upserted sessions row - `createSession` returns the row it wrote. */
@@ -118,6 +115,8 @@ export interface SessionEndLifecycleResult {
   linked_existing: number;
   /** Per-reason counts of rows the filter rejected (they stay in working memory). */
   skipped: Record<PromotionSkipReason, number>;
+  /** Sum of {@link skipped}, computed by the pass so callers cannot undercount by omission. */
+  skipped_total: number;
   /** Promotion writes that threw (defensive: rows written by writers that bypass `insertWorking`
    * validation, or concurrent purges). Recorded per row, never fatal for the pass. */
   failed: number;
@@ -140,10 +139,8 @@ export async function runSessionEndLifecycle(
   runtime: OnememoryRuntime,
   projectId: string,
   observation: SessionEndObservation,
-  options: SessionEndLifecycleOptions = {},
 ): Promise<SessionEndLifecycleResult> {
   const store = runtime.storage.store;
-  const now = options.now ?? (() => new Date().toISOString());
 
   // 1. Record the end. `started_at` is required by the schema even on the conflict path (where the
   //    upsert leaves the existing start untouched), so it falls back to the end time.
@@ -195,7 +192,7 @@ export async function runSessionEndLifecycle(
           session_id: row.session_id,
         },
         tags: ['promoted', `working:${row.kind}`],
-        token_estimate: Math.ceil(row.content.length / 4),
+        token_estimate: estimateTokens(row.content),
       });
       // On `duplicate` the memory field holds the existing row, so both outcomes link correctly.
       await store.markWorkingPromoted(row.id, write.memory.id);
@@ -207,7 +204,8 @@ export async function runSessionEndLifecycle(
   }
 
   // 3. Sweep: purge expired unpromoted rows (promoted rows survive the predicate by design).
-  const sweep = await store.sweepWorking(now());
+  const sweep = await store.sweepWorking();
+  const skippedTotal = Object.values(skipped).reduce((total, count) => total + count, 0);
 
   if (inserted > 0) {
     // retrieval.md §5: a durable write invalidates the result cache.
@@ -222,6 +220,7 @@ export async function runSessionEndLifecycle(
     inserted,
     linked_existing: linkedExisting,
     skipped,
+    skipped_total: skippedTotal,
     failed: failures.length,
     failures,
     expired_purged: sweep.purged,
