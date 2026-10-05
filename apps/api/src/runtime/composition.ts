@@ -27,6 +27,17 @@ import {
   type LoadedConfig,
   type RedactionOptions,
 } from '@onememory/config';
+import {
+  createCodeMemoryOrchestration,
+  createCodeMemoryScheduler,
+  parseDriftScanJobPayload,
+  parseReindexJobPayload,
+  type CodeMemoryOrchestrationStatus,
+  type DriftScanInput,
+  type DriftScanResult,
+  type ReindexInput,
+  type ReindexResult,
+} from '@onememory/codememory';
 import type { Extractor, JobKind } from '@onememory/core';
 import { createReEmbedJobHandler, type EmbedderHandle } from '@onememory/embeddings';
 import {
@@ -71,6 +82,22 @@ export interface RuntimeDegradation {
   re_embed_registered: boolean;
 }
 
+/** How code-memory orchestration is wired into this runtime (doctor + CLI/MCP exposure). */
+export interface CodeMemoryRuntimeInfo {
+  /** True while the periodic drift-scan scheduler is armed. */
+  readonly scheduler_running: boolean;
+  /** The configured drift-scan interval in milliseconds. */
+  readonly scheduler_interval_ms: number;
+  /** The registered project the scheduler scans (null when none is registered). */
+  readonly project_id: string | null;
+  /** Last-pass timestamps and the scanned project (live). */
+  status(): CodeMemoryOrchestrationStatus;
+  /** Run one drift scan now (the `drift_scan` handler's body). */
+  runDriftScan(input: DriftScanInput): Promise<DriftScanResult>;
+  /** Run one re-index + digest pass now (the `reindex` handler's body). */
+  runReindex(input: ReindexInput): Promise<ReindexResult>;
+}
+
 export interface OnememoryRuntime {
   readonly config: OnememoryConfig;
   readonly loaded: LoadedConfig;
@@ -88,12 +115,17 @@ export interface OnememoryRuntime {
   readonly redactor: ReturnType<typeof createRedactor>;
   readonly networkGuard: NetworkGuard | null;
   readonly degradation: RuntimeDegradation;
+  /** Code-memory orchestration handle (always present; the scheduler only runs with the worker). */
+  readonly code_memory: CodeMemoryRuntimeInfo;
   readonly warnings: string[];
   readonly started_at: number;
   readonly worker_running: boolean;
   stopWorker(): Promise<void>;
   close(): Promise<void>;
 }
+
+/** Default drift-scan interval: frequent enough to notice edits, cheap enough to run all day. */
+export const DEFAULT_DRIFT_SCAN_INTERVAL_MS = 300_000;
 
 export interface OpenRuntimeOptions {
   cwd?: string;
@@ -105,6 +137,10 @@ export interface OpenRuntimeOptions {
   migrate?: boolean;
   /** Start the job worker loop (daemon: true; CLI direct mode: false). */
   startWorker?: boolean;
+  /** Start the periodic drift-scan scheduler alongside the worker (default true). */
+  codeMemoryScheduler?: boolean;
+  /** Drift-scan interval in milliseconds (default {@link DEFAULT_DRIFT_SCAN_INTERVAL_MS}). */
+  driftScanIntervalMs?: number;
   /** Install the M12 network guard when the config plan says so (default true). */
   installNetworkGuard?: boolean;
   /** Injectable clock for deterministic retrieval behaviour. */
@@ -331,6 +367,49 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
   warnings.push(...runtimeHandlers.warnings);
   degradation.re_embed_registered = runtimeHandlers.handlers.re_embed !== undefined;
 
+  const exclusionPolicy = createPathExclusionPolicy({ globs: exclusionGlobs(loaded.config) });
+  const redactionConfig = redactionOptions(loaded.config);
+  const redactor = createRedactor(redactionConfig);
+
+  // 5b. Code-memory orchestration (M4f): drift_scan + reindex handlers and the periodic scheduler
+  //     that feeds them. The extraction pipeline is COMPOSED (the same extractor + classifier the
+  //     `extract` job uses), never re-implemented, and re-read file text is redacted before it can
+  //     reach a candidate.
+  const classifier = createHeuristicClassifier();
+  const orchestration = createCodeMemoryOrchestration({
+    store: storage.store,
+    codeMemory: storage.codeMemory,
+    jobs: storage.jobs,
+    extractor,
+    classify: (candidate) => classifier.classify(candidate),
+    projectId: loaded.project_state?.project_id ?? null,
+    rootPath: loaded.paths.root,
+    exclusionGlobs: exclusionGlobs(loaded.config),
+    redactText: (text) => redactor.redactSync(text).value as string,
+    enqueueReEmbed: embedder !== null,
+    onWarning,
+  });
+
+  runtimeHandlers.handlers.drift_scan = async ({ job }) => {
+    await orchestration.runDriftScan(parseDriftScanJobPayload(job.payload));
+  };
+  runtimeHandlers.handlers.reindex = async ({ job }) => {
+    await orchestration.runReindex(parseReindexJobPayload(job.payload));
+  };
+  runtimeHandlers.registered_kinds = Object.keys(runtimeHandlers.handlers);
+
+  const driftScanIntervalMs = Math.max(
+    1_000,
+    options.driftScanIntervalMs ?? DEFAULT_DRIFT_SCAN_INTERVAL_MS,
+  );
+  const scheduler = createCodeMemoryScheduler({
+    intervalMs: driftScanIntervalMs,
+    tick: async () => {
+      await orchestration.tick();
+    },
+    onError: (error) => onWarning(`code-memory schedule pass failed: ${errorMessage(error)}`),
+  });
+
   const registry = createHandlerRegistry(runtimeHandlers.handlers);
   const worker = createJobWorker({
     db: storage.client,
@@ -343,16 +422,22 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
     },
   });
   let workerRunning = false;
+  let schedulerRunning = false;
   if (options.startWorker === true) {
     worker.start();
     workerRunning = true;
+    if (options.codeMemoryScheduler !== false) {
+      scheduler.start();
+      schedulerRunning = true;
+    }
   }
 
-  const exclusionPolicy = createPathExclusionPolicy({ globs: exclusionGlobs(loaded.config) });
-  const redactionConfig = redactionOptions(loaded.config);
-  const redactor = createRedactor(redactionConfig);
-
   async function stopWorker(): Promise<void> {
+    // Stop the scheduler first: no new drift_scan jobs may be enqueued while the worker drains.
+    if (schedulerRunning) {
+      await scheduler.stop();
+      schedulerRunning = false;
+    }
     if (!workerRunning) return;
     await worker.stop();
     workerRunning = false;
@@ -384,6 +469,16 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
     redactor,
     networkGuard,
     degradation,
+    code_memory: {
+      scheduler_interval_ms: driftScanIntervalMs,
+      project_id: loaded.project_state?.project_id ?? null,
+      get scheduler_running(): boolean {
+        return schedulerRunning;
+      },
+      status: () => orchestration.status(),
+      runDriftScan: (input) => orchestration.runDriftScan(input),
+      runReindex: (input) => orchestration.runReindex(input),
+    },
     warnings,
     started_at: Date.now(),
     get worker_running(): boolean {

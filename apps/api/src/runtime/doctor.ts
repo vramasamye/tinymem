@@ -23,6 +23,13 @@ import {
   type LoadedConfig,
   type OnememoryConfig,
 } from '@onememory/config';
+import {
+  buildArchitectureDigest,
+  DEFAULT_DIGEST_BUDGET_TOKENS,
+  isCurrentArchitectureDigest,
+  loadDigestInputs,
+} from '@onememory/codememory';
+import { memoryContentHash } from '@onememory/core';
 import { MODEL_OPERATIONS } from '@onememory/llm';
 import { PATTERN_GROUPS } from '@onememory/security';
 import { DEFAULT_VECTOR_CONFIG } from '@onememory/storage';
@@ -341,6 +348,132 @@ function jobsCheck(): DoctorCheck {
   );
 }
 
+/**
+ * The code-memory / drift section (M4f): how much code the engine tracks, how much of it is stale,
+ * whether the architecture digest matches the current code shape, and whether the drift-scan
+ * scheduler is actually armed. This is a read over the `CodeMemoryStore` and `Store` ports —
+ * no git, no model, no network. Every lookup is guarded: a failure fails THIS check, never the
+ * report.
+ *
+ * Status rules follow the doctor's honesty contract: a lookup failure is a `fail`; a project with
+ * no registered repository, or one whose scheduler is not running, is `warn` (degraded, usable);
+ * an armed scheduler over a registered repository is `pass`. It is never `info`, so the report's
+ * informational count stays owned by the runtime-wiring group.
+ */
+export async function codeMemoryCheck(runtime: OnememoryRuntime): Promise<DoctorCheck> {
+  const info = runtime.code_memory;
+  const projectId = info.project_id;
+  if (projectId === null) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'warn',
+      'no project is registered: code fingerprints and drift scanning are inactive',
+      'run onemem init in the project root to register it, then onemem serve',
+    );
+  }
+
+  let repositories: Awaited<ReturnType<OnememoryRuntime['storage']['codeMemory']['listRepositories']>>;
+  try {
+    repositories = await runtime.storage.codeMemory.listRepositories(projectId);
+  } catch (error) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'fail',
+      `the code-memory repository registry could not be read: ${errorMessage(error)}`,
+      'check the storage profile and that migrations are applied (onemem migrate)',
+    );
+  }
+
+  if (repositories.length === 0) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'warn',
+      'no code repository is registered yet: no fingerprint has been captured for this project',
+      'the daemon registers the project root and enqueues drift scans on its interval (onemem serve)',
+    );
+  }
+
+  let refs = 0;
+  let lastIndexed: string | null = null;
+  try {
+    for (const repository of repositories) {
+      refs += (await runtime.storage.codeMemory.listCodeRefs(repository.id)).length;
+      if (repository.last_indexed_at !== null && (lastIndexed === null || repository.last_indexed_at > lastIndexed)) {
+        lastIndexed = repository.last_indexed_at;
+      }
+    }
+  } catch (error) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'fail',
+      `code references could not be read: ${errorMessage(error)}`,
+    );
+  }
+
+  // Every remaining lookup is guarded like its siblings: a store failure fails THIS check, never
+  // the whole report (inspectRuntime must always come back with an honest report).
+  let stale = 0;
+  let digestDetail: string;
+  try {
+    const current = await runtime.storage.store.queryCurrent({ project_id: projectId, limit: 1000 });
+    stale = current.filter((memory) => memory.status === 'stale').length;
+
+    // Digest presence is PROBED, not window-scavenged: the expected digest text is rebuilt from
+    // the same persisted inputs the re-index pass feeds `buildArchitectureDigest`
+    // (`loadDigestInputs` is the shared assembly), then located through the Store's exact-dedupe
+    // probe — indexed and windowless, so a long-unchanged digest in a busy project is found at any
+    // age instead of being reported "not built" because it fell outside a recency window.
+    const inputs = await loadDigestInputs(runtime.storage.codeMemory, projectId, repositories);
+    const digest = buildArchitectureDigest({
+      repositories: inputs,
+      budgetTokens: DEFAULT_DIGEST_BUDGET_TOKENS,
+    });
+    if (digest.file_count === 0 && digest.symbol_count === 0) {
+      digestDetail = 'architecture digest not built (no code data captured yet)';
+    } else {
+      const found = await runtime.storage.store.findDuplicate(
+        { project_id: projectId },
+        'semantic',
+        memoryContentHash(digest.text),
+      );
+      digestDetail = isCurrentArchitectureDigest(found)
+        ? `architecture digest present and current (${digest.tokens} tokens${digest.truncated ? ', truncated' : ''})`
+        : 'architecture digest not found for the current code shape (the daemon\'s re-index pass rebuilds it after each drift scan)';
+    }
+  } catch (error) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'fail',
+      `the current-memory or digest lookup failed: ${errorMessage(error)}`,
+      'check the storage profile and that migrations are applied (onemem migrate)',
+    );
+  }
+
+  const status = info.status();
+  const intervalSeconds = Math.round(info.scheduler_interval_ms / 1000);
+  const detail =
+    `${repositories.length} repository(ies), ${refs} tracked code ref(s); ${stale} stale memor(ies); ` +
+    `${digestDetail}; last fingerprint ${lastIndexed ?? 'never'}; ` +
+    `last drift scan ${status.last_drift_scan_at ?? 'not in this process'}; ` +
+    `scheduler ${info.scheduler_running ? `running every ${intervalSeconds}s` : 'not running (direct mode)'}`;
+
+  if (!info.scheduler_running) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'warn',
+      detail,
+      'run the daemon (onemem serve) so drift scans and re-indexing run on their interval; direct-mode commands do not schedule them',
+    );
+  }
+  return check('code-memory', 'code memory / drift', 'pass', detail);
+}
+
 function redactionCheck(runtime: OnememoryRuntime): DoctorCheck {
   const extra = runtime.config.security.redaction?.extra_patterns?.length ?? 0;
   const excluded = runtime.config.security.exclude_globs.length;
@@ -429,6 +562,7 @@ export async function inspectRuntime(
   checks.push(routerCheck(runtime));
   checks.push(networkGuardCheck(runtime));
   checks.push(handlerCheck(runtime));
+  checks.push(await codeMemoryCheck(runtime));
   checks.push(retentionCheck(runtime));
   checks.push(jobsCheck());
   checks.push(redactionCheck(runtime));

@@ -23,8 +23,61 @@ export {
   type DriftApplyStore,
   type DriftMemoryOutcome,
 } from './apply-drift';
-export { computeSymbolsHash, extractSymbolTable } from './symbols';
+export { computeSymbolsHash, extractSymbolTable, readSourceFile } from './symbols';
 export { languageForPath, SOURCE_EXTENSIONS } from './grammar';
+export {
+  buildArchitectureDigest,
+  estimateDigestTokens,
+  isCurrentArchitectureDigest,
+  loadDigestInputs,
+  moduleOfPath,
+  DEFAULT_DIGEST_BUDGET_TOKENS,
+  DIGEST_PROMPT_VERSION,
+  type ArchitectureDigest,
+  type DigestLikeMemory,
+  type DigestModule,
+  type DigestRepositoryInput,
+} from './digest';
+export {
+  buildCodeDocumentEvent,
+  fileEvidence,
+  pathFromLocator,
+  MAX_DOCUMENT_CHARS,
+  type CodeDocumentEventInput,
+} from './code-events';
+export {
+  createCodeMemoryScheduler,
+  type CodeMemoryScheduler,
+  type CodeMemorySchedulerOptions,
+  type SchedulerTimer,
+} from './scheduler';
+export {
+  createReindexer,
+  type DigestOutcome,
+  type ReindexClassification,
+  type ReindexClassifier,
+  type ReindexDeps,
+  type ReindexInput,
+  type ReindexMemoryOutcome,
+  type ReindexResult,
+  type ReindexStore,
+  type ReindexedMemory,
+  type Reindexer,
+} from './reindex';
+export {
+  createCodeMemoryOrchestration,
+  DriftScanJobPayloadSchema,
+  ReindexJobPayloadSchema,
+  parseDriftScanJobPayload,
+  parseReindexJobPayload,
+  type CodeMemoryOrchestration,
+  type CodeMemoryOrchestrationOptions,
+  type CodeMemoryOrchestrationStatus,
+  type DriftScanInput,
+  type DriftScanRepositoryResult,
+  type DriftScanResult,
+  type SchedulePassResult,
+} from './orchestration';
 export {
   FileFingerprintSchema,
   FingerprintOptionsSchema,
