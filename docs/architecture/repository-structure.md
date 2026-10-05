@@ -142,5 +142,10 @@ scaffolds only accept loopback HTTP URLs because the daemon has no authenticatio
 - E2E: CLI init/doctor wiring, daemon HTTP MCP, and combined transcript extraction → explicit
   supersession → temporal retrieval acceptance tests live beside their apps. Automatic
   contradiction detection and authority resolution remain M14 acceptance work.
-- Benchmarks: `benchmarks/` — token efficiency, retrieval precision/recall, ingestion latency;
-  run in CI nightly and on demand; results checked into `benchmarks/results/` for regression diffing.
+- Benchmarks: `benchmarks/eval` (`@onememory/benchmarks`) with golden datasets in
+  `benchmarks/datasets/golden/` — measures retrieval precision/recall, token efficiency (budget
+  packer), pollution, temporal accuracy, contradiction accuracy, consolidation quality. The gate
+  test runs in CI on every push (`bun test` discovers it); a scheduled nightly `bench:run` +
+  results-commit step is a backlog follow-up. Results are committed to `benchmarks/results/`; the
+  diffable regression signal is the `metrics` + `gates` blocks (the baseline JSON embeds per-run
+  timestamps and uuids).

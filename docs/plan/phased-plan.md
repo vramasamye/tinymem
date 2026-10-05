@@ -70,6 +70,13 @@ Definition of done (Phase 3): Node 20→22→24 scenario answers current vs. his
 contradictions become `disputed` or supersede with authority rules; repeated facts consolidate to
 one semantic memory; benchmark thresholds enforced in CI.
 
+**Status (2026-10-05):** M11a shipped — golden datasets, the metrics harness, and thresholds
+enforced by a gate test that CI runs on every push (`bun test` discovers it), with a committed
+baseline (`mission/11-benchmarks`, merged). The consolidation/contradiction DoD items remain M14
+work (in flight); the two M14-dependent metrics (contradiction accuracy, consolidation quality)
+are measured and published but deliberately ungated until M14 merges and a post-M14 baseline is
+taken (backlog: "raised by M11a").
+
 ## Phase 4 — Universal agents
 
 | Mission | Branch | Scope |

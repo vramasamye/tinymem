@@ -304,3 +304,32 @@ numbers the follow-ups below). The pass runs inline in `ingestEvents` on stored 
    purge as a global TTL sweep. A session filter or `getSession` read port would tighten this.
 7. **`sessions.stats` not updated** [P3] — no writer reads it today; revisit alongside a future
    capture-health ledger.
+
+---
+
+## Cross-mission follow-ups — raised by M11a (benchmarks v1)
+
+Merged 2026-10-05 (mission report: `docs/plan/mission-reports/mission-11-benchmarks.md`).
+`benchmarks/eval` composes the real engine offline (no embedder, heuristic extraction, network
+guard asserting 0 attempts); five golden datasets; committed baseline
+(`benchmarks/results/baseline.{json,md}`).
+
+1. **Nightly `bench:run` + results commit** [P2] — CI (`.github/workflows/ci.yaml`) already runs
+   `bun test`, which includes the gate test on every push. The remaining piece is a scheduled
+   nightly job that runs `bench:run` and commits refreshed results; the diffable drift signal is
+   the `metrics` + `gates` blocks, because `baseline.json` embeds per-run timestamps and uuidv7
+   ids (see item 3).
+2. **Thin contradiction coverage** [P2] — one contradiction group (n=1) today; expand to several
+   groups before flipping the post-M14 gate, or the gate will be noisy (fold into M11b's larger
+   judged dataset).
+3. **Deterministic baseline snapshot** [P3] — strip or freeze per-run timestamps/uuids from the
+   committed baseline so a raw file diff shows real drift (small M11b change).
+4. ~~**Hard project scoping in retrieval**~~ ✅ Declined by design review (2026-10-05): project
+   scope is intentionally a scoring weight, not a candidate filter — `retrieval.md` specifies
+   `w_proj` (1.0 same-project / 0.7 cross-project / 0.4 user-global) and `project_id IS NULL`
+   means cross-project/user-level by design ("one memory across every agent"). The benchmark
+   correctly gates what the design calls correct — top-1 cross-project rate held at 0. If
+   pollution complaints ever arrive, the lever is `w_proj` tuning, not a hard filter.
+5. **Post-M14 gate flip** [P1] — once M14 lands, set and enable the `contradiction_accuracy` and
+   `consolidation_quality` gates from a fresh post-M14 baseline (pre-M14 reported values: 0.0 and
+   0.3333). Coordinator-owned.
