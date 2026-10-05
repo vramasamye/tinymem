@@ -211,12 +211,13 @@ formalization, to be folded rather than run as written.
    automatically instead of riding provenance metadata.
 4. **Injectable clock for `memory_events.at`** [P3] — audit rows are DB-clock-stamped; uniform
    time-travel tests want the injected `now`.
-5. **stdio bin embedded-owner guard** [P1] (from the ADR-0010 amendment, 2026-10-04) — the
-   standalone `onemem-mcp` bin can still open embedded storage (`ONEMEMORY_DATA_DIR`) while a
-   daemon is alive: a second PGlite owner of the same data dir, exactly what ADR-0002 forbids.
-   `onemem init` never scaffolds that combination (it points at the daemon's `/mcp`), but the bin
-   itself should probe the daemon lock and refuse loudly, pointing at the running daemon's MCP
-   endpoint.
+5. ~~**stdio bin embedded-owner guard**~~ ✅ Completed by M13c (merged `911c58a`, 2026-10-06,
+   mission report: `docs/plan/mission-reports/mission-13c-install-robustness.md`): the standalone
+   `onemem-mcp` bin now probes the daemon lock for both real embedded data-dir layouts and
+   refuses to open embedded storage (PGlite) while a live daemon still owns the data dir. Server
+   profile (`ONEMEMORY_PG_URL`) is unaffected — Postgres is multi-process-safe by design. The probe
+   is the same shared `@onememory/config` seam the daemon writes, so the lock schema and discovery
+   stay in lockstep.
 6. **Shared wire-schema package** (`project.json` / `daemon.json`) [P3] — the Claude Code adapter
    re-declares cross-process wire records owned by `@onememory/config` / `apps/api`; strict schemas
    fail loud on drift, but a format change needs two edits (mission-6 §5.3).
@@ -228,10 +229,18 @@ formalization, to be folded rather than run as written.
    supersedes extracted version facts, and verifies current/as-of/history answers through the real
    retrieval engine. This does not implement automatic matching or authority resolution; M14 still
    owns those stages and must exercise them end to end.
-9. **Published hook invocation contract** [P1] — generated Claude hooks assume a project-local
-   `node_modules` path and the Claude bin lacks a shebang; Codex capture assumes its executable is
-   on `PATH`. AC: a clean external project using the published package can run every generated
-   hook without repository-local paths.
+9. ~~**Published hook invocation contract**~~ ✅ Completed by M13c (merged `911c58a`, 2026-10-06,
+   mission report: `docs/plan/mission-reports/mission-13c-install-robustness.md`): Claude hooks
+   now use the published `node_modules/.bin/onemem-claude-hook` link (shebang present, exec form,
+   `args: []`); Codex hooks use `exec "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"/node_modules/.bin/onemem-codex-capture`
+   (run-time root resolution, no PATH-only assumption); the Codex stdio MCP block points at
+   `./node_modules/.bin/onemem-mcp`. Old configs migrate idempotently via token-based inspection
+   (the merge keeps replacing stale handlers, never duplicates), user overrides (`command`/`args` on
+   Claude, `captureCommand`/`mcpCommand` on Codex) are preserved verbatim. The two new
+   `scaffold-published.test.ts` files spawn every generated command in a clean temp install
+   (module symlink via `node_modules/.bin`, real PGlite boot, real TOML parse, real session-end
+   payload) — none of them reference `src/*.ts`, a monorepo path, or rely on bare-PATH
+   resolution. POSIX-only posture preserved (Windows stays unsupported per Phase-1).
 10. **Per-runtime identity over daemon MCP** [P2] — Phase 1 HTTP clients share the registered
     project identity; decide whether later runtimes need a query parameter or authenticated
     headers before multi-agent attribution is required. AC: ADR and transport tests define how
@@ -408,3 +417,38 @@ incomplete because the search response does not include those refs.
    memory when file extraction produces no same-type procedure; depends on resolving item 2.
 5. **Default-profile paraphrase recall** [P3] — without an embedder, lexical search does not stem
    or resolve paraphrases that do not share key terms; assess an offline embedding profile.
+
+---
+
+## Cross-mission follow-ups — raised by M13c (install robustness)
+
+Merged `911c58a` (mission report: `docs/plan/mission-reports/mission-13c-install-robustness.md`,
+2026-10-06). Both P1 backlog cross-follow-ups #5 and #9 above are now closed by this mission;
+remaining items below are honest residual risk or doc follow-ups.
+
+1. **pnpm isolated layouts do not link transitive bins into `node_modules/.bin`** [P3, doc] —
+   npm/bun/yarn hoist, so the published `onemem` CLI's adapter/MCP dependencies get root `.bin`
+   links and the generated commands resolve. With pnpm's default strict layout, only DIRECT
+   dependencies receive `.bin` links; a user installing `onemem` (not the adapter packages) under
+   pnpm would not get `onemem-claude-hook`/`onemem-mcp` links. Coordinator-owned decision:
+   either document direct installation of the adapter packages, or publish a
+   `pnpm.public-hoist-pattern[]=@onememory/*` note in `README.md`.
+2. **Doctor cannot flag a stale-but-wired invocation form** [P3] — `hooks.json`/`settings.json`
+   written by an older `onemem init` still reports `complete`. Token-based recognition is
+   deliberate (mirrors Claude's behavior, no sudden warnings), so only a re-run of `onemem init`
+   migrates. If we want the doctor to suggest a re-run on stale forms, add an inspection detail
+   that reports the invocation form.
+3. **User-scope runtime wiring** (`~/.claude`, `~/.codex`) [P2] (also cross-follow-up #11 above)
+   — init/doctor remain project-scope; the Codex stdio `cwd`/`mcpCommand` overrides are the
+   existing escape hatch. Reopen only with explicit consent + safe-merge tests.
+4. **Windows is out of scope** — bun shebangs and the Codex shell command are POSIX-only,
+   consistent with Phase 1's posture (`docs/research/dependency-verification.md` §10 pins argv-array
+   spawning; no Windows CI). Cleaner to keep this documented than a partial port.
+5. **`bun.lock` drift on merge** — the `@onememory/config` workspace edge added in `e0b879a`
+   needs a `bun install` on the merge destination before the MCP suite can find the new link.
+   Worker documented it; re-incur if a sibling mission changes the same edge again. Capture in
+   `AGENTS.md` contributor notes if it becomes routine.
+6. **Cold-boot acceptance runtime cost** [P3] — the two PGlite-boot tests in the adapter suites
+   add ~25s (~8–12s each) to a clean run. Ceilings are bounded (60s); the tests don't share
+   fixtures. Mark a slow tier when the project's test-runner tiering is set up; do not shorten
+   the ceilings.
