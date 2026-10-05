@@ -84,6 +84,8 @@ const NormalizedCommandSchema = z.object({
   text: z.string(),
   normalized: z.string(),
   exit_code: z.number().int().nullable(),
+  /** The event's bounded output digest — the factual proof a passing command carries (M3d). */
+  output_digest: z.string().optional(),
 });
 
 const NormalizedErrorSchema = z.object({
@@ -301,6 +303,7 @@ export function normalizeEvent(input: ExtractionInput): NormalizedEvent {
         text: command,
         normalized: normalizeCommand(command),
         exit_code: (value.exit_code as number | null) ?? null,
+        output_digest: String(value.output_digest ?? ''),
       };
       break;
     }

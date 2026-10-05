@@ -1320,7 +1320,107 @@ export async function codeMemoryDriftApplyScenario(storage: OnememoryStorage): P
 // Suite runner — the same scenarios against BOTH deployment profiles (ADR-0002 CI matrix)
 // ---------------------------------------------------------------------------
 
+/** M3d: the same STORE/read/rollback contract on embedded and real Postgres. */
+export async function payloadPersistenceScenario(storage: OnememoryStorage): Promise<void> {
+  const ctx = await seedProjectAndSource(storage, 'payloads');
+  const time = '2025-06-01T00:00:00.000Z';
+  const decisionPayload = {
+    title: 'Database', decision: 'Postgres', alternatives: [{ option: 'SQLite', why_rejected: 'no pgvector' }],
+    rationale: 'one dialect', participants: [], decided_at: time, status: 'proposed' as const,
+  };
+  const candidate = makeMemory(ctx, {
+    type: 'decision', content: `Database choice ${uniqueId()}`, payload: decisionPayload,
+  });
+  const written = await storage.store.insertMemory(candidate);
+  expect(written.memory.status).toBe('active');
+  expect(written.memory.payload).toEqual({ ...decisionPayload, evidence: candidate.evidence });
+  const retry = await storage.store.insertMemory({
+    ...candidate, payload: { ...decisionPayload, rationale: 'retry must not rewrite this' },
+  });
+  expect(retry.outcome).toBe('duplicate');
+  expect(retry.memory.payload).toEqual(written.memory.payload);
+  expect(await storage.store.listMemoryEvents(written.memory.id)).toHaveLength(1);
+  await expect(storage.store.insertMemory({
+    ...candidate, type: 'failure',
+  })).rejects.toThrow(ValidationError);
+
+  const failurePayload = {
+    problem: 'missing module', context: '{"tool":"bun","command":"bun test"}',
+    solution: 'Successful retry: bun test', verification: 'bun test exited 0: 5 pass',
+    status: 'verified' as const, signature_hash: 'original-Hash-unchanged',
+    first_seen_at: time, last_seen_at: time, occurrence_count: 1,
+  };
+  const failure = await storage.store.insertMemory(makeMemory(ctx, {
+    type: 'failure', content: `Module missing ${uniqueId()}`, payload: failurePayload,
+  }));
+  for (const records of [
+    [await storage.store.getMemory(failure.memory.id)],
+    await storage.store.queryCurrent({ project_id: ctx.projectId }),
+    await storage.store.queryAsOf(time, { project_id: ctx.projectId }),
+    await storage.store.historyOf(failure.memory.id),
+  ]) {
+    expect(records.find((row) => row?.id === failure.memory.id)?.payload).toEqual(failurePayload);
+  }
+  const queried = await storage.client.query<{ memory_id: string }>(
+    'SELECT memory_id FROM failures WHERE signature_hash = $1',
+    [failurePayload.signature_hash],
+  );
+  expect(queried.rows.map((row) => row.memory_id)).toContain(failure.memory.id);
+
+  const later = '2025-07-01T00:00:00.000Z';
+  const superseded = await storage.store.supersede({
+    loser_id: written.memory.id, actor: 'system',
+    winner: makeMemory(ctx, {
+      type: 'decision', content: `Later database choice ${uniqueId()}`, observed_at: later,
+      payload: { ...decisionPayload, decision: 'New Postgres', decided_at: later, rationale: undefined },
+    }),
+  });
+  expect(superseded.winner.payload?.decision).toBe('New Postgres');
+  expect(superseded.winner.payload?.rationale).toBeUndefined();
+  expect((await storage.store.historyOf(written.memory.id)).map((row) => row.payload?.decision))
+    .toEqual(['Postgres', 'New Postgres']);
+  expect((await storage.store.queryAsOf(time, { project_id: ctx.projectId }))
+    .find((row) => row.id === written.memory.id)?.payload).toEqual(written.memory.payload);
+  const duplicateWinner = await storage.store.supersede({
+    loser_id: failure.memory.id, actor: 'system',
+    winner: { ...candidate, payload: { ...decisionPayload, decision: 'ignored retry' } },
+  });
+  expect(duplicateWinner.outcome).toBe('winner-duplicate');
+  expect(duplicateWinner.winner.payload?.decision).toBe('Postgres');
+  expect((await storage.store.getMemory(failure.memory.id))?.status).toBe('active');
+
+  // Legacy duplicates are deliberately not backfilled from a later retry's different evidence.
+  const legacyCandidate = makeMemory(ctx, { type: 'decision', content: `Legacy ${uniqueId()}` });
+  await storage.store.insertMemory(legacyCandidate);
+  expect((await storage.store.insertMemory({
+    ...legacyCandidate, payload: decisionPayload,
+  })).memory.payload).toBeUndefined();
+
+  // A DB-level payload error occurs AFTER the memories INSERT; memory and audit must roll back.
+  const badId = uniqueId();
+  await expect(storage.store.insertMemory(makeMemory(ctx, {
+    id: badId, type: 'decision', content: `Rollback ${badId}`,
+    payload: { ...decisionPayload, title: 'invalid\u0000text' },
+  }))).rejects.toThrow();
+  expect(await storage.store.getMemory(badId)).toBeNull();
+  expect(await storage.store.listMemoryEvents(badId)).toHaveLength(0);
+
+  const race = makeMemory(ctx, {
+    type: 'failure', content: `Concurrent retry ${uniqueId()}`, payload: failurePayload,
+  });
+  // EmbeddedDatabase uses instance-wide nesting depth and cannot overlap root transactions.
+  // Its retries are sequential; server transactions have independent pool clients.
+  const concurrent = storage.profile === 'server'
+    ? await Promise.all([storage.store.insertMemory(race), storage.store.insertMemory(race)])
+    : [await storage.store.insertMemory(race), await storage.store.insertMemory(race)];
+  expect(concurrent.map((row) => row.outcome).sort()).toEqual(['duplicate', 'inserted']);
+  expect(concurrent[0]!.memory.id).toBe(concurrent[1]!.memory.id);
+  expect(concurrent[1]!.memory.payload).toEqual(failurePayload);
+  expect(await storage.store.listMemoryEvents(concurrent[0]!.memory.id)).toHaveLength(1);
+}
+
 const STORAGE_SCENARIOS: ReadonlyArray<[title: string, scenario: (storage: OnememoryStorage) => Promise<void>]> = [
+  ['payloads: atomic writes, batched reads, supersede, dedupe and rollback', payloadPersistenceScenario],
   ['migrations apply cleanly twice (idempotent)', migrationIdempotencyScenario],
   ['store → get roundtrip preserves every field', storeGetRoundtripScenario],
   ['dedupe: same scope rejected, cross-scope + NULL-scope allowed', dedupeScenario],

@@ -3,7 +3,7 @@
  *
  * Invariants enforced here:
  * - exact-dedupe via the `(coalesce(project), coalesce(user), type, content_hash)` unique index —
- *   the probe runs before every insert and the 23505 race fallback re-probes;
+ *   the probe runs before every insert and the conflict race fallback re-probes;
  * - every status change validates against the core transition machine and appends a `memory_events`
  *   audit row inside the same transaction;
  * - supersession is ONE transaction: winner insert + loser (status/valid_until/superseded_by) +
@@ -37,9 +37,10 @@ import type {
 } from '@onememory/core';
 
 import type { Database, QueryResult } from '../drivers/client';
-import { isUniqueViolation, pgTextArray, pgUuidArray, toIso } from '../drivers/client';
+import { pgTextArray, pgUuidArray, toIso } from '../drivers/client';
 
 import { appendMemoryEvent } from './memory-events';
+import { insertPayload, payloadsForMemories } from './payloads';
 import { mapMemoryRow, type MemoryJoinRow } from './row-mappers';
 import { NotFoundError, parseInput } from './util';
 
@@ -119,7 +120,10 @@ async function mapMemoryRows(
   rows: readonly MemoryJoinRow[],
 ): Promise<MemoryRecord[]> {
   const entityMap = await entitiesForMemories(db, rows.map((row) => String(row.id)));
-  return rows.map((row) => mapMemoryRow(row, entityMap.get(String(row.id)) ?? []));
+  const payloadMap = await payloadsForMemories(db, rows);
+  return rows.map((row) => mapMemoryRow(
+    row, entityMap.get(String(row.id)) ?? [], payloadMap.get(String(row.id)),
+  ));
 }
 
 // ---------------------------------------------------------------------------
@@ -160,8 +164,7 @@ export async function insertMemory(db: Database, candidate: NewMemory): Promise<
 
     const id = input.id ?? uuidv7();
     const status: MemoryStatus = input.status ?? 'active';
-    try {
-      await tx.query(
+    const inserted = await tx.query(
         `INSERT INTO memories (
             id, type, subtype, title, content, content_summary, content_hash, status,
             importance, confidence, observed_at, valid_from, valid_until,
@@ -170,7 +173,11 @@ export async function insertMemory(db: Database, candidate: NewMemory): Promise<
             $1::uuid, $2, $3, $4, $5, $6, $7, $8,
             $9, $10, $11::timestamptz, $12::timestamptz, $13::timestamptz,
             $14::uuid, $15::uuid, $16, $17::uuid, $18::jsonb, $19::jsonb, $20::text[], $21
-          )`,
+          ) ON CONFLICT (
+            (coalesce(project_id, '00000000-0000-0000-0000-000000000000'::uuid)),
+            (coalesce(user_id, '00000000-0000-0000-0000-000000000000'::uuid)),
+            type, content_hash
+          ) DO NOTHING RETURNING id`,
         [
           id,
           input.type,
@@ -195,15 +202,14 @@ export async function insertMemory(db: Database, candidate: NewMemory): Promise<
           input.token_estimate ?? 0,
         ],
       );
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        // lost a race on the dedupe index (server mode) — re-probe and report the winner
-        const raced = await findDuplicate(tx, scope, input.type, contentHash);
-        if (raced) return { outcome: 'duplicate' as const, memory: raced, existing: raced };
-      }
-      throw error;
+    if (inserted.rows.length === 0) {
+      // DO NOTHING keeps a raced server transaction usable (23505 would abort it).
+      const raced = await findDuplicate(tx, scope, input.type, contentHash);
+      if (raced) return { outcome: 'duplicate' as const, memory: raced, existing: raced };
+      throw new Error('storage: dedupe conflict winner disappeared');
     }
 
+    await insertPayload(tx, id, input);
     const actor = input.agent_id !== undefined ? `agent:${input.agent_id}` : 'system';
     await appendMemoryEvent(
       tx,

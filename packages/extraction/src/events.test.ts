@@ -50,6 +50,7 @@ describe('normalizeEvent', () => {
       text: 'bun test --watch',
       normalized: 'bun test',
       exit_code: 1,
+      output_digest: 'error: nope',
     });
     expect(normalized.source_id).toBe(input.source.id);
     expect(normalized.session_id).toBe('sess-m3-golden');

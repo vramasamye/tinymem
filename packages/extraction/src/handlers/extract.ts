@@ -31,7 +31,8 @@ import {
 } from '@onememory/core';
 
 import type { Classifier } from '../classifier';
-import { sourceKindForEvent, storedEventToEnvelope } from '../events';
+import { normalizeEvent, sourceKindForEvent, storedEventToEnvelope } from '../events';
+import { storePayloadFor } from '../enrichment/store-payload';
 import { NormalizationError } from '../types';
 
 export interface ExtractJobLike {
@@ -152,6 +153,7 @@ export function createExtractHandler(
       // Extractor failure is fatal for this run (retry with backoff); nothing is marked processed.
       const extraction: ExtractionResult = await extractor.extract(inputs);
       const occurredAt = new Map(inputs.map((input) => [input.event.id, input.event.occurred_at]));
+      const normalized = inputs.map(normalizeEvent);
 
       for (const candidate of extraction.memories) {
         const classified = classifier.classify(candidate);
@@ -170,7 +172,9 @@ export function createExtractHandler(
         }
 
         const observedAt = observedAtFor(candidate, occurredAt) ?? first.occurred_at;
+        const payload = storePayloadFor(candidate, normalized, observedAt);
         const write = await store.insertMemory({
+          ...(payload === undefined ? {} : { payload }),
           type: classified.durable_type,
           ...(classified.subtype === undefined ? {} : { subtype: classified.subtype }),
           ...(candidate.title === undefined ? {} : { title: candidate.title }),
