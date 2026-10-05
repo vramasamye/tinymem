@@ -5,6 +5,7 @@ import {
   CODEX_TOML_BEGIN_MARKER,
   CODEX_TOML_END_MARKER,
   patchCodexConfigToml,
+  PROJECT_MCP_COMMAND,
   renderCodexMcpServerToml,
   tomlString,
 } from './config-scaffold';
@@ -20,7 +21,11 @@ describe('renderCodexMcpServerToml', () => {
   test('parses as TOML with the stdio server table Codex requires', () => {
     const toml = parse(render()) as Record<string, Record<string, unknown>>;
     const server = (toml['mcp_servers'] as Record<string, unknown>)['onememory'] as Record<string, unknown>;
-    expect(server['command']).toBe('onemem-mcp');
+    // The published contract: the command IS the bin entry npm links into node_modules/.bin —
+    // relative to the session cwd (Codex resolves it like a path), never a PATH-only assumption
+    // and never a src/*.ts source path.
+    expect(server['command']).toBe(PROJECT_MCP_COMMAND);
+    expect(server['command']).toBe('./node_modules/.bin/onemem-mcp');
     expect(server['startup_timeout_sec']).toBe(20);
     expect(server['env_vars']).toEqual(['ONEMEMORY_PG_URL', 'ONEMEMORY_DATA_DIR']);
     const env = server['env'] as Record<string, string>;
@@ -82,7 +87,7 @@ args = ["-y", "@upstash/context7-mcp"]
     expect((parsed['features'] as Record<string, unknown>)['memories']).toBe(false);
     const servers = parsed['mcp_servers'] as Record<string, unknown>;
     expect((servers['context7'] as Record<string, unknown>)['command']).toBe('npx');
-    expect((servers['onememory'] as Record<string, unknown>)['command']).toBe('onemem-mcp');
+    expect((servers['onememory'] as Record<string, unknown>)['command']).toBe(PROJECT_MCP_COMMAND);
   });
 
   test('replacing a marked block is byte-idempotent', () => {
@@ -113,7 +118,7 @@ command = "npx"
     expect(patched.match(/^\[mcp_servers\.onememory\]$/gm)).toHaveLength(1);
     const parsed = parse(patched) as Record<string, Record<string, unknown>>;
     const servers = parsed['mcp_servers'] as Record<string, unknown>;
-    expect((servers['onememory'] as Record<string, unknown>)['command']).toBe('onemem-mcp');
+    expect((servers['onememory'] as Record<string, unknown>)['command']).toBe(PROJECT_MCP_COMMAND);
     expect((servers['context7'] as Record<string, unknown>)['command']).toBe('npx');
   });
 
@@ -178,7 +183,7 @@ describe('renderCodexMcpServerToml — http transport', () => {
   test('switching a stdio block to http (and the port) replaces it in place', () => {
     const stdio = patchCodexConfigToml('model = "m"\n', render());
     const switched = patchCodexConfigToml(stdio, http());
-    expect(switched).not.toContain('command = "onemem-mcp"');
+    expect(switched).not.toContain('command =');
     expect(switched.match(/^\[mcp_servers\.onememory\]$/gm)).toHaveLength(1);
     const moved = patchCodexConfigToml(switched, http({ url: 'http://127.0.0.1:9100/mcp' }));
     const servers = (parse(moved) as Record<string, unknown>)['mcp_servers'] as Record<string, unknown>;

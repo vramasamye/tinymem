@@ -34,6 +34,8 @@ import {
   renderCodexMcpServerToml,
 } from './config-scaffold';
 import {
+  CAPTURE_BIN_TOKEN,
+  PROJECT_CAPTURE_COMMAND,
   type CodexHooksScaffoldOptions,
   patchCodexHooksJson,
   renderCodexHooksJson,
@@ -97,8 +99,10 @@ export function scaffoldCodex(options: ScaffoldCodexOptions): ScaffoldCodexResul
   }
 
   // --- .codex/hooks.json (the capture handlers) ----------------------------------------
+  // The hooks renderers apply the published-layout default themselves; pick exactly the
+  // hooks-relevant fields out of the combined options so MCP-only fields never leak in.
   const hookOptions: CodexHooksScaffoldOptions = {
-    captureCommand: options.captureCommand ?? 'onemem-codex-capture',
+    captureCommand: options.captureCommand ?? PROJECT_CAPTURE_COMMAND,
     ...(options.includeSessionStart === undefined ? {} : { includeSessionStart: options.includeSessionStart }),
     ...(options.includeCapture === undefined ? {} : { includeCapture: options.includeCapture }),
     ...(options.captureTimeoutSec === undefined ? {} : { captureTimeoutSec: options.captureTimeoutSec }),

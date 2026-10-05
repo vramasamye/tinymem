@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 import { AGENTS_BLOCK_BEGIN_PREFIX, AGENTS_BLOCK_END_MARKER, hasOnememoryAgentsBlock } from './agents-md';
 import { CODEX_TOML_BEGIN_MARKER, ONEMEMORY_MCP_SERVER_NAME } from './config-scaffold';
-import { buildCodexHooksFile } from './hooks-scaffold';
+import { CAPTURE_BIN_TOKEN, buildCodexHooksFile } from './hooks-scaffold';
 
 export type CodexConfigInspection =
   | { state: 'absent' }
@@ -65,8 +65,14 @@ export function inspectCodexConfigContent(text: string | null): CodexConfigInspe
   return { state: 'unrecognized', detail: 'the onememory server has neither a url nor a command' };
 }
 
-/** Which of the generated hook events carry an onememory capture handler. */
-export function inspectCodexHooksContent(text: string | null, captureCommand = 'onemem-codex-capture'): CodexHooksInspection {
+/**
+ * Which of the generated hook events carry an onememory capture handler.
+ *
+ * The default needle is the bin NAME (`CAPTURE_BIN_TOKEN`), a substring of every invocation form
+ * this package ever scaffolded — the previous bare-name PATH default included — so the doctor
+ * keeps reporting pre-existing installs as wired while `onemem init` migrates them.
+ */
+export function inspectCodexHooksContent(text: string | null, captureCommand: string = CAPTURE_BIN_TOKEN): CodexHooksInspection {
   if (text === null) return { state: 'absent' };
   let parsed: unknown;
   try {

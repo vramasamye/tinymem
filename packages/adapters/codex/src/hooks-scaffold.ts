@@ -14,10 +14,38 @@
  *
  * Codex requires trust review (`/hooks`) before non-managed hooks run — the scaffold cannot and
  * must not bypass that; the README makes it the first setup step.
+ *
+ * Codex runs `command` handlers through a shell with the session's cwd as the working directory,
+ * and Codex may be started from a subdirectory of the project — so the default command resolves
+ * the project root itself (`git rev-parse --show-toplevel`, falling back to `pwd` for non-git
+ * projects launched at their root) before invoking the bin link a published install creates
+ * (`node_modules/.bin/`). That is the published hook-invocation contract (backlog cross-follow-up
+ * #9): no PATH-only assumption, no monorepo-relative source path.
  */
 
+/** The capture bin's NAME — the stable substring identifying onememory's invocation in any form. */
+export const CAPTURE_BIN_TOKEN = 'onemem-codex-capture';
+
+/**
+ * The default capture command: `exec` the `onemem-codex-capture` bin link a clean install owns.
+ *
+ * npm/bun link every `bin` declared in a published package's package.json into
+ * `node_modules/.bin/`, so the link exists in ANY external project that installed onememory.
+ * The command is a shell string (Codex's own execution model): the project root is resolved at
+ * run time — the git toplevel when inside a repo, `pwd` otherwise — then the bin link under it is
+ * `exec`'d directly (no extra shell process left waiting; a timeout kill hits the bin itself).
+ * The bin entrypoint is directly executable through its `#!/usr/bin/env bun` shebang. Pass a
+ * custom `captureCommand` to override; entries registered with the token are replaced on re-run.
+ */
+export const PROJECT_CAPTURE_COMMAND =
+  `exec "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"/node_modules/.bin/${CAPTURE_BIN_TOKEN}`;
+
 export interface CodexHooksScaffoldOptions {
-  /** The capture command (default `onemem-codex-capture`, the published bin name). */
+  /**
+   * The capture command (default: `PROJECT_CAPTURE_COMMAND` — the published bin link resolved
+   * from the project root; see its doc). Any custom value is used verbatim in every handler, and
+   * re-running init replaces handlers registered with that command.
+   */
   captureCommand?: string;
   /** Install the SessionStart context-injection handler (default true). */
   includeSessionStart?: boolean;
@@ -47,7 +75,7 @@ export interface CodexHooksFile {
 
 /** Build the generated hooks.json object. */
 export function buildCodexHooksFile(options: CodexHooksScaffoldOptions = {}): CodexHooksFile {
-  const command = options.captureCommand ?? 'onemem-codex-capture';
+  const command = options.captureCommand ?? PROJECT_CAPTURE_COMMAND;
   const includeSessionStart = options.includeSessionStart ?? true;
   const includeCapture = options.includeCapture ?? true;
   const captureTimeoutSec = options.captureTimeoutSec ?? 30;
@@ -107,7 +135,10 @@ export function patchCodexHooksJson(
   options: CodexHooksScaffoldOptions = {},
 ): HooksPatchResult | { error: string } {
   const generated = buildCodexHooksFile(options);
-  const token = options.captureCommand ?? 'onemem-codex-capture';
+  // The replacement token: the configured command, else the bin NAME — it is a substring of every
+  // invocation form this package ever scaffolded (the old bare-name PATH default included), so a
+  // re-run migrates stale generated handlers to the current command instead of duplicating them.
+  const token = options.captureCommand ?? CAPTURE_BIN_TOKEN;
 
   if (existing.trim().length === 0) {
     return { content: renderCodexHooksJson(options), action: 'created' };

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.0",
+    "@onememory/config": "workspace:*",
     "@onememory/core": "workspace:*",
     "@onememory/retrieval": "workspace:*",
     "@onememory/security": "workspace:*",

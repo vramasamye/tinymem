@@ -60,12 +60,18 @@ performs the writes, and `onemem doctor` reads them back through `inspectClaudeS
   owner of embedded storage). Loopback `http:` only, no headers (Phase 1 has no auth).
   `mergeMcpJson` replaces only the `onememory` entry; every other server and top-level key is
   preserved. The stdio form (`buildMcpJson()` without `transport`, for the standalone
-  `onememory-mcp` bin) is still exported for daemon-less / server-profile use, with
-  `${CLAUDE_PROJECT_DIR:-.}`-relative paths and env passed **by name**
+  `onememory-mcp` bin) is still exported for daemon-less / server-profile use: its `command` is
+  the published bin link (`${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp`, directly
+  executable through its bun shebang), the embedded data dir is
+  `${CLAUDE_PROJECT_DIR:-.}`-relative, and env is passed **by name**
   (`ONEMEMORY_PG_URL: "${ONEMEMORY_PG_URL}"`) so no URL or secret is ever committed.
 - **`.claude/settings.json` hooks** — the five subscriptions above; `PostToolUse` matcher
   `Bash|PowerShell|Edit|Write|NotebookEdit`, `PostToolUseFailure` matcher `*`, `SessionEnd`
   timeout raised to 5s (hook timeouts are in seconds); exec form (`command` + `args`, no shell).
+  Every handler invokes the published bin link
+  (`${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook` — the `bin` entry npm links into
+  every install; executable through its bun shebang, so no `PATH` assumption and no source path
+  from this repository survives in a clean external project).
   `mergeClaudeSettingsHooks` removes onememory's own handlers (by bin token or exact invocation)
   and appends the generated groups — user handlers and settings are preserved, re-runs never
   duplicate, and malformed JSON is reported and left untouched.

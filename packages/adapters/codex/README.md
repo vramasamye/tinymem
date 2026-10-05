@@ -44,8 +44,8 @@ npx onemem-codex-capture --help
 
 | Artifact | What lands there | Idempotency |
 | --- | --- | --- |
-| `.codex/config.toml` | `[mcp_servers.onememory]` `url` block (marker-fenced; stdio form when `transport` is omitted) | re-running replaces only the fenced block; your comments and tables stay byte-identical |
-| `.codex/hooks.json` | capture handlers for `SessionStart` (sync, injects context), `UserPromptSubmit`, `PostToolUse` (`^Bash$`, `^(apply_patch\|Edit\|Write)$`), `Stop` (async), `SessionEnd` (sync, 3s) | our entries are replaced, foreign hooks preserved |
+| `.codex/config.toml` | `[mcp_servers.onememory]` `url` block (marker-fenced; stdio form when `transport` is omitted — its `command` defaults to the published bin link `./node_modules/.bin/onemem-mcp`, resolved against the launch dir) | re-running replaces only the fenced block; your comments and tables stay byte-identical |
+| `.codex/hooks.json` | capture handlers for `SessionStart` (sync, injects context), `UserPromptSubmit`, `PostToolUse` (`^Bash$`, `^(apply_patch\|Edit\|Write)$`), `Stop` (async), `SessionEnd` (sync, 3s) — every handler runs `exec "$(git rev-parse --show-toplevel 2>/dev/null \|\| pwd)"/node_modules/.bin/onemem-codex-capture`, resolving the project root at run time so the published bin link is invoked with no `PATH` assumption (a custom `captureCommand` overrides it) | our entries are replaced, foreign hooks preserved |
 | `AGENTS.md` | ~0.7 KiB pointer block (comment-fenced) | re-running replaces only the block |
 
 **Two review steps Codex requires (by design, this adapter never bypasses them):**

@@ -86,6 +86,23 @@ export {
   type ProjectState,
 } from './project-state';
 
+// Daemon lock + probe (`.onememory/daemon.json` — the embedded-storage single-owner check)
+export {
+  DAEMON_LOCK_FILE_NAME,
+  DaemonLockSchema,
+  daemonLockPath,
+  readDaemonLock,
+  writeDaemonLock,
+  clearDaemonLock,
+  isProcessAlive,
+  daemonLockCandidateDirs,
+  probeDaemon,
+  isLoopbackHost,
+  type DaemonLock,
+  type DaemonHealthReport,
+  type DaemonProbe,
+} from './daemon-lock';
+
 // Derived decisions
 export {
   embedderSelection,
