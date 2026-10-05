@@ -250,23 +250,28 @@ brief as a documented decision; consolidation (M14) consumes `semantic_candidate
 LLM-prompt tuning belongs to M11 benchmarks.
 
 Raised by M3b (decision/failure capture) — landed with the fields on candidates and in durable
-`content`; the payload-row wiring below is what makes recurrence queryable.
+`content`; M3d persists the signatures for recurrence matching, while counting and consolidation
+remain future work.
 
-1. **STORE wiring of `decisions`/`failures` payload rows** [P2] — `insertMemory` writes only the
-   `memories` row, so `decision_payload`/`failure_signature` (validated at the EXTRACT→STORE
-   boundary since M3b) never reach the payload tables. Derive at STORE: `title`, `participants`,
-   `decided_at`, `status` (default `proposed`) from the memory row; `problem`/`context`/`solution`/
-   `verification` from the signature's label, `command`/`tool`, resolution, and evidence. Unblocks
-   failure recurrence counting (`occurrence_count`, `last_seen_at`) — the input ADR-0009 rule 1 and
-   M15 skill-candidate generation need — and decision promotion beyond `proposed` (memory-model §9).
-   AC: heuristic and LLM paths persist identical rows from the same transcript; scenario added to
-   the storage integration matrix.
+1. ~~**STORE wiring of `decisions`/`failures` payload rows**~~ Resolved by M3d: typed decision and
+   failure payloads are persisted in the existing tables in the memory/audit transaction and
+   hydrated on get/list/current/point-in-time/history reads. The heuristic and LLM paths share the
+   same event-backed mapping; decision evidence is echoed from memory provenance, and failures are
+   written only when a cited event reproduces the engine signature. Acceptance covers both
+   extractors and the embedded/server storage matrix. Recurrence counting and search-result payload
+   hydration remain separate follow-ups.
 2. ~~**Tool-result failures as incidents**~~ Resolved by M3c (`35bf338`): normalized tool results
    preserve an optional validated tool name; `ok: false` produces a failure incident with
    `origin: 'tool'`. Both extractors compute identical signatures, and same-tool successes can
-   resolve failures. Adapter production remains a separate follow-up below.
-3. **Adapter tool-result failure emission** [P2] — M3c supports failing tool results at the
-   extraction boundary, but current adapters do not emit named failing tool results. Preserve
-   the pending call's tool name and derive `ok` from runtime-provided failure signals, without
-   guessing from output text. AC: a captured runtime tool failure reaches extraction with its
-   tool name and `ok: false`, while successful results remain non-incidents.
+   resolve failures.
+3. **Adapter tool-result failure emission** [P2] — M7b preserves the correlated call name on Codex
+   generic rollout results (omitting absent or overlength names), but Codex's
+   `function_call_output` serializer discards its internal success flag, including MCP `isError`.
+   Its legacy `ok: true` is not proof of success; adapters must not infer failures from output
+   text. Next producer seams: upstream serializer support (preferred), verified consumption of
+   `event_msg` `mcp_tool_call_end`, or a future hook schema with explicit status. AC: a captured
+   runtime failure reaches extraction with its call name and source-backed `ok: false`, while
+   successful results remain non-incidents.
+   The M7b redaction follow-up is resolved by the security boundary fix (`a23fedc`): known
+   credential prefixes embedded after `_`/`-` in tool-name strings are now redacted without
+   blanket-redacting useful tool identifiers.

@@ -103,12 +103,19 @@ doc-shaped payloads on validation, but adapters SHOULD always set it explicitly.
 
 // conversation.tool_result
 { call_id: string;
-  ok: boolean;
+  ok: boolean;                    // source-backed status; legacy true may mean status unavailable
   output_digest: string;        // ≤ 2000 chars, truncated with marker
   tool?: string;                // ≤ 80 chars, when the adapter's shape names it (never inferred)
   error?: { code?: string; message: string };
 }
 ```
+
+Adapters MUST NOT infer `ok` from output prose or JSON. In Codex rollout
+`function_call_output`, the serializer drops its internal success flag (including MCP `isError`),
+so the adapter retains legacy `ok: true` for compatibility; that value is not proof of success.
+Codex's optional `tool` is correlated from the preceding `function_call` by `call_id`, and omitted
+when unavailable or over the 80-character bound. See the
+[Codex adapter contract](../../packages/adapters/codex/README.md#rollout-backfill-manual).
 
 ### Developer activity
 
@@ -261,8 +268,9 @@ The signature digest covers `type` and
 `normalized_message` only — the failing tool and command are recorded next to the digest so
 one root cause reached through different tools collapses to a single signature. The heuristic
 and LLM extractors emit byte-identical signatures: the model only cites events, the engine
-fingerprints them. Persisting these payloads into the `decisions`/`failures` payload tables is
-STORE-stage work; until it lands the fields live on the candidate and in durable `content`.
+fingerprints them. STORE persists decision and failure payloads into the existing `decisions` and
+`failures` tables in the same transaction as the memory and audit row. See §§4–5 for readback and
+field details.
 
 ## 4. Memory wire representation
 
@@ -295,9 +303,13 @@ interface MemoryRecord {
   entities: Array<{ id: string; name: string; kind: string }>;
   tags: string[];
   token_estimate: number;
-  payload?: DecisionPayload | FailurePayload | SkillPayload;  // per type, §5
+  payload?: DecisionPayload | FailurePayload | SkillPayload;  // per type, §5; memory reads hydrate it
 }
 ```
+
+Memory get/list/current/point-in-time/history reads hydrate decision and failure payloads. Search
+snippets do not include `payload`. Decision evidence is the owning memory's provenance echoed on
+read, not a separate `decisions` table column.
 
 ## 5. Typed payloads
 
@@ -307,11 +319,11 @@ interface DecisionPayload {
   title: string;
   decision: string;                 // what was decided
   alternatives: Array<{ option: string; why_rejected?: string }>;
-  rationale: string;
+  rationale?: string;               // absent when the source stated none
   participants: string[];           // roles/names, never emails
   decided_at: string;
   status: 'proposed' | 'accepted' | 'superseded' | 'rejected';
-  evidence: EvidenceSpan[];
+  evidence: EvidenceSpan[];         // read-time echo of MemoryRecord.provenance.evidence
 }
 
 // failures — memories.type = 'failure'
@@ -322,8 +334,9 @@ interface FailurePayload {
   solution?: string;                 // empty until solved
   verification?: string;            // how the fix was proven (command output digest, test result)
   status: 'open' | 'mitigated' | 'solved' | 'verified';
+  signature_hash?: string;          // optional for legacy wire records; required for new STORE writes
   first_seen_at: string; last_seen_at: string;
-  occurrence_count: number;         // incremented on signature match
+  occurrence_count: number;         // starts at 1; recurrence increments are consolidation work
 }
 
 // skills — generated from verified procedures/failures

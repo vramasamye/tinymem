@@ -176,12 +176,8 @@ existed; this mission changes which rows are written and read.
    table, not needed for this wiring.
 7. **No skill payload.** `skills` is not memory-keyed, so `NewMemory.payload` covers decisions and
    failures only.
-8. **Docs the coordinator owns are now stale** (missions do not edit `docs/architecture/`):
-   - `event-memory-schemas.md` §3 still says "Persisting these payloads into the `decisions`/
-     `failures` payload tables is STORE-stage work; until it lands the fields live on the candidate
-     and in durable `content`" — it has landed.
-   - `event-memory-schemas.md` §5: `DecisionPayload.rationale` is now optional, and
-     `FailurePayload` gained optional `signature_hash`; §4 should note that `payload` is returned by
-     the memory read paths but not by search results.
-   - `memory-model.md` row 4 lists `evidence` as a `decisions` column; the table has no such column
-     (evidence is the memory's provenance, echoed into the wire payload on read).
+8. **Coordinator-owned architecture docs were synchronized after merge** (missions do not edit
+   `docs/architecture/`): `event-memory-schemas.md` now records STORE persistence, hydrated memory
+   reads versus search results, optional `rationale`/wire `signature_hash`, and provenance-backed
+   decision evidence; `memory-model.md` reflects the actual `decisions` columns and atomic payload
+   writes.

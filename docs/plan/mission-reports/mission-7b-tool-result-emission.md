@@ -121,14 +121,14 @@ already ships). No ADR, root-config, or `docs/architecture/` edits (coordinator-
      versions), which is why it is a follow-up, not this cut.
    - **PostToolUse hook status:** only if Codex's published hook schema grows a status field
      (`tool_response` is free JSON today, so a hook can carry anything — and nothing verifiable).
-2. **`redactEvent` does not redact tool identifiers** (`@onememory/security`, pre-existing): a
-   secret embedded in a tool name flows through `conversation.tool_call.tool` and now also
-   `conversation.tool_result.tool` — but the result can only repeat the exact name its correlated
-   call already carried (asserted in the new capture test), so M7b adds no new surface. The
-   follow-up is redaction of tool-identifier fields in the security package, shaped so
-   `mcp__server__tool` names stay useful (pattern-based, not blanket).
-3. **`signature.tool` is still not persisted** — unchanged from M3b/M3c; recurrence counting
-   remains future work.
+2. ~~**`redactEvent` does not redact tool identifiers**~~ Resolved by
+   `a23fedc` (`fix(security): detect secrets after tool-name separators`): provider-token boundary
+   patterns now allow `_`/`-` separators before known credential prefixes, so embedded secrets in
+   tool names are redacted while the useful identifier text remains. Regression tests cover
+   `Read_sk-ant-…`, `mcp__srv__sk-…`, `x-sk-ant-…`, and `mcp__srv__ghp_…`, including idempotency.
+3. **`signature.tool` has no dedicated payload column.** M3d includes observed tool/command
+   fingerprint inputs in the failure payload's JSON `context`, but recurrence counting and
+   consolidation remain future work.
 4. **`docs/architecture/` sync is coordinator-owned:** wherever the event schema or adapter
    mapping tables document `conversation.tool_result`, the Codex generic-result row now includes
    the optional correlated `tool` (and its overlength omission), and `ok: true` should be
