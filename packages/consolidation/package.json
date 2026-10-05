@@ -1,0 +1,28 @@
+{
+  "name": "@onememory/consolidation",
+  "version": "0.1.0",
+  "description": "onememory CONSOLIDATE / DECAY stages (memory-model.md §7–§9): near-duplicate merges, contradiction detection with authority resolution, episodic→semantic derivation, prominence-based decay",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@onememory/core": "workspace:*",
+    "@onememory/extraction": "workspace:*",
+    "@onememory/llm": "workspace:*",
+    "@onememory/retrieval": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@onememory/storage": "workspace:*",
+    "@types/bun": "^1.4.2"
+  }
+}
