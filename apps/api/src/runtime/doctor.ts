@@ -23,6 +23,13 @@ import {
   type LoadedConfig,
   type OnememoryConfig,
 } from '@onememory/config';
+import {
+  buildArchitectureDigest,
+  DEFAULT_DIGEST_BUDGET_TOKENS,
+  isCurrentArchitectureDigest,
+  loadDigestInputs,
+} from '@onememory/codememory';
+import { memoryContentHash } from '@onememory/core';
 import { MODEL_OPERATIONS } from '@onememory/llm';
 import { PATTERN_GROUPS } from '@onememory/security';
 import { DEFAULT_VECTOR_CONFIG } from '@onememory/storage';
@@ -343,8 +350,10 @@ function jobsCheck(): DoctorCheck {
 
 /**
  * The code-memory / drift section (M4f): how much code the engine tracks, how much of it is stale,
- * whether the architecture digest exists, and whether the drift-scan scheduler is actually armed.
- * This is a read over the `CodeMemoryStore` port — no git, no model, no network.
+ * whether the architecture digest matches the current code shape, and whether the drift-scan
+ * scheduler is actually armed. This is a read over the `CodeMemoryStore` and `Store` ports —
+ * no git, no model, no network. Every lookup is guarded: a failure fails THIS check, never the
+ * report.
  *
  * Status rules follow the doctor's honesty contract: a lookup failure is a `fail`; a project with
  * no registered repository, or one whose scheduler is not running, is `warn` (degraded, usable);
@@ -405,14 +414,51 @@ export async function codeMemoryCheck(runtime: OnememoryRuntime): Promise<Doctor
     );
   }
 
-  const current = await runtime.storage.store.queryCurrent({ project_id: projectId, limit: 200 });
-  const stale = current.filter((memory) => memory.status === 'stale').length;
-  const hasDigest = current.some((memory) => memory.subtype === 'project_digest');
+  // Every remaining lookup is guarded like its siblings: a store failure fails THIS check, never
+  // the whole report (inspectRuntime must always come back with an honest report).
+  let stale = 0;
+  let digestDetail: string;
+  try {
+    const current = await runtime.storage.store.queryCurrent({ project_id: projectId, limit: 1000 });
+    stale = current.filter((memory) => memory.status === 'stale').length;
+
+    // Digest presence is PROBED, not window-scavenged: the expected digest text is rebuilt from
+    // the same persisted inputs the re-index pass feeds `buildArchitectureDigest`
+    // (`loadDigestInputs` is the shared assembly), then located through the Store's exact-dedupe
+    // probe — indexed and windowless, so a long-unchanged digest in a busy project is found at any
+    // age instead of being reported "not built" because it fell outside a recency window.
+    const inputs = await loadDigestInputs(runtime.storage.codeMemory, projectId, repositories);
+    const digest = buildArchitectureDigest({
+      repositories: inputs,
+      budgetTokens: DEFAULT_DIGEST_BUDGET_TOKENS,
+    });
+    if (digest.file_count === 0 && digest.symbol_count === 0) {
+      digestDetail = 'architecture digest not built (no code data captured yet)';
+    } else {
+      const found = await runtime.storage.store.findDuplicate(
+        { project_id: projectId },
+        'semantic',
+        memoryContentHash(digest.text),
+      );
+      digestDetail = isCurrentArchitectureDigest(found)
+        ? `architecture digest present and current (${digest.tokens} tokens${digest.truncated ? ', truncated' : ''})`
+        : 'architecture digest not found for the current code shape (the daemon\'s re-index pass rebuilds it after each drift scan)';
+    }
+  } catch (error) {
+    return check(
+      'code-memory',
+      'code memory / drift',
+      'fail',
+      `the current-memory or digest lookup failed: ${errorMessage(error)}`,
+      'check the storage profile and that migrations are applied (onemem migrate)',
+    );
+  }
+
   const status = info.status();
   const intervalSeconds = Math.round(info.scheduler_interval_ms / 1000);
   const detail =
     `${repositories.length} repository(ies), ${refs} tracked code ref(s); ${stale} stale memor(ies); ` +
-    `architecture digest ${hasDigest ? 'present' : 'not built'}; last fingerprint ${lastIndexed ?? 'never'}; ` +
+    `${digestDetail}; last fingerprint ${lastIndexed ?? 'never'}; ` +
     `last drift scan ${status.last_drift_scan_at ?? 'not in this process'}; ` +
     `scheduler ${info.scheduler_running ? `running every ${intervalSeconds}s` : 'not running (direct mode)'}`;
 
