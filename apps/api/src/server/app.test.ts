@@ -92,6 +92,8 @@ const searchResponse: MemorySearchResponse = {
       explain: [{ factor: 'lexical_relevance', weight: 0.2, detail: 'matched 1 term' }],
       temporal: { valid_from: iso, status: 'active' },
       provenance: { source_kind: 'explicit', source_uri: 'explicit/remember' },
+      // M4g2: always present on every result — empty when no refs are recorded.
+      codeRefs: [],
     },
   ],
   tokens: { budget: 800, used: 20, packing: 'summary' },

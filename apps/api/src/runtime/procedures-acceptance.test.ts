@@ -22,16 +22,16 @@
  *   recurring auth test command), with full provenance and evidence citing their events.
  * - Phase 3: both procedures get code refs recorded through the real `CodeMemoryStore` write
  *   port (`recordCodeRefs`) against blobs captured from the REAL fixture repository — the
- *   same linkage the drift/re-index path performs for its winners.
- * - Phase 4 (the DoD query, partial — asserted as such): the real retrieval engine answers
- *   "How does authentication work?" and two paraphrases under the DEFAULT token budget, with
- *   `how_to` intent routing and the intent×type affinity boost visible in explain, and the top
- *   result is the procedural auth-flow memory. **CURRENT LIMITATION, asserted over the actual
- *   search result: the retrieval response does NOT expose the persisted code refs** — the
- *   wire schema has no code-ref field and the engine never reads the codememory tables on a
- *   search — so the DoD's "with code refs" half is NOT met at the retrieval surface. A separate
- *   STORAGE-LEVEL check verifies the top procedure's persisted refs point at the fixture's
- *   real auth files; see finding F5 in the mission report.
+ *   same linkage the drift/re-index path performs for its winners — and the fixture's symbol
+ *   tables are extracted with the real tree-sitter pipeline (`extractSymbolTable` +
+ *   `saveSymbolTable`, the same snapshot-then-symbols order the re-index runs).
+ * - Phase 4 (the DoD query): the real retrieval engine answers "How does authentication work?"
+ *   and two paraphrases under the DEFAULT token budget, with `how_to` intent routing and the
+ *   intent×type affinity boost visible in explain, and the top result is the procedural
+ *   auth-flow memory. THE CODE REFS NOW SURFACE (M4g2 closed finding F5): every returned item
+ *   carries `codeRefs`, and the top procedure's refs arrive complete — the real repoId, the
+ *   real capture commit, the real path, the real captured worktree blob as evidence, and the
+ *   symbol the procedure's own content names — asserted over the ACTUAL search result.
  */
 
 import { expect, test } from 'bun:test';
@@ -41,7 +41,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { captureSnapshot } from '@onememory/codememory';
+import { captureSnapshot, extractSymbolTable } from '@onememory/codememory';
 import {
   createExtractHandler,
   createHeuristicClassifier,
@@ -387,6 +387,23 @@ test('auth procedures with code refs: extracted from real events, answered by re
       root_path: snapshot.root_path,
     });
     await storage.codeMemory.saveSnapshot(repository.id, snapshot);
+    // The real symbol-table path, in the pipeline's own order (snapshot FIRST, then symbols —
+    // saveSymbolTable anchors on the live worktree fingerprints the capture just wrote): the
+    // real tree-sitter extraction over the fixture repo's real files. The auth module's three
+    // files carry exactly their real symbols; the auth test file legitimately declares none
+    // (describe/test are calls, not declarations — the file is still covered, with an empty
+    // table); package.json is outside the symbol domain by design.
+    const symbolTable = await extractSymbolTable(repoRoot);
+    await storage.codeMemory.saveSymbolTable(repository.id, { files: symbolTable.files });
+    const symbolsOf = (path: string): string[] => {
+      const file = symbolTable.files.find((entry) => entry.path === path);
+      if (!file) throw new Error(`the fixture symbol table does not cover ${path}`);
+      return file.symbols.map((entry) => entry.name);
+    };
+    expect(symbolsOf('src/auth/login.ts')).toEqual(['Credentials', 'verifyCredentials']);
+    expect(symbolsOf('src/auth/session.ts')).toEqual(['createSession']);
+    expect(symbolsOf('src/auth/middleware.ts')).toEqual(['requireAuth']);
+    expect(symbolsOf(COMMAND_PATH)).toEqual([]);
     const blobOf = (path: string): string => {
       const file = snapshot.files.find((entry) => entry.tier === 'worktree' && entry.path === path);
       if (!file) throw new Error(`the fixture snapshot has no worktree fingerprint for ${path}`);
@@ -436,28 +453,55 @@ test('auth procedures with code refs: extracted from real events, answered by re
       expect(response.tokens.budget).toBe(engine.config.packing.defaultMaxTokens);
       expect(response.tokens.used).toBeLessThanOrEqual(response.tokens.budget);
 
-      // CURRENT LIMITATION, asserted over the ACTUAL search result — this is explicitly NOT
-      // the desired DoD, recorded here so the partial state is unmistakable instead of
-      // silently implied: the retrieval search response does not expose persisted code refs.
-      // The wire schema (`MemorySearchResponse`) has no code-ref field on a memory item, and
-      // the retrieval engine never reads the codememory tables on a search — so a consumer of
-      // this query cannot receive the refs with the answer. The DoD's "with code refs" half is
-      // therefore NOT met at the retrieval surface (finding F5 in the mission report); the
-      // storage-level check below verifies the refs exist and point at real files, which is a
-      // different, weaker claim.
-      expect(Object.keys(top).some((key) => /code_?ref/i.test(key))).toBe(false);
+      // THE DOD's "with code refs" HALF, asserted over the ACTUAL search result (M4g2 closed
+      // finding F5): the retrieval response now exposes the persisted code refs — every
+      // returned item carries the field, and the top procedure's three refs arrive complete.
+      // The wire schema validated them (`MemorySearchResponseSchema` — the engine parses its
+      // responses through it), and the values are checked against the real fixture below.
+      expect(Object.keys(top).some((key) => /code_?ref/i.test(key))).toBe(true);
+      expect(response.memories.every((memory) => Array.isArray(memory.codeRefs))).toBe(true);
+      const flowRefs = top.codeRefs;
+      expect(flowRefs.map((ref) => ref.repoId)).toEqual(
+        flowRefs.map(() => repository.id),
+      );
+      expect(flowRefs.map((ref) => ref.path).sort()).toEqual([...FLOW_PATHS].sort());
+      for (const ref of flowRefs) {
+        // The capture's HEAD: the commit under which the cited worktree blob was last observed.
+        expect(ref.commitSha).toBe(head);
+        // The evidence blob the procedure rests on — the real captured worktree blob.
+        expect(ref.evidence).toBe(blobOf(ref.path));
+      }
+      // Symbol attribution: the procedure's own content names verifyCredentials, createSession,
+      // and requireAuth — exactly the cited files' content-named symbols (word-boundary,
+      // document order; the `Credentials` interface, a substring of `verifyCredentials`, never
+      // matches as a whole word). Never fabricated.
+      const symbolByPath = new Map(flowRefs.map((ref) => [ref.path, ref.symbol]));
+      expect(symbolByPath.get('src/auth/login.ts')).toBe('verifyCredentials');
+      expect(symbolByPath.get('src/auth/session.ts')).toBe('createSession');
+      expect(symbolByPath.get('src/auth/middleware.ts')).toBe('requireAuth');
+      // The serialized response now carries each cited path's real captured blob — the consumer
+      // of this query receives the cited files WITH the answer (the whole point of the DoD).
       for (const path of FLOW_PATHS) {
-        expect(JSON.stringify(response)).not.toContain(blobOf(path));
+        expect(JSON.stringify(response)).toContain(blobOf(path));
       }
 
-      // STORAGE-LEVEL CHECK (not returned refs): the top procedure's persisted refs point at
-      // the fixture's real auth files, each carrying the real captured worktree blob —
-      // reachable only through this separate `CodeMemoryStore.listCodeRefs` read, never
-      // through the search response asserted above.
+      // STORAGE-LEVEL CROSS-CHECK: the surfaced refs equal the persisted `listCodeRefs` rows —
+      // same paths, same evidence blobs — so the response's refs are the persisted ones, not a
+      // parallel construction.
       const topRefs = recordedRefs.filter((ref) => ref.memory_id === flow.id);
-      expect(topRefs.map((ref) => ref.path).sort()).toEqual([...FLOW_PATHS].sort());
+      expect(topRefs.map((ref) => ref.path).sort()).toEqual(flowRefs.map((ref) => ref.path).sort());
       for (const ref of topRefs) {
         expect(ref.blob_sha).toBe(blobOf(ref.path));
+        expect(flowRefs.some((entry) => entry.path === ref.path && entry.evidence === ref.blob_sha))
+          .toBe(true);
+      }
+      // The recurring-command procedure, when the query returns it, surfaces its own ref with
+      // NO symbol — its content names no symbol (the honest negative case, never fabricated).
+      const command = response.memories.find((memory) => memory.id === testCommand.id);
+      if (command !== undefined) {
+        expect(command.codeRefs.map((ref) => ref.path)).toEqual([COMMAND_PATH]);
+        expect(command.codeRefs[0]?.symbol).toBeUndefined();
+        expect(command.codeRefs[0]?.evidence).toBe(blobOf(COMMAND_PATH));
       }
 
       // The zero-network default profile honestly reports the vector channel is off.
