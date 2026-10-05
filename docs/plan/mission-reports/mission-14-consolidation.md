@@ -64,11 +64,21 @@ succession). The detector is a seam (`ContradictionDetector`); the LLM `conflict
 can replace it for recall later — never a correctness prerequisite (memory-model.md §1.6).
 
 Resolution runs pairs oldest-first so the Node 20 → 22 → 24 chain builds linearly (20 closed into
-22 at 22's `observed_at`, 22 into 24); a pair whose winner was observed before the loser became
-valid is skipped with a reason rather than forcing an inverted window. Every mutation is
-`store.updateMemoryStatus` (the audited transition path the Store port documents for supersession
-flows — `valid_until`/`superseded_by_id` ride along), plus one `contradicts` edge per pair, which
-is what retrieval's conflict labels read (`searchRepo.contradictionNeighbors`).
+22 at 22's `observed_at`, 22 into 24). The resolution invariant (post-review): after the pass
+processes a detected pair, exactly ONE row is current (the winner closed the loser through
+audited supersession) or both are `disputed` on a full authority tie — a detected pair is never
+silently left unresolved, and no cross-field temporal shape can skip the arbitration: the winner
+is recomputed from the authority fields alone (an older explicit statement or decision still beats
+a newer, more confident inference; an equal-time pair falls to confidence). The only temporal
+choice left is WHERE the loser's window closes (`supersessionValidUntil`): at the winner's
+observation when that moment falls inside the loser's window (the point-in-time handoff —
+`queryAsOf` answers with the loser before it, the winner after), else at the loser's own
+`valid_from` — a zero-width window (`valid_until === valid_from`) that no `queryAsOf` timestamp
+ever matches: the losing claim was never valid. The audit row records which semantics closed the
+loser (`details.window`). Every mutation is `store.updateMemoryStatus` (the audited transition
+path the Store port documents for supersession flows — `valid_until`/`superseded_by_id` ride
+along), plus one `contradicts` edge per pair, which is what retrieval's conflict labels read
+(`searchRepo.contradictionNeighbors`).
 
 ### How a merge is expressed over the Store port (the important decision)
 
@@ -86,6 +96,21 @@ idempotent and self-healing (absorbed rows leave the active pool; a crash betwee
 re-derived from the live pool; a keeper-vs-new-arrival pair re-merges with the newest statement
 winning, consistent with the authority order).
 
+Two post-review merge rules:
+
+- **Pairwise keeper gating.** Every absorbed member must be ≥ the cosine threshold (default 0.97)
+  to the KEEPER it closes into — a transitive A–B–C chain (A–B and B–C at 0.98, A–C at 0.92) does
+  not qualify: B closes into keeper A, C stays active, skipped with an explicit pairwise reason.
+  The gate reads `cosineComponents.pairCosine`, which records only the pairs the vector channel
+  actually certified at the threshold — an absent key is "not certified", which is exactly what
+  keeps a transitive chain from smuggling a distant member past the gate.
+- **Arbitration before absorption.** A cluster that still contains a detector-flagged
+  contradictory pair is refused outright (explicit warning, both rows left untouched) — normally
+  unreachable because the contradiction pass runs first and resolves every detected pair, but a
+  skipped resolution (a store error) must never turn into a silent absorption. One shared
+  `ContradictionDetector` threads through the contradiction pass, the merge refusal guard, and
+  the derivation cluster check so all three agree on what a conflict is.
+
 ### Episodic → semantic derivation
 
 - **Grouping**: same scope + primary entity. A bound entity (earliest binding first — the read
@@ -97,14 +122,21 @@ winning, consistent with the authority order).
   and bound to the derived memory (`role: 'subject'`) only at derivation time — no writes for
   memories that do not derive.
 - **Clustering**: connected components by cosine ≥ `minClusterCosine` (default 0.75 — related, but
-  below the 0.97 near-duplicate tier, which merges first anyway) within the group, via the same
-  vector channel; components need ≥ `minClusterSize` (3) members and any contradiction among ANY
+  below the 0.97 near-duplicate tier) within the group, via the same
+  vector channel; components need ≥ `minClusterSize` (3 — a floor the config boundary now
+  enforces, post-review) members and any contradiction among ANY
   pair disqualifies the whole cluster (skipped with a reason — never resolved by dropping
-  members, which would resolve the conflict implicitly).
+  members, which would resolve the conflict implicitly). Near-identical episodes (cosine ≥ 0.97)
+  are a legitimate derivation cluster too: derivation runs BEFORE the merge (below), so three
+  near-identical rows corroborate into one semantic memory first and the merge collapses the
+  duplicates afterwards — the cluster members stay (keeper active, absorbed rows in history).
 - **The derived memory** (`type: 'semantic'`, `subtype: 'semantic.derived'`): the representative
   member's content verbatim offline (the least-fabrication statement — an LLM produces the true
   generalization when configured, per memory-model.md §1.6 "LLM improves quality; local AI is
-  never a correctness prerequisite"), evidence = the union of every member's spans (deduped by
+  never a correctness prerequisite"; the representative is the most central member — highest
+  cosine sum — with ties broken by the real authority facts the source view carries from the
+  record: explicit > decision > newer > confidence, then id), evidence = the union of every
+  member's spans (deduped by
   source+locator+excerpt, capped at 24), provenance anchored on the representative's source,
   corroboration scores (`importance` +0.05 / `confidence` +0.1 over the strongest member, capped
   at 0.95), observed at the newest member, valid since the oldest, tags `['consolidated']`,
@@ -131,13 +163,20 @@ stays searchable).
 
 ### Pass order and pool bounding
 
-Merge → contradiction → derivation → decay (collapse duplicates first, resolve conflicts before
-clustering — derivation requires "no contradictions among them" — decay last). Each pass re-reads
-the live pool (mutations from earlier passes remove members). The pool is the newest
-`poolLimit` (default 200, max 1000 per the Store port) active memories; `report.pool.truncated`
-says when the read cap was hit. Absorbed/merged/archived rows shrink the window so later runs
-reach deeper, but a quiet window does not march backwards by itself — a paginated enumeration
-primitive is a store-port follow-up (below).
+Contradiction → derivation → merge → decay (the post-review order; it was
+merge → contradiction → derivation). Contradictions resolve FIRST — a merge must never absorb a
+conflicting claim (the pair reaches dispute or authority resolution instead; the merge pass
+itself also refuses a cluster that still contains a flagged pair, defense in depth), and a
+derived cluster must be contradiction-free. Derivation runs BEFORE the merge: near-identical
+episodes are corroborating observations — they feed the semantic memory first (`derived_from`
+edges to every source), then the merge collapses the duplicates, so three near-identical rows
+become ONE semantic memory instead of one keeper and no corroboration (the pre-review order
+starved derivation of exactly those rows). Decay last. Each pass re-reads the live pool
+(mutations from earlier passes remove members; derivation leaves its sources in the pool). The
+pool is the newest `poolLimit` (default 200, max 1000 per the Store port) active memories;
+`report.pool.truncated` says when the read cap was hit. Absorbed/merged/archived rows shrink the
+window so later runs reach deeper, but a quiet window does not march backwards by itself — a
+paginated enumeration primitive is a store-port follow-up (below).
 
 ### The CLI command and daemon mode
 
@@ -159,20 +198,26 @@ with warnings; contradictions and decay still run — verified end to end throug
 | `packages/consolidation/src/index.ts` | new — the package surface |
 | `packages/consolidation/src/types.ts` | new — Zod-validated config input + resolved config + the run-report types |
 | `packages/consolidation/src/authority.ts` | new — the authority ordering (pure) + merge keeper order |
-| `packages/consolidation/src/contradiction.ts` | new — template/numeric-value heuristic, temporal overlap, the resolution pass |
-| `packages/consolidation/src/merge.ts` | new — the near-duplicate merge pass over the vector channel |
-| `packages/consolidation/src/derive.ts` | new — derivation builders (pure) + the LLM/template merge + the derivation pass |
+| `packages/consolidation/src/cluster.ts` | new (post-review) — the shared clustering primitives: `pairKey`, `scopeKeyOf`, `cosineComponents` |
+| `packages/consolidation/src/util.ts` | new (post-review) — the shared `errorMessage` |
+| `packages/consolidation/src/contradiction.ts` | new — template/numeric-value heuristic, temporal overlap, the resolution pass, `supersessionValidUntil` |
+| `packages/consolidation/src/merge.ts` | new — the near-duplicate merge pass (pairwise keeper gating, arbitration-refusal guard) |
+| `packages/consolidation/src/derive.ts` | new — derivation builders (pure, authority-carrying source views) + the LLM/template merge + the derivation pass |
 | `packages/consolidation/src/decay.ts` | new — the prominence formula (pure) + the archive pass |
-| `packages/consolidation/src/run.ts` | new — `runConsolidation(options)`: pool, vector-channel guard, pass order, report |
+| `packages/consolidation/src/run.ts` | new — `runConsolidation(options)`: pool, vector-channel guard, pass order (contradiction → derivation → merge → decay), report |
+| `packages/consolidation/src/types.ts` | new — Zod-validated config input (floors enforced at the boundary) + resolved config + the run-report types |
 | `packages/consolidation/src/testing.ts` | new — test doubles (table embedder, in-process index, fake router) + `MemoryRecord` fixture; exported as `./testing` |
-| `packages/consolidation/src/authority.test.ts` | new — the full authority-ordering matrix (13 tests) |
-| `packages/consolidation/src/contradiction.test.ts` | new — template/values/overlap/scope predicate matrix (18 tests) |
-| `packages/consolidation/src/decay.test.ts` | new — the formula, half-lives, access factor, resistance floor, thresholds (16 tests) |
-| `packages/consolidation/src/derive.test.ts` | new — representative/union/scores/temporals, the templated merge, the LLM tier + fallback (13 tests) |
-| `packages/consolidation/src/consolidation.integration.test.ts` | new — the Phase 3 DoD scenario over real PGlite + the real vector index (7 tests) |
+| `packages/consolidation/src/authority.test.ts` | new — the full authority-ordering matrix (12 tests) |
+| `packages/consolidation/src/cluster.test.ts` | new (post-review) — pair/scope keys + the certified-pairs-only property (5 tests) |
+| `packages/consolidation/src/contradiction.test.ts` | new — template/values/overlap/scope predicate matrix + `supersessionValidUntil` (18 tests) |
+| `packages/consolidation/src/decay.test.ts` | new — the formula, half-lives, access factor, resistance floor, thresholds (14 tests) |
+| `packages/consolidation/src/derive.test.ts` | new — representative/union/scores/temporals, the templated merge, the LLM tier + fallback (16 tests) |
+| `packages/consolidation/src/types.test.ts` | new (post-review) — the config floor rejections + defaults (5 tests) |
+| `packages/consolidation/src/consolidation.integration.test.ts` | new — the Phase 3 DoD scenario over real PGlite + the real vector index (12 tests, incl. the five post-review regressions) |
 | `apps/cli/src/commands/consolidate.ts` | new — the command (backend resolution, daemon refusal, report printing) |
 | `apps/cli/src/bin.ts` | registration of `consolidate` only (import + command block, matching existing style) |
-| `apps/cli/src/consolidate-command.test.ts` | new — 3 end-to-end CLI tests |
+| `apps/cli/src/test-support.ts` | new (post-review) — the shared CLI test harness (`Captured`, `runMain`, `jsonOf`) |
+| `apps/cli/src/consolidate-command.test.ts` | new — 3 end-to-end CLI tests (imports the shared harness) |
 | `apps/cli/package.json` | + `@onememory/consolidation` workspace dependency |
 | `bun.lock` | regenerated by `bun install` for the new workspace package |
 
@@ -182,17 +227,18 @@ or the root configs.
 
 ## Validation
 
-- `packages/consolidation`: **62 pass / 0 fail** (55 unit + 7 integration over a real PGlite
-  store and the real `EmbeddingIndex`, embedded profile; the vector fixture table controls every
-  pairwise cosine, the store paths are the real ones). `tsc --noEmit` clean.
-- `apps/cli`: **35 pass / 0 fail** (4 files; the 3 new consolidate tests go through the real
+- `packages/consolidation`: **82 pass / 0 fail** (70 unit + 12 integration scenarios over a
+  real PGlite store and the real `EmbeddingIndex`, embedded profile; the vector fixture table
+  controls every pairwise cosine, the store paths are the real ones). `tsc --noEmit` clean.
+- `apps/cli`: **35 pass / 0 fail** (4 files; the 3 consolidate tests go through the real
   `main()` dispatch and the real embedded pipeline: remember two version facts → consolidate →
   inspect shows the older superseded + audited with `details.rule = 'newer'`, the newer active,
   warnings honest in both output modes). `tsc --noEmit` clean.
-- Full suite at the worktree root: **1120 pass / 22 skip / 0 fail** (1142 tests, 87 files,
-  ~307s). The 22 skips are the pre-existing Postgres-gated storage scenarios (no
-  `ONEMEMORY_PG_URL` in this environment — expected). The mission adds 65 tests (62 + 3); the
-  remaining 1055 passing tests are the pre-mission baseline, unregressed.
+- Full suite at the worktree root (post-review state): **1140 pass / 22 skip / 0 fail**
+  (1162 tests, 89 files, ~254s). The 22 skips are the pre-existing Postgres-gated storage
+  scenarios (no `ONEMEMORY_PG_URL` in this environment — expected). The mission adds 85 tests
+  (65 + 20 post-review); the remaining 1055 passing tests are the pre-mission baseline,
+  unregressed.
 - Storage integration suite against a throwaway Postgres 17 + pgvector container
   (`pgvector/pgvector:pg17`, `127.0.0.1:55441`): **45 pass / 0 fail** — the port-level
   supersession/transition/edge/insert behavior the passes drive is green on the server profile
@@ -205,13 +251,48 @@ The acceptance scenario (`consolidation.integration.test.ts`) exercises the Phas
 end to end: the Node 20 → 22 → 24 chain resolves by authority (`historyOf` returns
 [20, 22, 24] oldest-first; `queryAsOf` at mid-July answers Node 22; current answers see Node 24
 only; every transition audited with `details.rule`); the authority tie becomes `disputed`
-(excluded from `queryCurrent`, still stored, audited, `contradicts`-linked); three near-duplicate
-phrasings merge into their newest survivor with a `merged` audit row carrying the evidence union;
-three corroborated docker observations derive one semantic memory with `derived_from` edges to
-every source and the Docker entity bound as subject; decay archives the faded note (audited, with
-the prominence decomposition) while the old decision survives via the floor; a second run reports
-zeros (idempotent); and a no-embedder run still resolves a fresh contradiction with an explicit
-degradation warning.
+(excluded from `queryCurrent`, still stored, audited, `contradicts`-linked); the contradictory
+Bun pair with IDENTICAL embeddings (cosine 1.0) is arbitrated by authority, never merged;
+three near-duplicate phrasings corroborate into one semantic memory (derived_from to every
+source, members retained) BEFORE the merge collapses them into their newest survivor with a
+`merged` audit row carrying the evidence union; three corroborated docker observations derive
+one semantic memory with the Docker entity bound as subject; the older-explicit and
+equal-time-confidence pairs resolve with zero-width never-valid windows (exactly one row
+current, no point-in-time view ever shows the loser); the pairwise-gated A–B–C cluster absorbs
+B but not C (0.92 to the keeper); decay archives the faded note (audited, with the prominence
+decomposition) while the old decision survives via the floor; a second run reports zeros
+(idempotent); a no-embedder run still resolves a fresh contradiction with an explicit degradation
+warning; and a contradictory cluster handed straight to the merge pass is refused with both rows
+left untouched.
+
+## Review follow-ups applied
+
+The coordinator's independent review (post-merge) found two P1 and three P2 behavioral defects
+plus code-quality items; all are fixed on this branch in focused commits
+(`9e0018a`..`fffe336`), test-first:
+
+1. **P1 — authority winners never stay silently unresolved** (`9e0018a`): the inverted-window
+   skip is gone; every detected pair is arbitrated; `supersessionValidUntil` (zero-width windows
+   for older-authority winners) with `details.window` on the audit row.
+2. **P1 — merge no longer pre-empts arbitration** (`0c57d3a`): contradiction resolution runs
+   first; the merge pass refuses detector-flagged clusters (defense in depth); one shared
+   detector threads through all three passes.
+3. **P2 — pairwise merge threshold** (`751c454`): keeper-gated absorption (certified cosine to
+   the keeper only; transitive chains cannot merge a below-threshold member).
+4. **P2 — merge no longer starves derivation** (`0c57d3a`): derivation runs before the merge —
+   near-identical episodes corroborate into the semantic memory first, then the duplicates
+   collapse (members retained).
+5. **P2 — config floors enforced at the boundary** (`e644da3`): `MIN_NEAR_DUPLICATE_COSINE`
+   (0.9) and `MIN_DERIVATION_CLUSTER_SIZE` (3) with clear messages; defaults unchanged (0.97/3).
+6. **Quality — dedupe of the clustering shape, `pairKey`, `errorMessage`; renames**
+   (`f24c47e`): `cluster.ts` (`pairKey`, `scopeKeyOf`, `cosineComponents`) + `util.ts`
+   (`errorMessage`); `membersExceptKeeper` and `FALLBACK_HALF_LIFE_DAYS` renamed.
+7. **Quality — authority facts carried in derivation source views** (`3f79f42`): explicit-kind
+   sources win representative ties.
+8. **Quality — the CLI test harness** (`fffe336`): `apps/cli/src/test-support.ts` owns
+   `Captured`/`runMain`/`jsonOf`; the consolidate test imports it. The two older copies
+   (`cli.test.ts`, `doctor-summary.test.ts`) belong to earlier missions and stay untouched per
+   the one-mission-one-file rule — one import line each for the coordinator.
 
 ## Explicitly out of scope / follow-ups
 
