@@ -528,3 +528,32 @@ Codex normalization gap pinned). Honest remaining items below.
 7. **`bun.lock` drift on merge** (same recurrence as M13c item 5) — the cursor package added a new
    workspace edge. `bun install` after merge is part of the merge dance; consider encoding it in
    the contributor notes the next time two workspace edges land in the same wave.
+
+---
+
+## Cross-mission follow-ups — raised by M9 (Pi + OpenCode adapters)
+
+Merged 2026-10-06 as `d95efc4` (mission report: `docs/plan/mission-reports/mission-9-pi-opencode.md`).
+Pi and OpenCode pass conformance today (byte-identical to Claude across the canonical session).
+Honest residual items below.
+
+1. **Codex: strip `explicit.remember` trailing punctuation** [P2, other mission's lane] — the
+   pinned normalization gap (Codex keeps the trailing period). Identical finding to M8 item 2;
+   the back-port is one tiny edit on the Codex package. Reopen when M7b / a Codex polish mission
+   has bandwidth.
+2. **Edit line-count landscape unification** [P3] — Claude=2/3, Cursor=1/2, Codex=none, Pi and
+   OpenCode=Claude. Pick the Claude baseline (the canonical edit pattern in `scenario.ts`),
+   back-port Cursor to match, and document the choice. Today's pinned test landscape is honest
+   but the lack of a single baseline is brittle.
+3. **Hoist `remember.ts` into a shared adapter kit** [P2] — `packages/adapters/pi/src/remember.ts`
+   and `packages/adapters/cursor/src/remember.ts` are documented as byte-identical. Consolidate
+   into a `packages/adapters/_shared/remember.ts` once the Codex trailing-period fix lands (so
+   the shared extraction has exactly one customer per variant).
+4. **User-scope runtime wiring** (`~/.pi`, `~/.opencode`) [P2] (cross-listed under #11 above) —
+   project-scope only today; reopen only with explicit consent + safe-merge tests.
+5. **Conformance currently lexical + graph only** [P3] — vector channel awaits an offline
+   embedder in `packages/embeddings` (mirrors M8 item 5). When that lands, extend
+   `pipeline.ts` to assert vector-channel agreement across runtimes.
+6. **`bun.lock` drift on merge** — the same recurrence as M13c item 5 / M8 item 7. Rebase + `bun
+   install` before the merge is part of the dance; three workspace edges in three missions
+   confirms it. Coordinator candidate to encode in `AGENTS.md` contributor notes.
