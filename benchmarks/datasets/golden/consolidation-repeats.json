@@ -1,13 +1,14 @@
 {
   "schema_version": "1",
   "id": "consolidation-repeats",
-  "title": "Repeated facts and repeated failures: pre-M14 consolidation baseline (reported, not gated)",
-  "description": "Exact repeats, paraphrases and a repeated failure. Exact content-hash dedupe (memory-model.md §8 stage 6) is the only collapse mechanism today; episodic→semantic derivation and near-duplicate merging are M14. The metric is reported, not gated, until M14 merges.",
+  "title": "Repeated facts and repeated failures: consolidation under the offline default",
+  "description": "Exact repeats, paraphrases and a repeated failure. The dataset opts into the M14 consolidation pass: contradiction resolution and decay run (fixtures are minutes old, so decay archives nothing), while the vector-gated passes (episodic-to-semantic derivation, near-duplicate merge) skip with recorded warnings because the offline default wires no embedder. The paraphrase pair therefore stays distinct offline — the honest measured ceiling of consolidation quality in the no-embedding default.",
   "base_time": "2026-10-03T09:00:00.000Z",
   "now": "2026-10-03T10:00:00.000Z",
   "projects": [
     { "key": "alpha", "name": "alpha", "description": "Repetition fixture" }
   ],
+  "consolidation_pass": {},
   "events": [
     {
       "kind": "conversation.message",
