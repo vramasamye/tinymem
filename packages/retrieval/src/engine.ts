@@ -4,7 +4,8 @@
  *
  *   1 query understanding (rules-first) → 2 candidate channels (lexical/vector/graph + session
  *   working memory) → 3 HARD temporal/status filter → 4 dedupe → 5 RRF fusion + weighted scoring
- *   → 6 optional rerank → 7 token-budget packing → 8 explain assembly.
+ *   → 6 optional rerank → 6.5 code-ref hydration (one batched read; M4g2) → 7 token-budget
+ *   packing → 8 explain assembly.
  *
  * Degradation is explicit and never silent: a missing Embedder, embedding index, or reranker is
  * reported through `warnings` while the remaining channels carry the search.
@@ -22,6 +23,7 @@ import {
   sha256Hex,
 } from '@onememory/core';
 import type {
+  CodeRefEntry,
   DurableMemoryType,
   Embedder,
   EmbeddingIndex,
@@ -32,11 +34,12 @@ import type {
   SearchIntent,
   Store,
 } from '@onememory/core';
-import { cosineSimilarity, searchRepo } from '@onememory/storage';
+import { codeMemoryRepo, cosineSimilarity, searchRepo } from '@onememory/storage';
 import type { Database } from '@onememory/storage';
 
 import { candidateFromMemory, candidateFromWorking, mergeCandidates } from './candidates';
 import type { RetrievalCandidate } from './candidates';
+import { toCodeRefEntries } from './code-refs';
 import { mergeConfig } from './config';
 import type { RetrievalConfig, RetrievalConfigInput } from './config';
 import { dedupeCandidates } from './dedupe';
@@ -424,6 +427,49 @@ export function createRetrievalEngine(
     ];
   }
 
+  /**
+   * Stage 6.5 — code-ref hydration (M4g2): the persisted refs each scored candidate rests on,
+   * read in ONE batched query (never per memory) and shaped into wire entries — after scoring
+   * and BEFORE token packing, so every packed item carries its refs. Refs are structured
+   * metadata: they ride the response under their own per-memory budget
+   * (`config.codeRefs.maxPerMemory`, one `<N more refs>` placeholder when exceeded), not inside
+   * the packed token budget. A failed hydration is a warning plus empty refs — never a failed
+   * search (degradation is explicit, never silent).
+   */
+  async function hydrateCodeRefs(
+    scored: readonly ScoredCandidate[],
+    warnings: string[],
+  ): Promise<Map<string, CodeRefEntry[]>> {
+    const byMemory = new Map<string, CodeRefEntry[]>();
+    if (scored.length === 0) return byMemory;
+    let rows: codeMemoryRepo.HydratedCodeRef[];
+    try {
+      rows = await codeMemoryRepo.listCodeRefsForMemories(
+        storage.client,
+        scored.map((entry) => entry.candidate.id),
+      );
+    } catch (error) {
+      warnings.push(`code ref hydration failed: ${errorMessage(error)}`);
+      return byMemory;
+    }
+    // Rows arrive ordered (memory_id, repository_id, path): grouping keeps that order, so a
+    // memory's entries are deterministic (repository, then path).
+    const rowsByMemory = new Map<string, codeMemoryRepo.HydratedCodeRef[]>();
+    for (const row of rows) {
+      const group = rowsByMemory.get(row.memory_id);
+      if (group !== undefined) group.push(row);
+      else rowsByMemory.set(row.memory_id, [row]);
+    }
+    const contentById = new Map(scored.map((entry) => [entry.candidate.id, entry.candidate.content]));
+    for (const [memoryId, group] of rowsByMemory) {
+      byMemory.set(
+        memoryId,
+        toCodeRefEntries(group, contentById.get(memoryId) ?? '', config.codeRefs.maxPerMemory),
+      );
+    }
+    return byMemory;
+  }
+
   // --- search -----------------------------------------------------------------
 
   async function search(rawRequest: MemorySearchRequest): Promise<MemorySearchResponse> {
@@ -603,6 +649,10 @@ export function createRetrievalEngine(
       }
     }
 
+    // Stage 6.5 — code-ref hydration (M4g2): one batched read AFTER scoring (the final order is
+    // set) and BEFORE packing, so the refs ride every returned item (see hydrateCodeRefs).
+    const codeRefsById = await hydrateCodeRefs(scored, warnings);
+
     // Stage 7 — token budget packing.
     const scoredById = new Map(scored.map((entry) => [entry.candidate.id, entry]));
     const packable: PackableItem[] = scored.map((entry) => ({
@@ -660,6 +710,9 @@ export function createRetrievalEngine(
           ...(candidate.sourceUri !== undefined ? { source_uri: candidate.sourceUri } : {}),
           ...(candidate.verifiedAt !== undefined ? { verified_at: candidate.verifiedAt } : {}),
         },
+        // Always present, empty when no refs are recorded — a consumer of the search response
+        // can always reach the cited files (M4g2; the wire schema makes the field non-optional).
+        codeRefs: codeRefsById.get(candidate.id) ?? [],
       };
       if (candidate.title !== undefined) memory.title = candidate.title;
       if (item.content !== undefined) memory.content = item.content;

@@ -74,3 +74,5 @@ export * as memoryEventsRepo from './repositories/memory-events';
 export * as codeMemoryRepo from './repositories/code-memory';
 export * as jobsRepo from './repositories/jobs';
 export { ValidationError, NotFoundError } from './repositories/util';
+// The code-ref hydration read model (M4g2) — consumed type-only by the retrieval engine.
+export type { HydratedCodeRef } from './repositories/code-memory';
