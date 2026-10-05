@@ -16,6 +16,7 @@
     "bench:run": "bun run src/cli.ts"
   },
   "dependencies": {
+    "@onememory/consolidation": "workspace:*",
     "@onememory/core": "workspace:*",
     "@onememory/extraction": "workspace:*",
     "@onememory/retrieval": "workspace:*",

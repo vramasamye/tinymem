@@ -2,8 +2,13 @@
  * Golden-dataset schema + loader (backlog M11.1).
  *
  * A dataset is committed JSON: projects, session events (the real `OnememoryEvent` envelope is
- * built from these), the explicit supersessions the engine supports today (M14 automates
- * detection), and the query expectations each metric is computed from.
+ * built from these), the explicit supersessions the harness applies on top of extraction, and
+ * the query expectations each metric is computed from.
+ *
+ * Datasets opting in via `consolidation_pass` additionally run the M14 automatic consolidation
+ * lifecycle (`@onememory/consolidation`) after extraction and declared supersessions, so their
+ * contradiction groups measure automatic authority resolution instead of declared outcomes.
+ * Datasets without the field keep the pre-M14 harness behavior byte-for-byte.
  *
  * Expected memories are referenced indirectly by a stable `fact` key with a matcher, never by
  * generated uuid — memory ids are uuidv7 and differ on every run. The harness resolves keys to
@@ -14,6 +19,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
+import { ConsolidationConfigSchema } from '@onememory/consolidation';
 import { MEMORY_TYPES } from '@onememory/core';
 import { z } from 'zod';
 
@@ -55,6 +61,18 @@ const EventFixtureSchema = z.discriminatedUnion('kind', [
     origin: z.enum(['build', 'runtime', 'test', 'tool']),
     message: z.string().min(1),
     context: z.string().default(''),
+  }),
+  z.strictObject({
+    /** `onemem remember` — the explicit user-statement path (highest authority, memory-model.md §9). */
+    kind: z.literal('explicit.remember'),
+    project: z.string(),
+    session: z.string().default('sess-main'),
+    offset_seconds: z.number().int().min(0),
+    /** The user's own wording, stored verbatim as the memory content. */
+    content: z.string().min(1),
+    /** Declared durable type; absent = an explicit user statement (durable `semantic`). */
+    type: z.enum(['semantic', 'procedural', 'decision', 'preference', 'failure']).optional(),
+    importance: z.number().min(0).max(1).optional(),
   }),
 ]);
 
@@ -117,16 +135,42 @@ const QueryFixtureSchema = z.strictObject({
   kind: z.enum(['retrieval', 'temporal', 'pollution']).default('retrieval'),
 });
 
-const ContradictionGroupSchema = z.strictObject({
-  id: z.string().regex(/^[a-z0-9-]+$/),
-  query: z.string().min(1),
-  project: z.string(),
-  /** The fact that should win under memory-model.md §9 authority rules. */
-  authority: z.string(),
-  /** The fact(s) it contradicts. */
-  contradicted: z.array(z.string()).min(1),
-  note: z.string().optional(),
-});
+/**
+ * One contradiction group. `resolved` groups declare the fact that must win under
+ * memory-model.md §9 authority rules (explicit > decision > newer > confidence) and stay in
+ * current answers, with every contradicted side excluded. `disputed` groups declare a full
+ * authority tie: the pass must mark BOTH sides `disputed` (never a silent pick), which excludes
+ * them all from current answers.
+ */
+const ContradictionGroupSchema = z
+  .strictObject({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    query: z.string().min(1),
+    project: z.string(),
+    /** Which resolution the group must reach. */
+    outcome: z.enum(['resolved', 'disputed']).default('resolved'),
+    /** The fact that should win — required for `resolved`, meaningless for a tie. */
+    authority: z.string().optional(),
+    /** The fact(s) it contradicts — for a `disputed` tie this is every side (≥ 2). */
+    contradicted: z.array(z.string()).min(1),
+    note: z.string().optional(),
+  })
+  .refine((group) => group.outcome === 'disputed' || group.authority !== undefined, {
+    message: "outcome 'resolved' requires the authority fact key",
+    path: ['authority'],
+  })
+  .refine((group) => group.outcome === 'resolved' || group.authority === undefined, {
+    message: "outcome 'disputed' is a full tie — it has no authority fact",
+    path: ['authority'],
+  })
+  .refine((group) => group.outcome === 'resolved' || group.contradicted.length >= 2, {
+    message: "outcome 'disputed' must list both sides of the tie in 'contradicted'",
+    path: ['contradicted'],
+  })
+  .refine((group) => group.authority === undefined || !group.contradicted.includes(group.authority), {
+    message: 'the authority fact cannot also be a contradicted fact',
+    path: ['contradicted'],
+  });
 
 const ConsolidationGroupSchema = z.strictObject({
   id: z.string().regex(/^[a-z0-9-]+$/),
@@ -135,6 +179,26 @@ const ConsolidationGroupSchema = z.strictObject({
   /** Fact keys describing the same concept (each resolves to exactly one memory). */
   facts: z.array(z.string()).min(2),
   note: z.string().optional(),
+});
+
+/**
+ * Dataset-level opt-in to the M14 automatic consolidation pass. Absent = the harness stops after
+ * declared supersessions (the pre-M14 behavior, byte-identical). Present = the harness runs
+ * `runConsolidation` (contradiction resolution → derivation → merge → decay, the package's fixed
+ * order) over the extracted corpus with the dataset's deterministic clock before any probe fires.
+ *
+ * The harness wires no embedder and no model router (offline default), so the vector-dependent
+ * passes (derivation, near-duplicate merge) degrade honestly — they skip with a warning recorded
+ * in the dataset report, while contradiction resolution and decay always run.
+ */
+const ConsolidationPassSchema = z.strictObject({
+  /** Audit actor for the pass's mutations (distinct from the harness's supersession actor). */
+  actor: z.string().min(1).default('bench:consolidation'),
+  /**
+   * Config overrides forwarded to `runConsolidation` (validated with the package's own schema so
+   * the dataset file cannot silently carry an out-of-range threshold).
+   */
+  config: ConsolidationConfigSchema.optional(),
 });
 
 export const GoldenDatasetSchema = z.strictObject({
@@ -149,6 +213,8 @@ export const GoldenDatasetSchema = z.strictObject({
   projects: z.array(ProjectFixtureSchema).min(1),
   events: z.array(EventFixtureSchema).min(1),
   supersessions: z.array(SupersessionFixtureSchema).default([]),
+  /** Opt-in: run the M14 automatic consolidation pass after extraction + declared supersessions. */
+  consolidation_pass: ConsolidationPassSchema.optional(),
   facts: z.array(FactSchema).min(1),
   queries: z.array(QueryFixtureSchema).min(1),
   contradictions: z.array(ContradictionGroupSchema).default([]),
@@ -163,6 +229,7 @@ export type MemoryMatcher = z.infer<typeof MemoryMatcherSchema>;
 export type SupersessionFixture = z.infer<typeof SupersessionFixtureSchema>;
 export type ContradictionGroup = z.infer<typeof ContradictionGroupSchema>;
 export type ConsolidationGroup = z.infer<typeof ConsolidationGroupSchema>;
+export type ConsolidationPass = z.infer<typeof ConsolidationPassSchema>;
 
 /** Canonical, stable rendering of a matcher — used to detect degenerate supersession pairs. */
 function matcherKey(matcher: MemoryMatcher): string {
@@ -210,7 +277,10 @@ function validateReferences(dataset: GoldenDataset, source: string): GoldenDatas
   }
   for (const group of dataset.contradictions) {
     requireProject(group.project, `contradiction '${group.id}'`);
-    requireFacts([group.authority, ...group.contradicted], `contradiction '${group.id}'`);
+    requireFacts(
+      [...(group.authority === undefined ? [] : [group.authority]), ...group.contradicted],
+      `contradiction '${group.id}'`,
+    );
   }
   for (const group of dataset.consolidation) requireFacts(group.facts, `consolidation '${group.id}'`);
   for (const supersession of dataset.supersessions) {

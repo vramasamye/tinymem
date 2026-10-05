@@ -115,6 +115,118 @@ describe('parseDataset', () => {
     ];
     expect(() => parseDataset(raw)).not.toThrow();
   });
+
+  test('accepts an explicit.remember event and defaults its session', () => {
+    const raw = minimal();
+    raw.events = [
+      {
+        kind: 'explicit.remember',
+        project: 'alpha',
+        offset_seconds: 30,
+        content: 'Decision: port 8081 for the API gateway',
+      },
+    ];
+    const dataset = parseDataset(raw);
+    expect(dataset.events[0]).toEqual({
+      kind: 'explicit.remember',
+      project: 'alpha',
+      session: 'sess-main',
+      offset_seconds: 30,
+      content: 'Decision: port 8081 for the API gateway',
+    });
+  });
+
+  test('rejects an explicit.remember event with an unknown declared type', () => {
+    const raw = minimal();
+    raw.events = [
+      { kind: 'explicit.remember', project: 'alpha', offset_seconds: 30, content: 'remember', type: 'bogus' },
+    ];
+    expect(() => parseDataset(raw)).toThrow();
+  });
+
+  test('accepts a consolidation_pass opt-in and defaults its actor', () => {
+    const raw = minimal();
+    raw.consolidation_pass = {};
+    const dataset = parseDataset(raw);
+    expect(dataset.consolidation_pass?.actor).toBe('bench:consolidation');
+    expect(dataset.consolidation_pass?.config).toBeUndefined();
+  });
+
+  test('forwards consolidation_pass config through the package schema and rejects an out-of-range threshold', () => {
+    const raw = minimal();
+    raw.consolidation_pass = { config: { decay: { archiveThreshold: 0.01 } } };
+    expect(parseDataset(raw).consolidation_pass?.config?.decay?.archiveThreshold).toBe(0.01);
+
+    const bad = minimal();
+    bad.consolidation_pass = { config: { nearDuplicate: { cosineThreshold: 0.1 } } };
+    expect(() => parseDataset(bad)).toThrow(/cosineThreshold/);
+  });
+
+  test('accepts a disputed contradiction group with both sides and no authority', () => {
+    const raw = minimal();
+    raw.facts = [
+      { key: 'fact-a', description: 'a', scenario: 'other', match: { content_contains: 'PostgreSQL' } },
+      { key: 'fact-b', description: 'b', scenario: 'other', match: { content_contains: 'Postgres' } },
+    ];
+    raw.contradictions = [
+      {
+        id: 'tie',
+        query: 'q',
+        project: 'alpha',
+        outcome: 'disputed',
+        contradicted: ['fact-a', 'fact-b'],
+      },
+    ];
+    expect(parseDataset(raw).contradictions[0]?.outcome).toBe('disputed');
+  });
+
+  test('rejects a resolved contradiction group without an authority fact', () => {
+    const raw = minimal();
+    raw.contradictions = [
+      { id: 'group', query: 'q', project: 'alpha', contradicted: ['fact-a'] },
+    ];
+    expect(() => parseDataset(raw)).toThrow(/requires the authority fact key/);
+  });
+
+  test('rejects a disputed contradiction group that declares an authority', () => {
+    const raw = minimal();
+    raw.facts = [
+      { key: 'fact-a', description: 'a', scenario: 'other', match: { content_contains: 'PostgreSQL' } },
+      { key: 'fact-b', description: 'b', scenario: 'other', match: { content_contains: 'Postgres' } },
+    ];
+    raw.contradictions = [
+      { id: 'tie', query: 'q', project: 'alpha', outcome: 'disputed', authority: 'fact-a', contradicted: ['fact-a', 'fact-b'] },
+    ];
+    expect(() => parseDataset(raw)).toThrow(/full tie/);
+  });
+
+  test('rejects a disputed contradiction group with a single side', () => {
+    const raw = minimal();
+    raw.contradictions = [
+      { id: 'tie', query: 'q', project: 'alpha', outcome: 'disputed', contradicted: ['fact-a'] },
+    ];
+    expect(() => parseDataset(raw)).toThrow(/both sides of the tie/);
+  });
+
+  test('rejects a contradiction group whose authority is also a contradicted fact', () => {
+    const raw = minimal();
+    raw.facts = [
+      { key: 'fact-a', description: 'a', scenario: 'other', match: { content_contains: 'PostgreSQL' } },
+      { key: 'fact-b', description: 'b', scenario: 'other', match: { content_contains: 'Postgres' } },
+    ];
+    raw.contradictions = [
+      { id: 'group', query: 'q', project: 'alpha', authority: 'fact-a', contradicted: ['fact-a', 'fact-b'] },
+    ];
+    expect(() => parseDataset(raw)).toThrow(/cannot also be a contradicted fact/);
+  });
+
+  test('rejects a contradiction group referencing an unknown authority fact', () => {
+    const raw = minimal();
+    raw.contradictions = [
+      { id: 'group', query: 'q', project: 'alpha', authority: 'ghost', contradicted: ['fact-a'] },
+    ];
+    expect(() => parseDataset(raw)).toThrow(/unknown fact 'ghost'/);
+  });
 });
 
 describe('golden datasets', () => {

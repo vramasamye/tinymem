@@ -22,7 +22,12 @@ import {
   temporalBucketFor,
   type QueryOutcome,
 } from './metrics';
-import { openBenchRuntime, type BenchRuntime, type CorpusMemory } from './runtime';
+import {
+  openBenchRuntime,
+  type BenchRuntime,
+  type ConsolidationPassSummary,
+  type CorpusMemory,
+} from './runtime';
 
 export interface DatasetRunReport {
   id: string;
@@ -31,6 +36,8 @@ export interface DatasetRunReport {
   extraction: ExtractHandlerResult;
   memories: number;
   superseded: number;
+  /** The automatic consolidation pass summary (null when the dataset did not opt in). */
+  consolidation: ConsolidationPassSummary | null;
   facts: Array<{ key: string; scenario: string; description: string; memory_id: string; content: string }>;
   queries: QueryOutcome[];
   metrics: AggregateMetrics;
@@ -185,6 +192,9 @@ export async function runDataset(
     }
 
     for (const group of dataset.contradictions) {
+      // A resolved group expects the authority fact to be returned with no contradicted side; a
+      // disputed group (full authority tie) expects BOTH sides excluded from current answers.
+      const expected = group.outcome === 'resolved' && group.authority !== undefined ? [group.authority] : [];
       outcomes.push(
         await runProbe(dataset, runtime, {
           id: `contradiction-${group.id}`,
@@ -192,7 +202,7 @@ export async function runDataset(
           project: group.project,
           query: group.query,
           max_tokens: 800,
-          expected: [group.authority],
+          expected,
           forbidden: group.contradicted,
         }),
       );
@@ -213,6 +223,7 @@ export async function runDataset(
       extraction: runtime.extraction,
       memories: runtime.corpus.length,
       superseded: runtime.superseded.size,
+      consolidation: runtime.consolidation,
       facts: dataset.facts.map((fact) => {
         const resolved = runtime.facts.get(fact.key)!;
         return {

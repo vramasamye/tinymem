@@ -11,8 +11,9 @@ export {
   GLOBAL_PROJECT_KEY,
   loadDatasets,
   parseDataset,
-  type ContradictionGroup,
   type ConsolidationGroup,
+  type ConsolidationPass,
+  type ContradictionGroup,
   type DatasetEvent,
   type DatasetFact,
   type DatasetQuery,
@@ -28,6 +29,7 @@ export {
   openBenchRuntime,
   type BenchRuntime,
   type BenchRuntimeOptions,
+  type ConsolidationPassSummary,
   type CorpusMemory,
   type ResolvedFact,
 } from './runtime';
