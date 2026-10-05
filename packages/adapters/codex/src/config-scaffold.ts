@@ -22,6 +22,20 @@ export const CODEX_TOML_END_MARKER = '# --- onememory:end ---';
 
 export const ONEMEMORY_MCP_SERVER_NAME = 'onememory';
 
+/**
+ * The default stdio server command: the `onemem-mcp` bin entry as a clean install links it.
+ *
+ * npm/bun link every `bin` declared in a published package's package.json into
+ * `node_modules/.bin/`, so this path exists in ANY external project that installed onememory.
+ * It is relative to the launch directory — the same working-directory assumption the stdio block
+ * already documents for the default embedded data dir (`.onememory` under the launch dir), so a
+ * project-scope install launched from the project root works with no PATH assumption and no
+ * repository-relative source path (backlog cross-follow-up #9). The bin entrypoint is directly
+ * executable through its `#!/usr/bin/env bun` shebang. `mcpCommand` (or `cwd`) overrides it for
+ * launches from elsewhere (user-scope installs pass absolute paths).
+ */
+export const PROJECT_MCP_COMMAND = './node_modules/.bin/onemem-mcp';
+
 export interface CodexMcpScaffoldOptions {
   /** UUIDv7 project id (`scope.project_id` for the server). */
   projectId: string;
@@ -36,7 +50,11 @@ export interface CodexMcpScaffoldOptions {
    * `http:` only — Phase 1 has no authentication, so no bearer token or headers are emitted.
    */
   url?: string;
-  /** stdio command that starts `onemem-mcp` (default `onemem-mcp`, the published bin name). */
+  /**
+   * stdio command that starts `onemem-mcp`. Default: `PROJECT_MCP_COMMAND` — the published bin
+   * link under the launch dir's `node_modules/.bin/` (see its doc); pass an absolute path or a
+   * wrapper + args for launches from outside the project root.
+   */
   mcpCommand?: string;
   /** Arguments for the command (rarely needed; the bin is env-configured). */
   args?: string[];
@@ -97,7 +115,7 @@ const TOOL_BUDGET_COMMENT: readonly string[] = [
 /** Render the marked `[mcp_servers.onememory]` block. */
 export function renderCodexMcpServerToml(options: CodexMcpScaffoldOptions): string {
   if (options.transport === 'http') return renderHttpBlock(options);
-  const command = options.mcpCommand ?? 'onemem-mcp';
+  const command = options.mcpCommand ?? PROJECT_MCP_COMMAND;
   const profile = options.profile ?? 'default8';
   const agentId = options.agentId ?? 'codex';
   const startupTimeoutSec = options.startupTimeoutSec ?? 20;
