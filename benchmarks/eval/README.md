@@ -32,10 +32,13 @@ benchmarks/
 bun run --cwd benchmarks/eval bench:run          # writes benchmarks/results/baseline.{json,md}
 bun run --cwd benchmarks/eval bench:run --json-only
 bun run --cwd benchmarks/eval typecheck
-bun test benchmarks/eval                          # the CI gate (see below)
+bun test benchmarks/eval                          # the gate test (see below)
 ```
 
-`bench:run` exits non-zero when a gate fails, so it doubles as a CI step.
+`.github/workflows/ci.yaml` runs `bun test` on every push to `main` and every pull request, so the
+gate test in `src/harness.test.ts` re-checks the thresholds on every push. `bench:run` exits non-zero
+when a gate fails, so it is also usable directly as a CI step (e.g. from a scheduled nightly job that
+refreshes `benchmarks/results/`).
 
 ## Metrics
 

@@ -26,10 +26,11 @@ contradiction accuracy, consolidation quality); CI thresholds; results committed
 | Script | `bench:run` (in `benchmarks/eval/package.json`) writes the results; exits non-zero on a gate failure |
 | Docs | `benchmarks/eval/README.md` + this report |
 
-**Explicitly out of scope / not delivered:** nightly drift reporting (M11.2 mentions it; there is no
-scheduler or CI config in the repo yet — the gate is `bun test`, as the mission specified), and the
-full M11b eval (retrieval precision/recall and token efficiency *are* delivered here; the separate
-"full memory-quality eval" mission M11b remains open per the phased plan).
+**Explicitly out of scope / not delivered:** nightly drift reporting (M11.2 mentions it; the repo's
+existing `.github/workflows/ci.yaml` runs `bun test` on push/PR, which includes the gate test, but
+there is no scheduled job yet — see follow-up 4), and the full M11b eval (retrieval precision/recall
+and token efficiency *are* delivered here; the separate "full memory-quality eval" mission M11b
+remains open per the phased plan).
 
 ## 2. Driving the real engine (design decision)
 
@@ -160,17 +161,33 @@ bun.lock                                             (regenerated for the new wo
 ## 8. Validation evidence
 
 - `bun run --cwd benchmarks/eval typecheck` — clean (tsc --noEmit, 0 errors).
-- `bun test benchmarks/eval` — **36 pass, 0 fail** (4 files; 110 expect calls; ~12 s). Includes the
-  full harness run over all five datasets (~9 s) and a determinism check (two runs of the temporal
-  dataset produce byte-identical metrics).
+- `bun test benchmarks/eval` — **37 pass, 0 fail** (4 files; 112 expect calls; ~10 s). Includes the
+  full harness run over all five datasets (~7.5 s), the breach proof, and a determinism check (two
+  runs of the temporal dataset produce byte-identical metrics).
 - `bun test` at the repository root — **1091 pass, 22 skip, 0 fail** (85 files; 10362 expect calls;
   ~316 s). The 22 skips are the Postgres-server-gated integration tests (no `ONEMEMORY_PG_URL`), as
-  expected.
+  expected. CI (`.github/workflows/ci.yaml`) runs this same command on push/PR.
 - `bench:run` — all six gates pass; writes `benchmarks/results/baseline.{json,md}`; `network attempts: 0`.
 - **Gate-failure proof:** `retrieval_precision_at_k` was temporarily lowered from 0.7 to 0.99; the
   gate test then failed (`report.gates.passed` false) and the threshold was restored to 0.7. The
-  durable form of this proof is the test *"a breached threshold fails the live report (the gate is
-  not decorative)"* in `src/harness.test.ts`.
+  durable form of this proof is the in-test breach assertion in `src/harness.test.ts`.
+
+### 8.1 Post-review fixes
+
+Coordinator review (Standards + Spec) fix list, applied after the first four commits:
+
+| # | Fix | Where |
+|---|---|---|
+| 1 | Replaced the dead `void supersession` no-op loop with real validation: a supersession whose loser and winner matchers are identical is rejected at load time (a memory cannot supersede itself). Added `matcherKey` + two tests. | `src/dataset.ts`, `src/dataset.test.ts` |
+| 2 | Extracted one shared probe-runner (`runProbe` + `ProbeSpec`); the declared-query loop and the contradiction loop now both call it instead of repeating the build-ids → search → push-outcome shape. | `src/harness.ts` |
+| 3 | Reused the pass-condition helper in `computeContradictionMetrics` and renamed `satisfies` → `meetsExpectations`. | `src/metrics.ts` |
+| 4 | Removed unused `max_memories` (schema + `searchRequest` plumbing) and the unused `BenchRuntimeOptions.dataDir` (the runtime now always owns a fresh temp data dir). | `src/dataset.ts`, `src/harness.ts`, `src/runtime.ts` |
+| 5 | Made `harness.test.ts` order-independent: the order-coupled second test was merged into the harness test, which shares one run for the live assertions and the breach proof; no shared mutable state remains. | `src/harness.test.ts` |
+| 6 | Corrected the CI claim: `.github/workflows/ci.yaml` exists and runs `bun test` on push/PR (this file's gate test is already CI-enforced); the real follow-up is a scheduled `bench:run`; added the n=1 contradiction-coverage caveat. | this report, `benchmarks/eval/README.md`, `src/harness.test.ts` docstring |
+
+The fixes are refactors plus one genuine new validation; re-running `bench:run` after them produced
+**byte-identical `metrics` and `gates`** (only `generated_at` and per-run uuids changed), so the
+committed baseline is unchanged.
 
 ## 9. Follow-ups
 
@@ -183,8 +200,17 @@ bun.lock                                             (regenerated for the new wo
 3. **Retrieval-design decision (coordinator):** whether project scope should become a hard filter for
    scoped queries. If yes, `cross_project_leakage_rate` can be gated at 0 and the pollution dataset's
    forbidden facts become hard invariants.
-4. **CI:** when a CI config lands, run `bun run --cwd benchmarks/eval bench:run` (exits non-zero on a
-   gate failure) and publish `benchmarks/results/baseline.md` as the comparison point.
+4. **CI:** `.github/workflows/ci.yaml` (pre-existing, on push to `main` and every PR) already runs
+   `bun test`, which includes the gate test in `src/harness.test.ts` — so every push re-checks the
+   thresholds. The remaining work is a *scheduled* job: a nightly `bun run --cwd benchmarks/eval
+   bench:run` (exits non-zero on a gate failure). Note when wiring it: the committed
+   `baseline.json` embeds per-run values (`generated_at`, uuidv7 `projectId`/`memory_id`), so a raw
+   file diff always shows churn — the drift signal to compare/commit is the `metrics` + `gates`
+   blocks, not the whole file.
+5. **Contradiction coverage is thin (n=1 group).** The reported `contradiction_accuracy` is measured
+   over a single contradiction pair, which is enough to prove the metric and the pre-M14 baseline but
+   not enough to gate on. Fold more contradiction groups into the M11b larger dataset (follow-up 2)
+   so the post-M14 gate flip has statistically meaningful coverage.
 
 ## 10. Dependencies and assumptions
 
