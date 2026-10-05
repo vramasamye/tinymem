@@ -17,6 +17,7 @@
 import type { EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
 
 import { authorityViewOf, mergeKeeperOrder } from './authority';
+import { contradictsHeuristically, type ContradictionDetector } from './contradiction';
 import type { MergeRecord } from './types';
 
 export interface MergePassResult {
@@ -31,14 +32,27 @@ export interface MergePassResult {
  * active pool; a crash between mutations is healed by the next pass (each pair is re-derived
  * from the live pool). Per-item failures (an illegal transition after a concurrent write)
  * are skipped with a reason; a real store failure fails the pass.
+ *
+ * A cluster that still contains a CONTRADICTORY pair (per the same detector the contradiction
+ * pass uses) is refused outright — normally unreachable (the contradiction pass runs first
+ * and resolves every detected pair), but a skipped resolution must not turn into a silent
+ * absorption: the pair stays in the pool for dispute/resolution instead (review finding P1-2).
  */
 export async function runMergePass(
   store: Store,
   pool: readonly MemoryRecord[],
   vectors: EmbeddingIndex,
   embeddings: ReadonlyMap<string, readonly number[]>,
-  options: { actor: string; now: Date; cosineThreshold: number; neighbors: number },
+  options: {
+    actor: string;
+    now: Date;
+    cosineThreshold: number;
+    neighbors: number;
+    /** Same detector the contradiction pass used — one definition of "conflict". */
+    detector?: ContradictionDetector;
+  },
 ): Promise<MergePassResult> {
+  const detector = options.detector ?? contradictsHeuristically;
   const records: MergeRecord[] = [];
   const warnings: string[] = [];
   const nowIso = options.now.toISOString();
@@ -94,6 +108,17 @@ export async function runMergePass(
 
     for (const component of components.values()) {
       if (component.length < 2) continue;
+      // The arbitration guard: a merge must never absorb a conflicting claim. Any flagged
+      // pair disqualifies the WHOLE cluster — pruning only the flagged members would resolve
+      // the conflict implicitly (the model's rule: never resolve by dropping members).
+      const flagged = firstContradiction(component, detector);
+      if (flagged !== null) {
+        warnings.push(
+          `skipped near-duplicate cluster of ${component.length}: contradiction between ` +
+            `${flagged.aId} and ${flagged.bId} is unresolved — left for dispute/resolution`,
+        );
+        continue;
+      }
       await mergeCluster(store, component, pairCosine, { actor: options.actor, nowIso, records, warnings });
     }
   }
@@ -103,6 +128,19 @@ export async function runMergePass(
     sourcesClosed: records.reduce((total, record) => total + record.merged_sources.length, 0),
     warnings,
   };
+}
+
+/** The first detector-flagged pair in a cluster, or null when the cluster is conflict-free. */
+function firstContradiction(
+  component: readonly MemoryRecord[],
+  detector: ContradictionDetector,
+): { aId: string; bId: string } | null {
+  for (let i = 0; i < component.length; i += 1) {
+    for (let j = i + 1; j < component.length; j += 1) {
+      if (detector(component[i]!, component[j]!)) return { aId: component[i]!.id, bId: component[j]!.id };
+    }
+  }
+  return null;
 }
 
 /** Merge ONE cluster into its keeper (the authority-ordered survivor). */

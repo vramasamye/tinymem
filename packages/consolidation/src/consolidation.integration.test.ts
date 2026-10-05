@@ -24,6 +24,7 @@ import type { MemoryRecord, NewMemory } from '@onememory/core';
 import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
 
 import { runConsolidation } from './run';
+import { runMergePass } from './merge';
 import { TableEmbedder } from './testing';
 
 const VECTOR_MODEL = 'test/model';
@@ -56,6 +57,10 @@ const VECTORS: Record<string, number[]> = {
   'Decision: use PostgreSQL for the main store': E(7),
   'Cache TTL: 300 seconds': E(9),
   'Cache TTL: 900 seconds': E(10),
+  'Version: Bun 1.2': E(11),
+  'Version: Bun 1.3': E(11),
+  'Timeout: 30 seconds': E(17),
+  'Timeout: 60 seconds': E(17),
   'Max depth: 10': E(13),
   'Max depth: 20': E(14),
   'Retry limit: 3': E(15),
@@ -161,6 +166,12 @@ beforeAll(async () => {
   await insert(world, memoryOf(world, { content: 'The suite runs on bun test', observed_at: '2026-08-03T00:00:00.000Z', confidence: 0.65 }));
   await insert(world, memoryOf(world, { content: 'bun test is the test runner', observed_at: '2026-08-05T00:00:00.000Z', confidence: 0.65 }));
 
+  // A contradictory pair with IDENTICAL embeddings (cosine 1.0 ≥ 0.97): a merge must never
+  // pre-empt the arbitration — the pair has to reach authority resolution (or a dispute),
+  // never a silent absorption (P1 review finding 2).
+  await insert(world, memoryOf(world, { content: 'Version: Bun 1.2', observed_at: '2026-05-01T00:00:00.000Z' }));
+  await insert(world, memoryOf(world, { content: 'Version: Bun 1.3', observed_at: '2026-08-01T00:00:00.000Z' }));
+
   // A corroborated, non-contradicting cluster about docker deployments.
   await insert(world, memoryOf(world, { content: 'Deployed the api with docker', observed_at: '2026-09-20T00:00:00.000Z', confidence: 0.7, importance: 0.8 }));
   await insert(world, memoryOf(world, { content: 'docker deploy completed for the api service', observed_at: '2026-09-22T00:00:00.000Z', confidence: 0.7, importance: 0.8 }));
@@ -226,8 +237,9 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
       'Version: Node 24',
     ]);
 
-    // The contradiction pairs this run resolved (the third pair, 20×24, is subsumed by the chain).
-    expect(report.contradictions.resolved).toBe(2);
+    // The contradiction pairs this run resolved: the Node chain (two resolutions — the third
+    // pair, 20×24, is subsumed by the chain), the Bun pair, and the port pair (a full tie).
+    expect(report.contradictions.resolved).toBe(3);
     expect(report.contradictions.disputed_pairs).toBe(1);
     expect(report.warnings).toEqual([]);
   });
@@ -258,6 +270,42 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     ).toBeTrue();
   });
 
+  test('a contradictory pair with near-identical embeddings is arbitrated by authority, never merged', async () => {
+    // The pair that would tempt a merge: identical vectors (cosine 1.0 ≥ 0.97), same scope,
+    // same type — but the same attribute with incompatible values. The arbitration must run
+    // BEFORE the merge can absorb the pair (otherwise the conflict disappears without a
+    // dispute or a `contradicts` edge).
+    const bun12 = world.inserted.get('Version: Bun 1.2')!;
+    const bun13 = world.inserted.get('Version: Bun 1.3')!;
+
+    // The pair reached AUTHORITY resolution (rule 'newer'), not a merge: the loser closed at
+    // the winner's observation, audited as a contradiction.
+    const loser = await world.storage.store.getMemory(bun12.id);
+    expect(loser?.status).toBe('superseded');
+    expect(loser?.superseded_by).toBe(bun13.id);
+    expect(loser?.valid_until).toBe('2026-08-01T00:00:00.000Z');
+    const loserAudit = await world.storage.store.listMemoryEvents(bun12.id);
+    const transition = loserAudit.find((event) => event.action === 'status_changed');
+    expect(transition?.details['rule']).toBe('newer');
+    expect(transition?.details['contradiction']).toBe(true);
+
+    // The pair is conflict-linked; the winner stays current.
+    const edges = await world.storage.store.listEdges(bun12.id);
+    expect(edges.some((edge) => edge.relation === 'contradicts')).toBeTrue();
+    const winner = await world.storage.store.getMemory(bun13.id);
+    expect(winner?.status).toBe('active');
+
+    // NEITHER row carries a `merged` audit event — a merge never absorbed the conflict.
+    for (const row of [bun12, bun13]) {
+      const audit = await world.storage.store.listMemoryEvents(row.id);
+      expect(audit.some((event) => event.action === 'merged')).toBeFalse();
+    }
+    const current = await world.storage.store.queryCurrent({ project_id: world.projectId });
+    expect(current.filter((memory) => memory.content.startsWith('Version: Bun')).map((m) => m.content)).toEqual([
+      'Version: Bun 1.3',
+    ]);
+  });
+
   test('near-duplicates merge into their highest-authority survivor with a merged audit row', async () => {
     const m1 = world.inserted.get('Tests run with bun test')!;
     const m2 = world.inserted.get('The suite runs on bun test')!;
@@ -279,13 +327,56 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     expect((merged?.details['merged_from'] as string[]).sort()).toEqual([m1.id, m2.id].sort());
     expect(merged?.details['evidence_union_count']).toBe(3);
 
-    // One active statement of the fact remains; the absorbed rows stay in history.
+    // One active EPISODIC statement of the fact remains (the derived semantic row cites it);
+    // the absorbed rows stay in history.
     const current = await world.storage.store.queryCurrent({ project_id: world.projectId });
-    expect(current.filter((memory) => memory.content.includes('bun test')).map((memory) => memory.content)).toEqual([
-      'bun test is the test runner',
-    ]);
+    expect(
+      current
+        .filter((memory) => memory.type === 'episodic' && memory.content.includes('bun test'))
+        .map((memory) => memory.content),
+    ).toEqual(['bun test is the test runner']);
     const history = await world.storage.store.historyOf(m1.id);
     expect(history.some((memory) => memory.id === keeper.id)).toBeTrue();
+  });
+
+  test('near-identical episodes corroborate into one semantic memory before the merge collapses them', async () => {
+    // The starvation shape (P2 review finding 4): three near-identical episodic rows would
+    // first merge into one keeper and never reach the ≥ 3 corroboration the derivation needs.
+    // The derivation now runs BEFORE the merge: the episodes derive first (one semantic row,
+    // `derived_from` edges to every source), then the merge collapses the duplicates — the
+    // cluster members stay (the keeper active, the absorbed rows in history with evidence).
+    const m1 = world.inserted.get('Tests run with bun test')!;
+    const m2 = world.inserted.get('The suite runs on bun test')!;
+    const keeper = world.inserted.get('bun test is the test runner')!;
+
+    const current = await world.storage.store.queryCurrent({ project_id: world.projectId });
+    const derived = current.find(
+      (memory) => memory.type === 'semantic' && memory.subtype === 'semantic.derived' && memory.content === keeper.content,
+    );
+    expect(derived).toBeDefined();
+    if (!derived) throw new Error('the near-identical cluster was not derived');
+
+    // The representative is the newest phrasing (all equally central — a tie broken by the
+    // authority order); corroboration raised confidence and importance over the strongest member.
+    expect(derived.observed_at).toBe('2026-08-05T00:00:00.000Z');
+    expect(derived.valid_from).toBe('2026-08-01T00:00:00.000Z');
+    expect(derived.confidence).toBe(0.75);
+    expect(derived.importance).toBe(0.7);
+    expect(derived.provenance.evidence).toHaveLength(3);
+
+    // `derived_from` edges to EVERY source — including the two the merge later absorbed.
+    const edges = await world.storage.store.listEdges(derived.id);
+    const derivedFrom = edges.filter((edge) => edge.relation === 'derived_from');
+    expect(derivedFrom.map((edge) => edge.to_memory_id).sort()).toEqual([m1.id, m2.id, keeper.id].sort());
+
+    // Cluster members retained: the keeper stays active; both absorbed rows stay stored with
+    // their evidence (history rows, never deleted).
+    expect((await world.storage.store.getMemory(keeper.id))?.status).toBe('active');
+    for (const absorbed of [m1, m2]) {
+      const row = await world.storage.store.getMemory(absorbed.id);
+      expect(row?.status).toBe('superseded');
+      expect((row?.provenance.evidence.length ?? 0)).toBeGreaterThan(0);
+    }
   });
 
   test('repeated related facts consolidate into one semantic memory with derived_from edges', async () => {
@@ -294,7 +385,14 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     const d3 = world.inserted.get('Shipped the api through docker')!;
 
     const current = await world.storage.store.queryCurrent({ project_id: world.projectId });
-    const derived = current.find((memory) => memory.type === 'semantic' && memory.subtype === 'semantic.derived');
+    // Pinned to the docker cluster (the near-identical bun-test cluster derives its own
+    // semantic row now that derivation runs before the merge).
+    const derived = current.find(
+      (memory) =>
+        memory.type === 'semantic' &&
+        memory.subtype === 'semantic.derived' &&
+        memory.content.includes('docker'),
+    );
     expect(derived).toBeDefined();
     if (!derived) throw new Error('the docker cluster was not derived');
 
@@ -474,5 +572,46 @@ describe('the Phase 3 DoD scenario (real embedded storage)', () => {
     expect(asOf.filter((memory) => memory.content.startsWith('Retry limit')).map((m) => m.content)).toEqual([
       'Retry limit: 3',
     ]);
+  });
+
+  test('the merge pass refuses a contradictory cluster handed to it directly (defense in depth)', async () => {
+    // Normally unreachable (the contradiction pass runs first and resolves every detected
+    // pair), but a skipped resolution must not turn into a silent absorption: two
+    // contradictory statements with IDENTICAL vectors (cosine 1.0), handed straight to the
+    // merge pass — it refuses the cluster and leaves the pair for dispute/resolution.
+    const t30 = await insert(
+      world,
+      memoryOf(world, { content: 'Timeout: 30 seconds', observed_at: '2026-09-25T00:00:00.000Z' }),
+    );
+    const t60 = await insert(
+      world,
+      memoryOf(world, { content: 'Timeout: 60 seconds', observed_at: '2026-09-26T00:00:00.000Z' }),
+    );
+    const embeddings = new Map<string, readonly number[]>([
+      [t30.id, VECTORS['Timeout: 30 seconds']!],
+      [t60.id, VECTORS['Timeout: 60 seconds']!],
+    ]);
+    const result = await runMergePass(world.storage.store, [t30, t60], world.storage.vectors, embeddings, {
+      actor: 'test:consolidation',
+      now: NOW,
+      cosineThreshold: 0.97,
+      neighbors: 10,
+    });
+
+    // No cluster merged, no row absorbed; the refusal is explicit, never silent.
+    expect(result.records).toEqual([]);
+    expect(result.sourcesClosed).toBe(0);
+    expect(
+      result.warnings.some(
+        (warning) => warning.includes('contradiction') && warning.includes(t30.id) && warning.includes(t60.id),
+      ),
+    ).toBeTrue();
+
+    // Both rows untouched — left in the pool for dispute/resolution.
+    for (const row of [t30, t60]) {
+      const record = await world.storage.store.getMemory(row.id);
+      expect(record?.status).toBe('active');
+      expect(record?.superseded_by).toBeUndefined();
+    }
   });
 });

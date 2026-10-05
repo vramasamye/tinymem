@@ -4,20 +4,31 @@
  * scheduler (a coordinator follow-up) and the `onemem consolidate` CLI command both call this.
  *
  * Pass order (each is idempotent and re-derives from the live pool):
- *   1. near-duplicate merge    — collapses same-fact rows into their highest-authority survivor
- *   2. contradiction resolution — authority order, ties `disputed`, winners supersede losers
- *   3. episodic → semantic     — corroborated, non-contradicting clusters become semantic rows
+ *   1. contradiction resolution — authority order, ties `disputed`, winners supersede losers
+ *   2. episodic → semantic     — corroborated, non-contradicting clusters become semantic rows
+ *   3. near-duplicate merge    — collapses same-fact rows into their highest-authority survivor
  *   4. decay / archive         — prominence below threshold → audited `archived`
  *
+ * WHY this order (review findings P1-2 and P2-4): contradictions resolve BEFORE the merge —
+ * a merge must never absorb a conflicting claim (the pair reaches dispute or authority
+ * resolution instead, and the merge pass itself refuses a cluster that still contains a
+ * flagged pair, defense in depth for a skipped resolution). Contradictions also resolve
+ * before derivation (a derived cluster must be contradiction-free). Derivation runs BEFORE
+ * the merge: near-identical episodes are corroborating observations — they feed the semantic
+ * memory first (`derived_from` edges to every source), then the merge collapses the
+ * duplicates, so three near-identical rows become ONE semantic memory instead of one keeper
+ * and no corroboration. The cluster members stay: the keeper active, the absorbed rows in
+ * history with their evidence.
+ *
  * Degradation is explicit, never silent (memory-model.md §1.6): without an embedder or a
- * matching embedding index the vector-dependent passes (merge, derivation) are skipped with a
+ * matching embedding index the vector-dependent passes (derivation, merge) are skipped with a
  * warning; contradiction resolution and decay always run — they need no model and no vectors.
  */
 
 import type { Embedder, EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
 import type { ModelRouter } from '@onememory/llm';
 
-import { runContradictionPass } from './contradiction';
+import { runContradictionPass, type ContradictionDetector } from './contradiction';
 import { runDecayPass } from './decay';
 import { runDerivationPass } from './derive';
 import { runMergePass } from './merge';
@@ -37,6 +48,12 @@ export interface ConsolidationInput {
   embedder?: Embedder;
   /** Optional LLM merge tier for semantic derivation (router operation `consolidate`). */
   router?: ModelRouter;
+  /**
+   * Contradiction detector override (default: the heuristic). ONE detector is shared by the
+   * contradiction pass, the merge pass's refusal guard, and the derivation cluster check —
+   * they must agree on what a conflict is, or a merge could absorb what a pass never saw.
+   */
+  detector?: ContradictionDetector;
   /**
    * Project scope: a project id runs one project's pass; `undefined` runs every scope. (A
    * user-level-ONLY pass needs a `MemoryQuery` null-scope probe the Store port does not expose —
@@ -89,29 +106,10 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
     );
   }
 
-  // --- pass 1: near-duplicate merge -------------------------------------------
-  let mergeReport: ConsolidationReport['merge'] = { clusters: 0, sources_closed: 0, records: [] };
-  if (vectors !== undefined && embeddings !== undefined) {
-    try {
-      const merged = await runMergePass(input.store, pool, vectors, embeddings, {
-        actor,
-        now: now(),
-        cosineThreshold: config.nearDuplicate.cosineThreshold,
-        neighbors: config.nearDuplicate.neighbors,
-      });
-      mergeReport = {
-        clusters: merged.records.length,
-        sources_closed: merged.sourcesClosed,
-        records: merged.records,
-      };
-      warnings.push(...merged.warnings);
-      pool = exclude(pool, merged.records.flatMap((record) => record.merged_sources.map((source) => source.id)));
-    } catch (error) {
-      warnings.push(`near-duplicate merge pass failed: ${errorMessage(error)}`);
-    }
-  }
-
-  // --- pass 2: contradiction resolution (no vectors, no model needed) ----------
+  // --- pass 1: contradiction resolution (no vectors, no model needed) ----------
+  // FIRST: a merge must never absorb a conflicting claim, and a derived cluster must be
+  // contradiction-free. Every detected pair is arbitrated (supersede by rule, or both disputed
+  // on a tie) — never skipped for a temporal shape.
   let contradictions: ConsolidationReport['contradictions'] = {
     pairs: 0,
     resolved: 0,
@@ -120,7 +118,10 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
     skipped: [],
   };
   try {
-    const resolved = await runContradictionPass(input.store, pool, { actor });
+    const resolved = await runContradictionPass(input.store, pool, {
+      actor,
+      ...(input.detector === undefined ? {} : { detector: input.detector }),
+    });
     const supersededRecords = resolved.records.filter((record) => record.outcome === 'superseded');
     const disputedRecords = resolved.records.filter((record) => record.outcome === 'disputed');
     contradictions = {
@@ -142,7 +143,10 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
     warnings.push(`contradiction pass failed: ${errorMessage(error)}`);
   }
 
-  // --- pass 3: episodic → semantic derivation ----------------------------------
+  // --- pass 2: episodic → semantic derivation ----------------------------------
+  // BEFORE the merge: near-identical episodes are corroborating observations — they feed the
+  // semantic memory first (`derived_from` edges to every source), then the merge collapses
+  // the duplicates (the keeper stays active; the absorbed rows stay in history).
   let derivations: ConsolidationReport['derivations'] = { derived: 0, records: [], skipped: [] };
   if (vectors !== undefined && embeddings !== undefined) {
     try {
@@ -154,6 +158,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
         {
           actor,
           ...(input.router === undefined ? {} : { router: input.router }),
+          ...(input.detector === undefined ? {} : { detector: input.detector }),
           minClusterSize: config.derivation.minClusterSize,
           minClusterCosine: config.derivation.minClusterCosine,
           maxClusterSize: config.derivation.maxClusterSize,
@@ -163,6 +168,32 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
       warnings.push(...derived.warnings);
     } catch (error) {
       warnings.push(`derivation pass failed: ${errorMessage(error)}`);
+    }
+  }
+
+  // --- pass 3: near-duplicate merge ---------------------------------------------
+  // LAST of the mutating passes over the episodic rows: duplicates collapse only after the
+  // conflicts are arbitrated and the corroboration is recorded. The pass itself also refuses
+  // a cluster that still contains a flagged pair (defense in depth for a skipped resolution).
+  let mergeReport: ConsolidationReport['merge'] = { clusters: 0, sources_closed: 0, records: [] };
+  if (vectors !== undefined && embeddings !== undefined) {
+    try {
+      const merged = await runMergePass(input.store, pool, vectors, embeddings, {
+        actor,
+        now: now(),
+        cosineThreshold: config.nearDuplicate.cosineThreshold,
+        neighbors: config.nearDuplicate.neighbors,
+        ...(input.detector === undefined ? {} : { detector: input.detector }),
+      });
+      mergeReport = {
+        clusters: merged.records.length,
+        sources_closed: merged.sourcesClosed,
+        records: merged.records,
+      };
+      warnings.push(...merged.warnings);
+      pool = exclude(pool, merged.records.flatMap((record) => record.merged_sources.map((source) => source.id)));
+    } catch (error) {
+      warnings.push(`near-duplicate merge pass failed: ${errorMessage(error)}`);
     }
   }
 
