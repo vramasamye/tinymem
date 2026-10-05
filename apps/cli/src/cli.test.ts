@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { main } from './bin';
+import { jsonOf } from './test-support';
 import type { RememberOutcome } from '@onememory/api/runtime';
 
 /** Captured process seam: everything `main()` prints, split by stream. */
@@ -36,10 +37,6 @@ async function cli(argv: string[]): Promise<Captured> {
     },
   });
   return { out, err, exitCode };
-}
-
-function jsonOf(captured: Captured): any {
-  return JSON.parse(captured.out);
 }
 
 let root: string;

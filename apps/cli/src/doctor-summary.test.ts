@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { writeDaemonLock, type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
 
 import { main } from './bin';
+import { jsonOf } from './test-support';
 
 const BOOT_TIMEOUT = 60_000;
 
@@ -42,10 +43,6 @@ async function cli(argv: string[]): Promise<Captured> {
     },
   });
   return { out, err, exitCode };
-}
-
-function jsonOf(captured: Captured): any {
-  return JSON.parse(captured.out);
 }
 
 function projectDir(name: string): string {
