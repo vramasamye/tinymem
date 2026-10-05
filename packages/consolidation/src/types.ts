@@ -26,11 +26,34 @@ export const DEFAULT_CONSOLIDATION_ACTOR = 'job:consolidate';
  */
 export const CONSOLIDATION_HALF_LIFE_DAYS = DEFAULT_HALF_LIFE_DAYS;
 
+/**
+ * The lowest accepted near-duplicate cosine (review finding P2-5). The default stays 0.97 (the
+ * retrieval-dedupe threshold); a config may TIGHTEN it, but below 0.9 the "near-duplicate"
+ * merge stops collapsing near-duplicates and starts collapsing distinct facts — so the floor
+ * is mandatory, not a suggestion.
+ */
+export const MIN_NEAR_DUPLICATE_COSINE = 0.9;
+
+/**
+ * The lowest accepted derivation cluster size. memory-model.md §9 makes ≥ 3 corroborating
+ * episodes the floor for a semantic memory (one semantic row is never derived from a pair);
+ * the boundary enforces it instead of trusting the caller.
+ */
+export const MIN_DERIVATION_CLUSTER_SIZE = 3;
+
 export const ConsolidationConfigSchema = z.looseObject({
   nearDuplicate: z
     .looseObject({
       /** Cosine at and above which two same-scope, same-type memories are near-duplicates. */
-      cosineThreshold: z.number().min(0).max(1).optional(),
+      cosineThreshold: z
+        .number()
+        .min(
+          MIN_NEAR_DUPLICATE_COSINE,
+          `nearDuplicate.cosineThreshold must be at least ${MIN_NEAR_DUPLICATE_COSINE} — below that a ` +
+            'near-duplicate merge starts collapsing distinct facts (default 0.97, the retrieval-dedupe threshold)',
+        )
+        .max(1)
+        .optional(),
       /** KNN fan-out per memory when probing the vector channel. */
       neighbors: z.number().int().min(1).max(64).optional(),
     })
@@ -38,7 +61,16 @@ export const ConsolidationConfigSchema = z.looseObject({
   derivation: z
     .looseObject({
       /** Episodes needed before a semantic memory may be derived (memory-model.md §9: ≥ 3). */
-      minClusterSize: z.number().int().min(2).max(32).optional(),
+      minClusterSize: z
+        .number()
+        .int()
+        .min(
+          MIN_DERIVATION_CLUSTER_SIZE,
+          `derivation.minClusterSize must be at least ${MIN_DERIVATION_CLUSTER_SIZE} — one semantic memory ` +
+            'is derived from at least 3 corroborating episodes, never from a pair (memory-model.md §9)',
+        )
+        .max(32)
+        .optional(),
       /** Relatedness within a cluster (below the near-duplicate threshold, above noise). */
       minClusterCosine: z.number().min(0).max(1).optional(),
       /** Cluster size cap — one derivation is bounded work. */
