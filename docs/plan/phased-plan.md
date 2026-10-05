@@ -57,9 +57,12 @@ Definition of done (Phase 2):
 `642787e`; semantics synced in `docs/architecture/memory-model.md` §10). Drift marking, the
 zero-token oracle, rename retargeting, and code-symbol staleness shipped with M4a–4e; re-index
 orchestration (drift-scan scheduling, drifted-path-only reindex) and the <300-token architecture
-digest shipped with `mission/4f-reindex-digest` (merged `56d67f2`). One Phase 2 check remains
-undemonstrated: the "How does authentication work?" → procedures-with-code-refs retrieval query
-(needs an explicit acceptance test — backlog follow-up).
+digest shipped with `mission/4f-reindex-digest` (merged `56d67f2`). M4g added an end-to-end
+acceptance test (`docs/plan/mission-reports/mission-4g-procedures-acceptance.md`): the real
+pipeline returns a procedural answer and stores code refs for real fixture files, but the
+retrieval response does not expose those refs. The "How does authentication work?" →
+procedures-with-code-refs DoD line therefore remains **incomplete**; see the M4g follow-up in
+`docs/backlog/issues.md`.
 
 ## Phase 3 — Intelligent memory
 

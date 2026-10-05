@@ -384,3 +384,27 @@ with provenance.
    current (not guaranteed). Needs a core/storage review + tests.
 5. **Symbol-level drift resolution, chunked re-index for whole-repo rewrites, and server-mode
    verification of the loop** [P3].
+
+---
+
+## Cross-mission follow-ups — raised by M4g (procedures acceptance)
+
+M4g added an honest end-to-end acceptance test (`docs/plan/mission-reports/mission-4g-procedures-acceptance.md`).
+It proves that the real extraction and retrieval pipeline returns a procedural answer and that
+the answer's code refs can be persisted against real repository blobs. The Phase 2 DoD remains
+incomplete because the search response does not include those refs.
+
+1. **Expose code refs on retrieval responses** [P1] — `MemorySearchResponse` and the retrieval
+   engine do not surface persisted `memory_code_refs`; consumers cannot get the cited files with
+   the answer. Review the response contract/ADR, then add a validated code-ref field and load it
+   through the appropriate storage port.
+2. **Procedure extraction from code/document text** [P2] — the real heuristic extractor produces
+   no procedural memories from the auth-code fixture; current procedure results come from
+   `explicit.remember` or recurring commands. Decide whether to add a safe heuristic or extend the
+   optional model-backed extraction path.
+3. **Automatic code-ref linkage for fresh extraction** [P2] — newly extracted memories only get
+   refs when a caller writes them through `recordCodeRefs`; define an ADR-backed linkage seam.
+4. **Re-index recovery for stale procedural memories** [P3] — re-index cannot restore a procedural
+   memory when file extraction produces no same-type procedure; depends on resolving item 2.
+5. **Default-profile paraphrase recall** [P3] — without an embedder, lexical search does not stem
+   or resolve paraphrases that do not share key terms; assess an offline embedding profile.
