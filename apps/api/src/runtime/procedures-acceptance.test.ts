@@ -9,11 +9,13 @@
  *
  * - Phase 1 (the honest gap, asserted): `document.added` events carrying the REAL auth-module
  *   text, plus the conversation that asked and answered "how does authentication work", run
- *   through the real extract job — and produce ZERO procedural memories. The heuristic
- *   extractor has no procedure-mining rule for code text: procedures enter durable memory only
- *   through explicit user intent (`explicit.remember`) or recurring commands (`terminal.output`).
- *   That gap is the product finding this mission reports; the assertion below pins it so it
- *   cannot silently regress or silently "fix" itself.
+ *   through the real extract job — and produce ZERO procedural memories. Stack mentions from
+ *   the document events DO become episodic memories (asserted by tying their evidence to the
+ *   exact `document.added` events), so the zero is a PROCEDURAL gap, not a broken pipeline.
+ *   The heuristic extractor has no procedure-mining rule for code text: procedures enter
+ *   durable memory only through explicit user intent (`explicit.remember`) or recurring commands
+ *   (`terminal.output`). That gap is the product finding this mission reports; the assertion
+ *   below pins it so it cannot silently regress or silently "fix" itself.
  * - Phase 2 (the DoD substance): the two REAL procedural input channels — the user explicitly
  *   remembering the auth procedure, and the agent running the auth test command twice — run
  *   through the same real extract job and DO produce the two procedural memories (auth flow +
@@ -21,10 +23,15 @@
  * - Phase 3: both procedures get code refs recorded through the real `CodeMemoryStore` write
  *   port (`recordCodeRefs`) against blobs captured from the REAL fixture repository — the
  *   same linkage the drift/re-index path performs for its winners.
- * - Phase 4 (the DoD query): the real retrieval engine answers "How does authentication work?"
- *   and two paraphrases under the DEFAULT token budget, with `how_to` intent routing and the
- *   intent×type affinity boost visible in explain, and the top result is the procedural
- *   auth-flow memory carrying code refs that point at the fixture's auth files.
+ * - Phase 4 (the DoD query, partial — asserted as such): the real retrieval engine answers
+ *   "How does authentication work?" and two paraphrases under the DEFAULT token budget, with
+ *   `how_to` intent routing and the intent×type affinity boost visible in explain, and the top
+ *   result is the procedural auth-flow memory. **CURRENT LIMITATION, asserted over the actual
+ *   search result: the retrieval response does NOT expose the persisted code refs** — the
+ *   wire schema has no code-ref field and the engine never reads the codememory tables on a
+ *   search — so the DoD's "with code refs" half is NOT met at the retrieval surface. A separate
+ *   STORAGE-LEVEL check verifies the top procedure's persisted refs point at the fixture's
+ *   real auth files; see finding F5 in the mission report.
  */
 
 import { expect, test } from 'bun:test';
@@ -234,65 +241,65 @@ test('auth procedures with code refs: extracted from real events, answered by re
     );
 
     // --- phase 1: real code + real conversation alone (the honest gap) --------------------
-    const codeEvents = [
-      makeInput(
-        'session.start',
-        {
-          kind: 'session.start',
-          cwd: repoRoot,
-          summary: 'reviewing the authentication module before adding a protected route',
-        },
-        { ...scope, offsetSeconds: 0 },
-      ),
-      makeInput(
-        'conversation.message',
-        {
-          kind: 'conversation.message',
-          role: 'user',
-          content: 'How does authentication work in this service? I need to add a protected route.',
-        },
-        { ...scope, offsetSeconds: 5 },
-      ),
-      makeInput(
-        'conversation.message',
-        {
-          kind: 'conversation.message',
-          role: 'assistant',
-          content:
-            'The auth module is three files: login.ts exposes verifyCredentials, session.ts ' +
-            'exposes createSession, and middleware.ts exposes requireAuth, which guards the ' +
-            'protected routes with a signed session cookie.',
-        },
-        { ...scope, offsetSeconds: 10 },
-      ),
-      ...(['src/auth/login.ts', 'src/auth/session.ts', 'src/auth/middleware.ts', COMMAND_PATH] as const)
-        .map((path, index) => {
-          const text = files.find(([file]) => file === path)![1]!;
-          return makeInput(
-            'document.added',
-            {
-              kind: 'document.added',
-              path,
-              mime: 'text/typescript',
-              title: path,
-              content_digest: text,
-            },
-            { ...scope, offsetSeconds: 15 + index * 5 },
-          );
-        }),
-      makeInput(
-        'git.commit',
-        {
-          kind: 'git.commit',
-          sha: head,
-          message: 'feat(auth): wire requireAuth into the orders routes',
-          author_name: 'fixture',
-          files: files.map(([path]) => path),
-          stats: { files_changed: files.length, insertions: 90, deletions: 0 },
-        },
-        { ...scope, offsetSeconds: 35 },
-      ),
-    ];
+    const sessionStart = makeInput(
+      'session.start',
+      {
+        kind: 'session.start',
+        cwd: repoRoot,
+        summary: 'reviewing the authentication module before adding a protected route',
+      },
+      { ...scope, offsetSeconds: 0 },
+    );
+    const userQuestion = makeInput(
+      'conversation.message',
+      {
+        kind: 'conversation.message',
+        role: 'user',
+        content: 'How does authentication work in this service? I need to add a protected route.',
+      },
+      { ...scope, offsetSeconds: 5 },
+    );
+    const assistantAnswer = makeInput(
+      'conversation.message',
+      {
+        kind: 'conversation.message',
+        role: 'assistant',
+        content:
+          'The auth module is three files: login.ts exposes verifyCredentials, session.ts ' +
+          'exposes createSession, and middleware.ts exposes requireAuth, which guards the ' +
+          'protected routes with a signed session cookie.',
+      },
+      { ...scope, offsetSeconds: 10 },
+    );
+    // The adapter's document events for the files the session read: the REAL auth-module text.
+    const documentEvents = (['src/auth/login.ts', 'src/auth/session.ts', 'src/auth/middleware.ts', COMMAND_PATH] as const)
+      .map((path, index) => {
+        const text = files.find(([file]) => file === path)![1]!;
+        return makeInput(
+          'document.added',
+          {
+            kind: 'document.added',
+            path,
+            mime: 'text/typescript',
+            title: path,
+            content_digest: text,
+          },
+          { ...scope, offsetSeconds: 15 + index * 5 },
+        );
+      });
+    const commitEvent = makeInput(
+      'git.commit',
+      {
+        kind: 'git.commit',
+        sha: head,
+        message: 'feat(auth): wire requireAuth into the orders routes',
+        author_name: 'fixture',
+        files: files.map(([path]) => path),
+        stats: { files_changed: files.length, insertions: 90, deletions: 0 },
+      },
+      { ...scope, offsetSeconds: 35 },
+    );
+    const codeEvents = [sessionStart, userQuestion, assistantAnswer, ...documentEvents, commitEvent];
     for (const input of codeEvents) {
       expect((await storage.store.ingestEvent(input.event)).status).toBe('stored');
     }
@@ -300,9 +307,22 @@ test('auth procedures with code refs: extracted from real events, answered by re
     const phase1 = await extraction({ id: 'extract-4g-phase1', kind: 'extract', payload: {} });
     expect(phase1.events_processed).toBe(codeEvents.length);
     expect(phase1.needs_review).toBe(0);
-    // Extraction demonstrably works on the real code text (stack mentions become episodic
-    // memories) — so the zero below is a PROCEDURAL gap, not a broken pipeline.
-    expect(phase1.memories_inserted).toBeGreaterThanOrEqual(1);
+    // Extraction demonstrably worked on the REAL code text, not just the conversation: at least
+    // one current episodic memory's evidence cites a `document.added` event from this batch (a
+    // stack mention extracted from the auth-module text). So the zero-procedural result below is
+    // a PROCEDURAL gap, not a broken pipeline.
+    const episodic = await storage.store.queryCurrent({
+      project_id: project.id,
+      types: ['episodic'],
+    });
+    const documentEventIds = new Set(documentEvents.map((input) => input.event.id));
+    const fromCodeText = episodic.filter((memory) =>
+      memory.provenance.evidence.some((span) => {
+        if (!span.locator.startsWith('event:')) return false;
+        return documentEventIds.has(span.locator.slice('event:'.length));
+      }));
+    expect(episodic.length).toBeGreaterThanOrEqual(1);
+    expect(fromCodeText.length).toBeGreaterThanOrEqual(1);
     expect(
       await storage.store.queryCurrent({ project_id: project.id, types: ['procedural'] }),
     ).toHaveLength(0);
@@ -406,17 +426,36 @@ test('auth procedures with code refs: extracted from real events, answered by re
       expect(top?.type).toBe('procedural');
       expect(top?.content?.startsWith('Authentication procedure:')).toBe(true);
       expect(top?.provenance.source_kind).toBe('explicit');
+      if (top === undefined) throw new Error('the DoD query returned no memories');
 
       // The intent×type affinity boost is visible in explain.
-      const affinity = top?.explain.find((entry) => entry.factor === 'type_affinity');
+      const affinity = top.explain.find((entry) => entry.factor === 'type_affinity');
       expect(affinity?.detail).toBe("intent 'how_to' favors type 'procedural'");
 
       // Default token budget (no max_tokens in the request), never exceeded.
       expect(response.tokens.budget).toBe(engine.config.packing.defaultMaxTokens);
       expect(response.tokens.used).toBeLessThanOrEqual(response.tokens.budget);
 
-      // The top procedure carries code refs pointing at the fixture's real auth files.
+      // CURRENT LIMITATION, asserted over the ACTUAL search result — this is explicitly NOT
+      // the desired DoD, recorded here so the partial state is unmistakable instead of
+      // silently implied: the retrieval search response does not expose persisted code refs.
+      // The wire schema (`MemorySearchResponse`) has no code-ref field on a memory item, and
+      // the retrieval engine never reads the codememory tables on a search — so a consumer of
+      // this query cannot receive the refs with the answer. The DoD's "with code refs" half is
+      // therefore NOT met at the retrieval surface (finding F5 in the mission report); the
+      // storage-level check below verifies the refs exist and point at real files, which is a
+      // different, weaker claim.
+      expect(Object.keys(top).some((key) => /code_?ref/i.test(key))).toBe(false);
+      for (const path of FLOW_PATHS) {
+        expect(JSON.stringify(response)).not.toContain(blobOf(path));
+      }
+
+      // STORAGE-LEVEL CHECK (not returned refs): the top procedure's persisted refs point at
+      // the fixture's real auth files, each carrying the real captured worktree blob —
+      // reachable only through this separate `CodeMemoryStore.listCodeRefs` read, never
+      // through the search response asserted above.
       const topRefs = recordedRefs.filter((ref) => ref.memory_id === flow.id);
+      expect(topRefs.map((ref) => ref.path).sort()).toEqual([...FLOW_PATHS].sort());
       for (const ref of topRefs) {
         expect(ref.blob_sha).toBe(blobOf(ref.path));
       }
