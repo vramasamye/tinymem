@@ -392,6 +392,26 @@ export async function workingMemoryScenario(storage: OnememoryStorage): Promise<
     [expired.id],
   );
   expect(expiredGone.rows[0]?.n).toBe(0);
+
+  // Session upsert coalescing (mission-14a follow-up 2): recording the end, then re-upserting the
+  // session without end fields (the async extraction path does), must not erase the recorded end
+  // or summary — while a newer end overwrites an older one.
+  const ended = await storage.store.createSession({
+    ...makeSession(),
+    id: session.id,
+    ended_at: '2026-10-03T12:30:00.000Z',
+    summary: 'wrapped up the working-memory scenario',
+  });
+  expect(ended.ended_at).toBe('2026-10-03T12:30:00.000Z');
+  const startOnly = await storage.store.createSession({ ...makeSession(), id: session.id });
+  expect(startOnly.ended_at).toBe('2026-10-03T12:30:00.000Z');
+  expect(startOnly.summary).toBe('wrapped up the working-memory scenario');
+  const reEnded = await storage.store.createSession({
+    ...makeSession(),
+    id: session.id,
+    ended_at: '2026-10-03T13:00:00.000Z',
+  });
+  expect(reEnded.ended_at).toBe('2026-10-03T13:00:00.000Z');
 }
 
 // ---------------------------------------------------------------------------

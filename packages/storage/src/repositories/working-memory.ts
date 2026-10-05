@@ -24,8 +24,10 @@ export async function createSession(db: Database, rawInput: NewSession): Promise
     `INSERT INTO sessions (id, project_id, agent_id, runtime, started_at, ended_at, summary, stats)
        VALUES ($1, $2::uuid, $3, $4, $5::timestamptz, $6::timestamptz, $7, $8::jsonb)
        ON CONFLICT (id) DO UPDATE
-         SET ended_at = EXCLUDED.ended_at,
-             summary = EXCLUDED.summary,
+         -- An upsert may refine the recorded end (newest non-null wins) but never erase it: the
+         -- async extraction path re-upserts sessions without the end fields (mission-14a follow-up 2).
+         SET ended_at = coalesce(EXCLUDED.ended_at, sessions.ended_at),
+             summary = coalesce(EXCLUDED.summary, sessions.summary),
              stats = EXCLUDED.stats,
              project_id = EXCLUDED.project_id
        RETURNING *`,
