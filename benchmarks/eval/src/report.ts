@@ -38,14 +38,6 @@ export function renderMarkdown(report: BenchmarkReport): string {
   lines.push(`Overall: **${report.gates.passed ? 'PASS' : 'FAIL'}**`);
   lines.push('');
 
-  lines.push('## Reported (not gated until M14 merges)');
-  lines.push('');
-  lines.push('| Metric | Value |');
-  lines.push('| --- | ---: |');
-  lines.push(`| contradiction_accuracy | ${report.gates.reported_only.contradiction_accuracy} |`);
-  lines.push(`| consolidation_quality | ${report.gates.reported_only.consolidation_quality} |`);
-  lines.push('');
-
   lines.push('## Full metrics');
   lines.push('');
   const { metrics } = report;
@@ -92,6 +84,27 @@ export function renderMarkdown(report: BenchmarkReport): string {
     );
   }
   lines.push('');
+
+  const optedIn = report.datasets.filter((dataset) => dataset.consolidation !== null);
+  if (optedIn.length > 0) {
+    lines.push('## Automatic consolidation pass (M14, dataset opt-in)');
+    lines.push('');
+    lines.push('| Dataset | Pairs | Resolved | Disputed | Merged | Derived | Archived |');
+    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
+    for (const dataset of optedIn) {
+      const pass = dataset.consolidation!;
+      lines.push(
+        `| ${dataset.id} | ${pass.pairs} | ${pass.resolved} | ${pass.disputed_pairs} | ${pass.merged_sources} | ${pass.derived} | ${pass.archived} |`,
+      );
+    }
+    lines.push('');
+    lines.push(
+      'Offline default: no embedder is wired, so the vector-gated passes (episodic→semantic ' +
+        'derivation, near-duplicate merge) skip with recorded warnings — contradiction resolution ' +
+        'and decay are the passes with an effect in this baseline.',
+    );
+    lines.push('');
+  }
 
   lines.push('## Scenario coverage (backlog M11.1)');
   lines.push('');

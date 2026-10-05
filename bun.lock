@@ -61,6 +61,7 @@
       "name": "@onememory/benchmarks",
       "version": "0.1.0",
       "dependencies": {
+        "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/extraction": "workspace:*",
         "@onememory/retrieval": "workspace:*",

@@ -20,7 +20,7 @@ function metrics(overrides: Partial<AggregateMetrics> = {}): AggregateMetrics {
       mrr: 0.83,
     },
     tokens: {
-      queries: 18,
+      queries: 23,
       budget_compliance: 1,
       mean_used: 22,
       max_used: 54,
@@ -42,16 +42,18 @@ function metrics(overrides: Partial<AggregateMetrics> = {}): AggregateMetrics {
       point_in_time: { probes: 3, correct: 3 },
       history: { probes: 1, correct: 1 },
     },
+    // Post-M14 baseline shape: 5/6 groups resolved (the miss is the cross-phrasing detector gap)
+    // and the offline consolidation ceiling.
     contradiction: {
-      groups: 1,
-      resolved: 0,
-      accuracy: 0,
-      authority_top1: 0,
+      groups: 6,
+      resolved: 5,
+      accuracy: 0.8333,
+      authority_top1: 3,
       silent_conflicts: 1,
     },
     consolidation: {
       groups: 3,
-      quality: 0.33,
+      quality: 0.3333,
       fully_consolidated: 2,
       details: [],
     },
@@ -64,6 +66,7 @@ describe('evaluateGates', () => {
     const evaluation = evaluateGates(metrics());
     expect(evaluation.passed).toBe(true);
     expect(evaluation.checks.every((check) => check.passed)).toBe(true);
+    expect(evaluation.checks).toHaveLength(8);
   });
 
   test('fails when temporal accuracy drops below its threshold', () => {
@@ -105,16 +108,24 @@ describe('evaluateGates', () => {
     expect(evaluation.passed).toBe(false);
   });
 
-  test('contradiction and consolidation are reported, never gated', () => {
+  test('fails when contradiction accuracy drops below its threshold', () => {
     const evaluation = evaluateGates(
-      metrics({
-        contradiction: { ...metrics().contradiction, accuracy: 0 },
-        consolidation: { ...metrics().consolidation, quality: 0 },
-      }),
+      metrics({ contradiction: { ...metrics().contradiction, accuracy: 0.6667 } }),
     );
-    expect(evaluation.passed).toBe(true);
-    expect(evaluation.reported_only.contradiction_accuracy).toBe(0);
-    expect(evaluation.reported_only.consolidation_quality).toBe(0);
+    expect(evaluation.passed).toBe(false);
+    expect(
+      evaluation.checks.find((check) => check.metric === 'contradiction_accuracy')?.passed,
+    ).toBe(false);
+  });
+
+  test('fails when consolidation quality drops below its threshold', () => {
+    const evaluation = evaluateGates(
+      metrics({ consolidation: { ...metrics().consolidation, quality: 0.1667 } }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(
+      evaluation.checks.find((check) => check.metric === 'consolidation_quality')?.passed,
+    ).toBe(false);
   });
 
   test('exposes the thresholds it enforced', () => {

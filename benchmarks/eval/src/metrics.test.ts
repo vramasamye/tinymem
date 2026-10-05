@@ -236,6 +236,37 @@ describe('computeContradictionMetrics', () => {
     expect(metrics.authority_top1).toBe(1);
     expect(metrics.silent_conflicts).toBe(0);
   });
+
+  test('a full-tie contradiction is accurate only when both disputed sides are excluded', () => {
+    // The disputed probe shape: no expected fact (a tie has no authority), both sides forbidden.
+    const metrics = computeContradictionMetrics([
+      outcome({
+        id: 'contradiction-tie',
+        kind: 'contradiction',
+        expectedIds: [],
+        forbiddenIds: ['side-a', 'side-b'],
+        returnedIds: [],
+      }),
+    ]);
+    expect(metrics.groups).toBe(1);
+    expect(metrics.resolved).toBe(1);
+    expect(metrics.accuracy).toBe(1);
+    expect(metrics.authority_top1).toBe(0);
+    expect(metrics.silent_conflicts).toBe(0);
+
+    // Pre-resolution state (both sides still current) is the dangerous one and must not count.
+    const unresolved = computeContradictionMetrics([
+      outcome({
+        id: 'contradiction-tie',
+        kind: 'contradiction',
+        expectedIds: [],
+        forbiddenIds: ['side-a', 'side-b'],
+        returnedIds: ['side-a', 'side-b'],
+      }),
+    ]);
+    expect(unresolved.resolved).toBe(0);
+    expect(unresolved.silent_conflicts).toBe(1);
+  });
 });
 
 describe('computeConsolidationMetrics', () => {

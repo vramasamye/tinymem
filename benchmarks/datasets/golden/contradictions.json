@@ -1,13 +1,14 @@
 {
   "schema_version": "1",
   "id": "contradictions",
-  "title": "Contradictory facts: pre-M14 baseline (reported, not gated)",
-  "description": "Two mutually exclusive database decisions in one project, ingested without supersession. Nothing in the engine resolves them today (automatic contradiction detection + authority resolution is M14), so the probe measures how often the engine surfaces an unresolved conflict. Reported only; the coordinator flips this gate on after M14 merges.",
+  "title": "Contradictory facts: automatic authority resolution (M14)",
+  "description": "Mutually exclusive statements in one project, ingested WITHOUT declared supersessions and resolved by the automatic contradiction pass (explicit > decision > newer > confidence; a full tie marks both sides disputed). The dataset opts into the M14 consolidation pass; the offline harness runs contradiction resolution and decay, while the vector-gated passes (derivation, near-duplicate merge) skip with recorded warnings. Groups cover every authority level plus one full tie, and one cross-phrasing pair the template heuristic cannot detect (the documented detector gap).",
   "base_time": "2026-10-03T09:00:00.000Z",
   "now": "2026-10-03T10:00:00.000Z",
   "projects": [
-    { "key": "alpha", "name": "alpha", "description": "Project with a contradictory database decision" }
+    { "key": "alpha", "name": "alpha", "description": "Project with contradictory statements" }
   ],
+  "consolidation_pass": {},
   "events": [
     {
       "kind": "conversation.message",
@@ -24,20 +25,158 @@
       "offset_seconds": 20,
       "role": "user",
       "content": "We decided to use MySQL for the primary datastore."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-explicit-gateway",
+      "offset_seconds": 30,
+      "content": "Decision: port 8081 for the API gateway"
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-gateway",
+      "offset_seconds": 40,
+      "role": "user",
+      "content": "We settled on port 8080 for the API gateway."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-port-decision",
+      "offset_seconds": 50,
+      "type": "decision",
+      "content": "Port 5432 is the standard API port for all services."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-port-semantic",
+      "offset_seconds": 60,
+      "content": "Port 5433 is the standard API port for all services."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-pool-20",
+      "offset_seconds": 70,
+      "role": "user",
+      "content": "We settled on capping the connection pool at 20 connections."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-pool-50",
+      "offset_seconds": 80,
+      "role": "user",
+      "content": "We settled on capping the connection pool at 50 connections."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-retention-user",
+      "offset_seconds": 90,
+      "role": "user",
+      "content": "We settled on 30 days of log retention."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-retention-assistant",
+      "offset_seconds": 90,
+      "role": "assistant",
+      "content": "We settled on 90 days of log retention."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-rate-100",
+      "offset_seconds": 100,
+      "role": "user",
+      "content": "We settled on an API rate limit of 100 requests per minute."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-rate-1000",
+      "offset_seconds": 100,
+      "role": "user",
+      "content": "We settled on an API rate limit of 1000 requests per minute."
     }
   ],
   "facts": [
     {
       "key": "postgres-decision",
-      "description": "Older PostgreSQL decision",
+      "description": "Older PostgreSQL decision (cross-phrasing pair, undetected by the template heuristic)",
       "scenario": "contradictory",
       "match": { "type": "decision", "content_contains": "PostgreSQL" }
     },
     {
       "key": "mysql-decision",
-      "description": "Newer MySQL decision",
+      "description": "Newer MySQL decision (cross-phrasing pair, undetected by the template heuristic)",
       "scenario": "contradictory",
       "match": { "type": "decision", "content_contains": "MySQL" }
+    },
+    {
+      "key": "gateway-port-explicit",
+      "description": "Explicit user statement of the API gateway port (source kind 'explicit')",
+      "scenario": "contradictory",
+      "match": { "type": "semantic", "content_equals": "Decision: port 8081 for the API gateway" }
+    },
+    {
+      "key": "gateway-port-decision",
+      "description": "Newer conversation decision naming a different API gateway port",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: port 8080 for the API gateway" }
+    },
+    {
+      "key": "port-standard-decision",
+      "description": "Explicit decision memory declaring the standard API port",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Port 5432 is the standard API port for all services." }
+    },
+    {
+      "key": "port-standard-semantic",
+      "description": "Newer explicit observation of the standard API port (durable semantic)",
+      "scenario": "contradictory",
+      "match": { "type": "semantic", "content_equals": "Port 5433 is the standard API port for all services." }
+    },
+    {
+      "key": "pool-cap-20",
+      "description": "Older connection pool cap decision",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: capping the connection pool at 20 connections" }
+    },
+    {
+      "key": "pool-cap-50",
+      "description": "Newer connection pool cap decision",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: capping the connection pool at 50 connections" }
+    },
+    {
+      "key": "retention-30",
+      "description": "Log retention decided by the user (confidence 0.85)",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: 30 days of log retention" }
+    },
+    {
+      "key": "retention-90",
+      "description": "Log retention inferred by the assistant at the same instant (confidence 0.6)",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: 90 days of log retention" }
+    },
+    {
+      "key": "rate-limit-100",
+      "description": "One side of the full-authority tie on the API rate limit",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: an API rate limit of 100 requests per minute" }
+    },
+    {
+      "key": "rate-limit-1000",
+      "description": "Other side of the full-authority tie on the API rate limit",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_equals": "Decision: an API rate limit of 1000 requests per minute" }
     }
   ],
   "queries": [
@@ -56,9 +195,54 @@
       "id": "database-dialect",
       "query": "which database did we decide to use",
       "project": "alpha",
+      "outcome": "resolved",
       "authority": "mysql-decision",
       "contradicted": ["postgres-decision"],
-      "note": "Newer decision should win under memory-model.md §9 (same class, newer observed_at); M14 owns the resolution."
+      "note": "Cross-phrasing pair: both statements instantiate the same concept with different wording, so the attribute-template heuristic cannot detect it. The group documents the honest detector gap (M14 follow-up: LLM conflict detector) and stays in the gated metric at the measured value."
+    },
+    {
+      "id": "explicit-over-decision",
+      "query": "which port does the api gateway use",
+      "project": "alpha",
+      "outcome": "resolved",
+      "authority": "gateway-port-explicit",
+      "contradicted": ["gateway-port-decision"],
+      "note": "Rule 1 (explicit > decision): the explicit user statement is older, but its source kind 'explicit' outranks the newer conversation decision."
+    },
+    {
+      "id": "decision-over-observation",
+      "query": "which port is the standard api port",
+      "project": "alpha",
+      "outcome": "resolved",
+      "authority": "port-standard-decision",
+      "contradicted": ["port-standard-semantic"],
+      "note": "Rule 2 (decision > newer): both are explicit statements, so the explicit decision memory beats the newer semantic observation."
+    },
+    {
+      "id": "newer-decision-wins",
+      "query": "what is the connection pool cap",
+      "project": "alpha",
+      "outcome": "resolved",
+      "authority": "pool-cap-50",
+      "contradicted": ["pool-cap-20"],
+      "note": "Rule 3 (newer): same class and source, so the later observation wins."
+    },
+    {
+      "id": "confidence-wins",
+      "query": "what log retention did we settle on",
+      "project": "alpha",
+      "outcome": "resolved",
+      "authority": "retention-30",
+      "contradicted": ["retention-90"],
+      "note": "Rule 4 (confidence): same class observed at the same instant; the user statement (confidence 0.85) beats the assistant inference (confidence 0.6)."
+    },
+    {
+      "id": "full-tie-disputed",
+      "query": "what is the api rate limit",
+      "project": "alpha",
+      "outcome": "disputed",
+      "contradicted": ["rate-limit-100", "rate-limit-1000"],
+      "note": "Full authority tie (same class, same instant, same confidence): the pass must mark both sides disputed and exclude them from current answers — never a silent pick."
     }
   ]
 }

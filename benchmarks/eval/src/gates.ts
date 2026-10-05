@@ -2,17 +2,22 @@
  * CI regression gates (backlog M11.2: "CI thresholds; results committed").
  *
  * Thresholds are derived from the committed baseline run with documented headroom (see
- * `benchmarks/results/baseline.md`). The gated set is exactly the metrics the engine already
- * supports end-to-end:
+ * `benchmarks/results/baseline.md`). Every metric the engine supports end-to-end is gated,
+ * including the two M14 metrics flipped on post-merge:
  *
- *   gated   : temporal accuracy, retrieval precision@k / recall@k, token-budget compliance,
- *             pollution (cross-project top-1 + declared-distractor leakage)
- *   reported: contradiction accuracy, consolidation quality
+ *   gated: temporal accuracy, retrieval precision@k / recall@k, token-budget compliance,
+ *          pollution (cross-project top-1 + declared-distractor leakage),
+ *          contradiction accuracy (M14 automatic authority resolution),
+ *          consolidation quality (M14 consolidation lifecycle)
  *
- * Contradiction accuracy and consolidation quality are measured and published but NOT gated: both
- * depend on M14 (automatic contradiction resolution + consolidation), which runs in a sibling
- * worktree this wave. The coordinator flips those two gates on after M14 merges (see the mission
- * report).
+ * The two M14 gates are derived from the measured post-M14 offline baseline, whose ceilings are
+ * honest but bounded (documented in the mission report):
+ *   - contradiction_accuracy 0.8333 (5/6): the attribute-template heuristic misses the dataset's
+ *     cross-phrasing pair (M14 follow-up: LLM conflict detector). A single-group regression drops
+ *     the metric to 4/6 = 0.6667, well below the 0.8 gate.
+ *   - consolidation_quality 0.3333: the offline default wires no embedder, so the vector-gated
+ *     passes (episodic→semantic derivation, near-duplicate merge) skip with recorded warnings and
+ *     only ingest-time exact dedupe collapses repeats.
  */
 
 import type {
@@ -29,9 +34,7 @@ export interface AggregateMetrics {
   tokens: TokenMetrics;
   pollution: PollutionMetrics;
   temporal: TemporalMetrics;
-  /** Reported only (M14). */
   contradiction: ContradictionMetrics;
-  /** Reported only (M14). */
   consolidation: ConsolidationMetrics;
 }
 
@@ -48,6 +51,10 @@ export interface GateThresholds {
   cross_project_top1_rate: number;
   /** Maximum. */
   irrelevant_leakage_rate: number;
+  /** Minimum (post-M14 baseline 0.8333 = 5/6 groups; the miss is the cross-phrasing detector gap). */
+  contradiction_accuracy: number;
+  /** Minimum (post-M14 offline baseline 0.3333 — vector-gated passes skip without an embedder). */
+  consolidation_quality: number;
 }
 
 /**
@@ -67,6 +74,11 @@ export const DEFAULT_GATE_THRESHOLDS: GateThresholds = {
   retrieval_recall_at_k: 0.9,
   // Baseline 0.1111 → ~0.09 headroom.
   irrelevant_leakage_rate: 0.2,
+  // Baseline 0.8333 (5/6 groups; the cross-phrasing pair is the documented detector gap): one
+  // step below. Any single passing group regressing drops the metric to 0.6667 and fails.
+  contradiction_accuracy: 0.8,
+  // Baseline 0.3333 (exact-dedupe ceiling offline): one step below.
+  consolidation_quality: 0.3,
 };
 
 export interface GateCheck {
@@ -81,11 +93,6 @@ export interface GateEvaluation {
   passed: boolean;
   thresholds: GateThresholds;
   checks: GateCheck[];
-  /** Metrics measured and published but deliberately not gated (M14 dependencies). */
-  reported_only: {
-    contradiction_accuracy: number;
-    consolidation_quality: number;
-  };
 }
 
 export function evaluateGates(
@@ -119,16 +126,24 @@ export function evaluateGates(
       thresholds.irrelevant_leakage_rate,
       'max',
     ),
+    check(
+      'contradiction_accuracy',
+      metrics.contradiction.accuracy,
+      thresholds.contradiction_accuracy,
+      'min',
+    ),
+    check(
+      'consolidation_quality',
+      metrics.consolidation.quality,
+      thresholds.consolidation_quality,
+      'min',
+    ),
   ];
 
   return {
     passed: checks.every((entry) => entry.passed),
     thresholds,
     checks,
-    reported_only: {
-      contradiction_accuracy: metrics.contradiction.accuracy,
-      consolidation_quality: metrics.consolidation.quality,
-    },
   };
 }
 
