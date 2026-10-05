@@ -21,6 +21,7 @@ import { z } from 'zod';
 
 import { createDriftApplier, type DriftApplyResult } from './apply-drift';
 import { captureSnapshot, resolveRepositoryRoot } from './fingerprints';
+import { describeError } from './internal';
 import {
   createReindexer,
   type ReindexClassifier,
@@ -131,9 +132,6 @@ export interface CodeMemoryOrchestration {
   runReindex(input: ReindexInput): Promise<ReindexResult>;
   status(): CodeMemoryOrchestrationStatus;
 }
-
-const describeError = (error: unknown): string =>
-  error instanceof Error ? `${error.message}` : String(error);
 
 export function createCodeMemoryOrchestration(
   options: CodeMemoryOrchestrationOptions,

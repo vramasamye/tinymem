@@ -12,6 +12,8 @@
  * settles, so a slow scan cannot pile up concurrent passes.
  */
 
+import { describeError } from './internal';
+
 /** The timer seam: production uses the global clock; tests inject a manual one. */
 export interface SchedulerTimer {
   set(callback: () => void, ms: number): unknown;
@@ -53,10 +55,6 @@ const defaultTimer: SchedulerTimer = {
   },
 };
 
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export function createCodeMemoryScheduler(options: CodeMemorySchedulerOptions): CodeMemoryScheduler {
   const timer = options.timer ?? defaultTimer;
   const runOnStart = options.runOnStart ?? true;
@@ -67,7 +65,6 @@ export function createCodeMemoryScheduler(options: CodeMemorySchedulerOptions): 
     });
 
   let running = false;
-  let stopped = false;
   let handle: unknown = null;
   let inflight: Promise<void> | null = null;
 
@@ -95,7 +92,6 @@ export function createCodeMemoryScheduler(options: CodeMemorySchedulerOptions): 
     start(): void {
       if (running) return;
       running = true;
-      stopped = false;
       if (runOnStart) {
         inflight = pass().finally(() => {
           inflight = null;
@@ -107,7 +103,6 @@ export function createCodeMemoryScheduler(options: CodeMemorySchedulerOptions): 
     },
     async stop(): Promise<void> {
       running = false;
-      stopped = true;
       if (handle !== null) {
         timer.clear(handle);
         handle = null;
@@ -120,7 +115,7 @@ export function createCodeMemoryScheduler(options: CodeMemorySchedulerOptions): 
       return pass();
     },
     isRunning(): boolean {
-      return running && !stopped;
+      return running;
     },
   };
 }

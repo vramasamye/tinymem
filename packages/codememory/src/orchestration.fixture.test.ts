@@ -16,15 +16,15 @@ import { promisify } from 'node:util';
 import { installNetworkGuard } from '@onememory/security';
 import { createEmbeddedDb } from '@onememory/storage';
 import type { OnememoryStorage } from '@onememory/storage';
-import { uuidv7, type ExtractedMemory, type ExtractionInput, type ExtractionResult, type Extractor } from '@onememory/core';
+import { uuidv7 } from '@onememory/core';
 
 import {
   captureSnapshot,
   createCodeMemoryOrchestration,
   createReindexer,
-  type ReindexClassification,
 } from './index';
-import type { SkippedSymbolFile, SymbolTable } from './index';
+import type { SkippedSymbolFile } from './index';
+import { candidate, classifyAs, emptySymbolTable, scriptedExtractor } from './testing';
 
 const execute = promisify(execFile);
 
@@ -39,43 +39,7 @@ async function commitAll(root: string, message: string): Promise<string> {
   return git(root, 'rev-parse', 'HEAD');
 }
 
-function candidate(input: ExtractionInput, content: string): ExtractedMemory {
-  return {
-    type: 'decision',
-    content,
-    importance: 0.9,
-    confidence: 0.9,
-    entities: [],
-    evidence: [{ source_id: input.source.id, kind: 'event', locator: `event:${input.event.id}`, excerpt: content }],
-  };
-}
-
-const scriptedExtractor = (content: string): Extractor => ({
-  async extract(inputs: ExtractionInput[]): Promise<ExtractionResult> {
-    return {
-      memories: inputs.map((input) => candidate(input, content)),
-      working: [],
-      extraction_meta: { method: 'heuristic', prompt_version: 'test-v1' },
-    };
-  },
-});
-
-const classify = (): ReindexClassification => ({ durable_type: 'decision', awaiting_consolidation: false });
-
-const emptySymbolTable = (root: string, paths: string[]): SymbolTable => ({
-  version: 1,
-  root_path: root,
-  extracted_at: '2026-10-09T00:00:00.000Z',
-  files: paths.map((path) => ({
-    path,
-    language: 'typescript',
-    symbols: [],
-    symbols_hash: 'd'.repeat(64),
-    parse_errors: 0,
-  })),
-  skipped: [],
-  warnings: [],
-});
+const DECISION_CONTENT = 'We decided to use PGlite over SQLite for embedded storage.';
 
 let guard: ReturnType<typeof installNetworkGuard>;
 let cleanups: Array<() => Promise<void>> = [];
@@ -147,8 +111,10 @@ describe('code-memory orchestration over a real repository', () => {
       store: storage.store,
       codeMemory: storage.codeMemory,
       jobs: storage.jobs,
-      extractor: scriptedExtractor('We decided to use PGlite over SQLite for embedded storage.'),
-      classify,
+      extractor: scriptedExtractor((input) => [
+        candidate(input, DECISION_CONTENT, { type: 'decision', importance: 0.9, confidence: 0.9 }),
+      ]),
+      classify: classifyAs('decision'),
       projectId: project.id,
       rootPath: root,
       now: () => new Date('2026-10-09T00:00:00.000Z'),
@@ -219,7 +185,7 @@ describe('code-memory orchestration over a real repository', () => {
           throw new Error('no extractor available');
         },
       },
-      classify,
+      classify: classifyAs('decision'),
     });
     const result = await reindexer.reindex({ project_id: project.id });
     expect(result.repositories).toBe(0);

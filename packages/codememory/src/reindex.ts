@@ -44,16 +44,25 @@ import {
   buildArchitectureDigest,
   DIGEST_PROMPT_VERSION,
   DEFAULT_DIGEST_BUDGET_TOKENS,
+  isCurrentArchitectureDigest,
+  loadDigestInputs,
   type ArchitectureDigest,
 } from './digest';
 import { createDriftWatcher } from './drift';
+import { compareText, describeError } from './internal';
 import type { SkippedSymbolFile, SymbolTable } from './schema';
 import { extractSymbolTable, readSourceFile } from './symbols';
 
 /** The subset of `Store` re-index composes (narrow on purpose). */
 export type ReindexStore = Pick<
   Store,
-  'getMemory' | 'updateMemoryStatus' | 'supersede' | 'insertMemory' | 'createSource' | 'queryCurrent'
+  | 'getMemory'
+  | 'updateMemoryStatus'
+  | 'supersede'
+  | 'insertMemory'
+  | 'createSource'
+  | 'queryCurrent'
+  | 'findDuplicate'
 >;
 
 /** Structural shape of the classifier's output the re-index consumes (no extraction import). */
@@ -160,29 +169,11 @@ interface Candidate {
 
 const REINDEX_ACTOR = 'job:reindex';
 
-const describeError = (error: unknown): string =>
-  error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-
-function compareText(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 /** A winner's `observed_at` must be strictly after the loser's `valid_from` (supersede's rule). */
 function supersedingObservedAt(now: string, loser: MemoryRecord): string {
   const candidate = Date.parse(now);
   const floor = Date.parse(loser.valid_from) + 1;
   return new Date(Math.max(candidate, floor)).toISOString();
-}
-
-function evidenceForPath(candidate: ExtractedMemory, path: string): NewMemory['evidence'] {
-  // Candidate evidence is bound to the file source the re-index created; only the locator changes
-  // (from the synthetic event to the file itself). `candidate.evidence` is min(1) by schema.
-  return candidate.evidence.map((span) => ({
-    source_id: span.source_id,
-    kind: 'line' as const,
-    locator: `file:${path}`,
-    excerpt: span.excerpt,
-  }));
 }
 
 export function createReindexer(deps: ReindexDeps): Reindexer {
@@ -230,15 +221,21 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
       return;
     }
     try {
-      await deps.codeMemory.recordCodeRefs({
-        memory_id: memory.id,
-        repository_id: drifted[0]!.repository_id,
-        refs,
-      });
+      // Status change FIRST, refs after — the safe degradation order. If the status write fails,
+      // the refs still name the OLD blob, so the drift oracle sees the memory again and the next
+      // pass retries (never a permanently stale memory whose refs quietly match current state).
+      // If instead the ref re-record fails after a successful status change, the memory is active
+      // but its refs still name the old blob — the next drift scan re-marks it stale and the next
+      // pass retries the refresh. Either failure degrades into a retry, never into silence.
       await deps.store.updateMemoryStatus(memory.id, 'active', {
         actor: REINDEX_ACTOR,
         reason: 'code_reindexed',
         details: { paths: refs.map((ref) => ref.path) },
+      });
+      await deps.codeMemory.recordCodeRefs({
+        memory_id: memory.id,
+        repository_id: drifted[0]!.repository_id,
+        refs,
       });
       result.memories.push({
         memory_id: memory.id,
@@ -300,7 +297,10 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
       ...(memory.project_id === undefined ? {} : { project_id: memory.project_id }),
       ...(memory.user_id === undefined ? {} : { user_id: memory.user_id }),
       source_id: sourceId,
-      evidence: evidenceForPath(candidate.candidate, candidate.path),
+      evidence: candidate.candidate.evidence.map((span) =>
+        // The FILE is the durable source of truth; `fileEvidence` bounds the excerpt.
+        fileEvidence(span.source_id, candidate.path, span.excerpt),
+      ),
       extraction: { method: 'heuristic', prompt_version: 'code-reindex-v1', adapter: 'codememory' },
       tags: [
         'code_reindex',
@@ -388,24 +388,34 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
       return;
     }
     try {
-      const current = await deps.store.queryCurrent({
-        project_id: projectId,
-        types: ['semantic'],
-        limit: 500,
-      });
-      const previous = current.find(
-        (memory) => memory.subtype === 'project_digest' && memory.tags.includes('architecture_digest'),
-      );
-      if (previous !== undefined && memoryContentHash(previous.content) === memoryContentHash(digest.text)) {
+      // 1. Deterministic unchanged probe — the Store's own exact-dedupe lookup, indexed and
+      //    independent of any recency window: a long-unchanged digest in a busy project is found
+      //    here no matter how many newer memories exist.
+      const digestHash = memoryContentHash(digest.text);
+      const identical = await deps.store.findDuplicate({ project_id: projectId }, 'semantic', digestHash);
+      if (identical !== null && isCurrentArchitectureDigest(identical)) {
         result.digest = {
           outcome: 'unchanged',
-          memory_id: previous.id,
+          memory_id: identical.id,
           tokens: digest.tokens,
           truncated: digest.truncated,
           text: digest.text,
         };
         return;
       }
+
+      // 2. The digest text changed (or none exists yet): find the current digest to supersede.
+      //    The Store port has no tag/subtype-filtered query, so this predecessor lookup is bounded
+      //    by the port's own query limit (1 000, its maximum). In daemon mode this window can
+      //    never miss — every re-index pass refreshes the digest, so it is always the newest
+      //    semantic memory; only a project whose re-index passes are >1 000 semantic memories
+      //    apart could age a digest past this window.
+      const previous = (await deps.store.queryCurrent({
+        project_id: projectId,
+        types: ['semantic'],
+        limit: 1000,
+      })).find((memory) => isCurrentArchitectureDigest(memory));
+
       const rootPath = repositories[0]?.root_path ?? '';
       const sourceId =
         previous !== undefined
@@ -448,15 +458,36 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
       };
       if (previous === undefined) {
         const written = await deps.store.insertMemory(winner);
-        const memoryId = written.memory.id;
+        // `insertMemory` runs the same dedupe probe: an exact-text digest can never be inserted
+        // twice — a `duplicate` outcome here means the text already exists (age immaterial), so
+        // it is `unchanged`, never a fresh `created`.
+        if (written.outcome === 'duplicate') {
+          const existing = written.existing ?? written.memory;
+          if (!isCurrentArchitectureDigest(existing)) {
+            // The exact text matches a SUPERSEDED historical digest: the storage dedupe index
+            // spans superseded rows, so it blocks re-inserting the text. Honest warning — the
+            // port has no way to express "revalidate a superseded row".
+            result.warnings.push(
+              'architecture digest text matches a superseded historical digest; the storage dedupe index blocks re-inserting it (no current digest row was written)',
+            );
+          }
+          result.digest = {
+            outcome: 'unchanged',
+            memory_id: existing.id,
+            tokens: digest.tokens,
+            truncated: digest.truncated,
+            text: digest.text,
+          };
+          return;
+        }
         result.digest = {
           outcome: 'created',
-          memory_id: memoryId,
+          memory_id: written.memory.id,
           tokens: digest.tokens,
           truncated: digest.truncated,
           text: digest.text,
         };
-        await enqueueEmbed(result, memoryId, digest.text);
+        await enqueueEmbed(result, written.memory.id, digest.text);
         return;
       }
       const superseded = await deps.store.supersede({
@@ -585,6 +616,7 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
 
         // 2. Text: read only the drifted paths, redact, and hand them to the extraction pipeline.
         const inputs: ExtractionInput[] = [];
+        const pathByEventId = new Map<string, string>();
         for (const path of paths) {
           let read: { source: string } | SkippedSymbolFile;
           try {
@@ -617,6 +649,8 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
             text,
             occurred_at: now().toISOString(),
           });
+          // The event id → its path, recorded where `path` is in scope (no payload round-trip).
+          pathByEventId.set(event.id, path);
           inputs.push({ event, source: { id: sourceId, kind: 'file', uri: `repo:${repositoryId}/${path}`, title: path } });
         }
 
@@ -629,16 +663,12 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
           result.warnings.push(`extraction degraded for repository ${repositoryId}: ${describeError(error)}`);
           continue;
         }
-        const pathByEvent = new Map<string, string>();
-        for (const input of inputs) {
-          pathByEvent.set(input.event.id, String((input.event.payload as { path?: unknown }).path ?? ''));
-        }
         for (const candidate of extraction.memories) {
           result.candidates_extracted += 1;
           const eventId = candidate.evidence[0]?.locator?.startsWith('event:')
             ? candidate.evidence[0].locator.slice('event:'.length)
             : undefined;
-          const path = eventId === undefined ? undefined : pathByEvent.get(eventId);
+          const path = eventId === undefined ? undefined : pathByEventId.get(eventId);
           if (path === undefined || path === '') continue;
           const classification = deps.classify(candidate);
           const list = candidatesByPath.get(`${repositoryId}\0${path}`) ?? [];
@@ -698,20 +728,10 @@ export function createReindexer(deps: ReindexDeps): Reindexer {
         await supersedeMemory(result, memory, sameType[0]!);
       }
 
-      // 4. Architecture digest — rebuilt from persisted data (no file reads, no model calls).
+      // 4. Architecture digest — rebuilt from persisted data (no file reads, no model calls),
+      //    through the same input assembly the doctor's digest probe uses.
       try {
-        const inputs = [];
-        for (const repository of repositories) {
-          const fingerprints = await deps.codeMemory.loadFingerprints(repository.id, { tier: 'worktree' });
-          const symbols = await deps.codeMemory.loadSymbols(repository.id);
-          inputs.push({
-            repository_id: repository.id,
-            root_path: repository.root_path,
-            head_commit: repository.head_commit,
-            paths: fingerprints.map((fingerprint) => fingerprint.path),
-            symbols,
-          });
-        }
+        const inputs = await loadDigestInputs(deps.codeMemory, projectId, repositories);
         const digest = buildArchitectureDigest({
           repositories: inputs,
           budgetTokens,

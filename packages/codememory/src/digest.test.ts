@@ -69,6 +69,19 @@ describe('buildArchitectureDigest', () => {
     expect(digest.tokens).toBeLessThan(300);
   });
 
+  test('the budget is strictly-less-than: an estimate of exactly the budget is truncated', () => {
+    // Phase 2 DoD: "< 300 tokens" — a digest estimating exactly its budget must drop a line.
+    const full = buildArchitectureDigest({ repositories: [repository], projectName: 'acme' });
+    expect(full.truncated).toBe(false);
+    const exactlyBudgeted = buildArchitectureDigest({
+      repositories: [repository],
+      projectName: 'acme',
+      budgetTokens: full.tokens,
+    });
+    expect(exactlyBudgeted.truncated).toBe(true);
+    expect(exactlyBudgeted.tokens).toBeLessThan(exactlyBudgeted.budget);
+  });
+
   test('drops whole module lines when the budget is tight and reports truncation', () => {
     const digest = buildArchitectureDigest({
       repositories: [repository],
@@ -77,7 +90,7 @@ describe('buildArchitectureDigest', () => {
     });
 
     expect(digest.truncated).toBe(true);
-    expect(digest.tokens).toBeLessThanOrEqual(40);
+    expect(digest.tokens).toBeLessThan(40);
     // Header identity survives; module lines are dropped whole, never cut mid-line.
     expect(digest.text).toContain('project: acme');
     for (const line of digest.text.split('\n')) {

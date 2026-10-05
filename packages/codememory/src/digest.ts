@@ -11,6 +11,9 @@
  */
 
 import type { StoredSymbol } from '@onememory/core';
+import type { CodeMemoryStore, CodeRepositoryRecord } from '@onememory/core';
+
+import { compareText } from './internal';
 
 /** The provenance version recorded on a digest memory's extraction meta. */
 export const DIGEST_PROMPT_VERSION = 'code-digest-v1';
@@ -99,8 +102,61 @@ function languageOfPath(path: string): string {
   }
 }
 
-function compareText(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+/**
+ * The ONE assembly of digest inputs from persisted state — the re-index pass and the doctor's
+ * digest probe share it, so the probe's expected text is byte-identical to the text the pass
+ * persists (and the probe stays a pure read: no capture, no model, no filesystem).
+ *
+ * `repositories` may be passed when the caller already listed them (the re-index pass has);
+ * otherwise it is listed here.
+ */
+export async function loadDigestInputs(
+  codeMemory: Pick<CodeMemoryStore, 'listRepositories' | 'loadFingerprints' | 'loadSymbols'>,
+  projectId: string,
+  repositories?: readonly CodeRepositoryRecord[],
+): Promise<DigestRepositoryInput[]> {
+  const listed = repositories ?? (await codeMemory.listRepositories(projectId));
+  const inputs: DigestRepositoryInput[] = [];
+  for (const repository of listed) {
+    const fingerprints = await codeMemory.loadFingerprints(repository.id, { tier: 'worktree' });
+    const symbols = await codeMemory.loadSymbols(repository.id);
+    inputs.push({
+      repository_id: repository.id,
+      root_path: repository.root_path,
+      head_commit: repository.head_commit,
+      paths: fingerprints.map((fingerprint) => fingerprint.path),
+      symbols,
+    });
+  }
+  return inputs;
+}
+
+/** Structural shape of a memory row the digest locator predicate reads (no store import). */
+export interface DigestLikeMemory {
+  subtype?: string | null;
+  tags: readonly string[];
+  status: string;
+  valid_until?: string | null;
+}
+
+/**
+ * The deterministic digest locator predicate: this row IS the current architecture digest (the
+ * stable `project_digest` subtype + `architecture_digest` tag, still current — `queryCurrent`
+ * semantics: status active/stale and no `valid_until`).
+ *
+ * The Store port offers no tag/subtype-filtered query, so everything that must find the digest
+ * locates it by predicate over rows the port CAN return: the exact-dedupe probe
+ * (`findDuplicate`) for the unchanged case (windowless, any age), and a windowed scan only to
+ * find a *changed* digest's predecessor for supersession.
+ */
+export function isCurrentArchitectureDigest(memory: DigestLikeMemory | null): boolean {
+  return (
+    memory !== null &&
+    memory.subtype === 'project_digest' &&
+    memory.tags.includes('architecture_digest') &&
+    (memory.status === 'active' || memory.status === 'stale') &&
+    (memory.valid_until === null || memory.valid_until === undefined)
+  );
 }
 
 /** Group the input into modules, ordered by substance (symbols desc, then path asc). */
@@ -214,7 +270,10 @@ export function buildArchitectureDigest(input: {
   let truncated = false;
   for (let index = 0; index < moduleLines.length; index += 1) {
     const candidate = [...header, ...kept, moduleLines[index]!];
-    if (estimateDigestTokens(candidate.join('\n')) > budget) {
+    // Strictly-less-than budget (the Phase 2 DoD says "< 300 tokens"): a line that would land
+    // the estimate exactly ON the budget is dropped, so a rendered digest always fits below it
+    // (the header alone may exceed a tiny budget — `truncated` reports that honestly).
+    if (estimateDigestTokens(candidate.join('\n')) >= budget) {
       truncated = true;
       break;
     }

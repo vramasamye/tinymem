@@ -28,10 +28,13 @@ export { languageForPath, SOURCE_EXTENSIONS } from './grammar';
 export {
   buildArchitectureDigest,
   estimateDigestTokens,
+  isCurrentArchitectureDigest,
+  loadDigestInputs,
   moduleOfPath,
   DEFAULT_DIGEST_BUDGET_TOKENS,
   DIGEST_PROMPT_VERSION,
   type ArchitectureDigest,
+  type DigestLikeMemory,
   type DigestModule,
   type DigestRepositoryInput,
 } from './digest';

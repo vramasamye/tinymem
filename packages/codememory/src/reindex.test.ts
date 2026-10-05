@@ -22,14 +22,19 @@ import { createEmbeddedDb } from '@onememory/storage';
 import type { OnememoryStorage } from '@onememory/storage';
 import {
   uuidv7,
+  type CodeMemoryStore,
   type ExtractedMemory,
   type ExtractionInput,
-  type ExtractionResult,
   type Extractor,
 } from '@onememory/core';
 
-import { createReindexer, type ReindexClassification, type ReindexResult } from './index';
+import {
+  createReindexer,
+  type ReindexResult,
+  type ReindexStore,
+} from './index';
 import type { SkippedSymbolFile, SymbolTable } from './index';
+import { candidate, classifyAs, emptySymbolTable, scriptedExtractor } from './testing';
 
 let guard: ReturnType<typeof installNetworkGuard>;
 
@@ -55,65 +60,20 @@ function snapshot(files: Record<string, string>, capturedAt: string): Parameters
   };
 }
 
-function candidate(input: ExtractionInput, content: string, type: ExtractedMemory['type'] = 'semantic_candidate'): ExtractedMemory {
-  return {
-    type,
-    content,
-    importance: 0.8,
-    confidence: 0.9,
-    entities: [],
-    evidence: [
-      { source_id: input.source.id, kind: 'event', locator: `event:${input.event.id}`, excerpt: content },
-    ],
-    future_value_rationale: 're-extracted from the drifted file',
-  };
-}
-
-/** An extractor that derives candidates from the synthetic document text. */
-function scriptedExtractor(script: (input: ExtractionInput) => ExtractedMemory[]): Extractor {
-  return {
-    async extract(inputs: ExtractionInput[]): Promise<ExtractionResult> {
-      const memories = inputs.flatMap((input) => script(input));
-      return {
-        memories,
-        working: [],
-        extraction_meta: { method: 'heuristic', prompt_version: 'test-v1' },
-      };
-    },
-  };
-}
-
-const classify = (): ReindexClassification => ({
-  durable_type: 'semantic',
-  awaiting_consolidation: false,
-});
-
-const symbolTable = (paths: string[], root: string): SymbolTable => ({
-  version: 1,
-  root_path: root,
-  extracted_at: '2026-10-08T00:00:00.000Z',
-  files: paths.map((path) => ({
-    path,
-    language: 'typescript',
-    symbols: [],
-    symbols_hash: 'd'.repeat(64),
-    parse_errors: 0,
-  })),
-  skipped: [],
-  warnings: [],
-});
+const classify = classifyAs('semantic');
 
 interface Harness {
   storage: OnememoryStorage;
   projectId: string;
   repositoryId: string;
   root: string;
+  sourceId: string;
   memoryB: string;
   memoryA: string;
   readCalls: string[];
   symbolCalls: string[][];
   insertMemory(content: string, paths: string[], stale: boolean): Promise<string>;
-  run(script: (input: ExtractionInput) => ExtractedMemory[], options?: { enqueueReEmbed?: boolean; extractor?: Extractor; extractSymbols?: (root: string, options: { files: string[] }) => Promise<SymbolTable>; readText?: (root: string, path: string, maxBytes: number) => Promise<{ source: string } | SkippedSymbolFile> }): Promise<ReindexResult>;
+  run(script: (input: ExtractionInput) => ExtractedMemory[], options?: { enqueueReEmbed?: boolean; extractor?: Extractor; extractSymbols?: (root: string, options: { files: string[] }) => Promise<SymbolTable>; readText?: (root: string, path: string, maxBytes: number) => Promise<{ source: string } | SkippedSymbolFile>; store?: ReindexStore; codeMemory?: CodeMemoryStore }): Promise<ReindexResult>;
 }
 
 let cleanups: Array<() => Promise<void>> = [];
@@ -194,6 +154,7 @@ async function harness(): Promise<Harness> {
     projectId: project.id,
     repositoryId: repository.id,
     root,
+    sourceId: source.id,
     memoryB,
     memoryA,
     readCalls,
@@ -201,8 +162,8 @@ async function harness(): Promise<Harness> {
     insertMemory,
     async run(script, options = {}) {
       const reindexer = createReindexer({
-        store: storage.store,
-        codeMemory: storage.codeMemory,
+        store: options.store ?? storage.store,
+        codeMemory: options.codeMemory ?? storage.codeMemory,
         jobs: storage.jobs,
         extractor: options.extractor ?? scriptedExtractor(script),
         classify,
@@ -218,7 +179,7 @@ async function harness(): Promise<Harness> {
           options.extractSymbols ??
           (async (symbolRoot, opts) => {
             symbolCalls.push(opts.files);
-            return symbolTable(opts.files, symbolRoot);
+            return emptySymbolTable(symbolRoot, opts.files);
           }),
       });
       return reindexer.reindex({ project_id: project.id });
@@ -357,6 +318,50 @@ describe('re-index: re-embedding changed content', () => {
   });
 });
 
+describe('re-index: refresh failure safety', () => {
+  test('a failed status write leaves the refs un-re-recorded — the drift oracle still sees the memory', async () => {
+    const h = await harness();
+    const result = await h.run((input) => [candidate(input, 'We chose PGlite over SQLite for embedded storage.')], {
+      store: {
+        ...h.storage.store,
+        updateMemoryStatus: async () => {
+          throw new Error('status write failed');
+        },
+      },
+    });
+
+    expect(result.memories[0]?.outcome).toBe('failed');
+    expect(result.memories[0]?.error).toContain('status write failed');
+    // The memory stays stale AND its refs still name the OLD blob, so the next drift scan
+    // reports it again — a failed refresh degrades into a retry, never a permanently stale
+    // memory whose refs quietly match current state.
+    expect((await h.storage.store.getMemory(h.memoryB))?.status).toBe('stale');
+    const refs = await h.storage.codeMemory.listCodeRefs(h.repositoryId, { paths: ['b.ts'] });
+    expect(refs.find((ref) => ref.memory_id === h.memoryB)?.blob_sha).toBe(BLOB_B_OLD);
+  });
+
+  test('a failed ref re-record after a successful status change degrades safely', async () => {
+    const h = await harness();
+    const result = await h.run((input) => [candidate(input, 'We chose PGlite over SQLite for embedded storage.')], {
+      codeMemory: {
+        ...h.storage.codeMemory,
+        recordCodeRefs: async () => {
+          throw new Error('ref write failed');
+        },
+      },
+    });
+
+    expect(result.memories[0]?.outcome).toBe('failed');
+    expect(result.memories[0]?.error).toContain('ref write failed');
+    // The audited stale → active change happened FIRST, so the memory is current knowledge…
+    expect((await h.storage.store.getMemory(h.memoryB))?.status).toBe('active');
+    // …but its refs still name the old blob, so the next drift scan re-marks it stale and the
+    // next re-index retries the refresh. Self-healing, never silent.
+    const refs = await h.storage.codeMemory.listCodeRefs(h.repositoryId, { paths: ['b.ts'] });
+    expect(refs.find((ref) => ref.memory_id === h.memoryB)?.blob_sha).toBe(BLOB_B_OLD);
+  });
+});
+
 describe('re-index: architecture digest', () => {
   test('persists a project digest memory with provenance, and leaves it unchanged when identical', async () => {
     const h = await harness();
@@ -398,4 +403,42 @@ describe('re-index: architecture digest', () => {
     const current = await h.storage.store.queryCurrent({ project_id: h.projectId, types: ['semantic'], limit: 50 });
     expect(current.filter((memory) => memory.subtype === 'project_digest')).toHaveLength(1);
   });
+
+  test('locates the unchanged digest deterministically — no recency window', async () => {
+    const h = await harness();
+    const first = await h.run((input) => [candidate(input, 'We chose PGlite over SQLite for embedded storage.')]);
+    expect(first.digest?.outcome).toBe('created');
+    const digestId = first.digest?.memory_id;
+    expect(digestId).toBeString();
+
+    // Bury the digest: 1 100 newer semantic memories push it past ANY queryCurrent window
+    // (the Store port's limit maximum is 1 000, ordered observed_at DESC) — the exact "long
+    // unchanged digest in a busy project" case that must not degrade the outcome.
+    for (let index = 0; index < 1_100; index += 1) {
+      const inserted = await h.storage.store.insertMemory({
+        type: 'semantic',
+        importance: 0.5,
+        confidence: 0.5,
+        content: `filler observation ${index}`,
+        observed_at: `2026-11-01T00:00:00.000Z`,
+        source_id: h.sourceId,
+        evidence: [{ source_id: h.sourceId, kind: 'message', locator: 'session.jsonl:1', excerpt: 'filler' }],
+        extraction: { method: 'heuristic', prompt_version: 'fixture-v1' },
+        project_id: h.projectId,
+      });
+      if (inserted.outcome !== 'inserted') throw new Error(`filler ${index} was not inserted`);
+    }
+
+    const second = await h.run((input) => [candidate(input, 'We chose PGlite over SQLite for embedded storage.')]);
+    // The Store's own exact-dedupe probe (findDuplicate) finds the digest regardless of age —
+    // never the insert path, never a mislabeled duplicate as a fresh creation.
+    expect(second.digest?.outcome).toBe('unchanged');
+    expect(second.digest?.memory_id).toBe(digestId);
+
+    // And the digest row itself is still the one current digest (read by id — windowless).
+    const digestRow = await h.storage.store.getMemory(digestId!);
+    expect(digestRow?.subtype).toBe('project_digest');
+    expect(digestRow?.status).toBe('active');
+    expect(digestRow?.valid_until ?? null).toBeNull();
+  }, 60_000);
 });
