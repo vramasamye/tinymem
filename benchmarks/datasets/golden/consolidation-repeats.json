@@ -1,0 +1,168 @@
+{
+  "schema_version": "1",
+  "id": "consolidation-repeats",
+  "title": "Repeated facts and repeated failures: pre-M14 consolidation baseline (reported, not gated)",
+  "description": "Exact repeats, paraphrases and a repeated failure. Exact content-hash dedupe (memory-model.md §8 stage 6) is the only collapse mechanism today; episodic→semantic derivation and near-duplicate merging are M14. The metric is reported, not gated, until M14 merges.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    { "key": "alpha", "name": "alpha", "description": "Repetition fixture" }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-repeat-1",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-repeat-2",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-repeat-2",
+      "offset_seconds": 30,
+      "role": "user",
+      "content": "We decided to use Redis for caching session data."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-repeat-2",
+      "offset_seconds": 40,
+      "role": "user",
+      "content": "We decided on Redis as the cache for session data."
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-repeat-2",
+      "offset_seconds": 50,
+      "command": "bun test",
+      "exit_code": 1,
+      "output_digest": "error: Cannot find module \"./schema\" imported from src/store.ts"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-repeat-2",
+      "offset_seconds": 60,
+      "command": "bun test",
+      "exit_code": 0,
+      "output_digest": "87 pass, 0 fail"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-repeat-3",
+      "offset_seconds": 70,
+      "command": "bun test",
+      "exit_code": 1,
+      "output_digest": "error: Cannot find module \"./schema\" imported from src/store.ts"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-repeat-3",
+      "offset_seconds": 80,
+      "command": "bun test",
+      "exit_code": 0,
+      "output_digest": "88 pass, 0 fail"
+    }
+  ],
+  "facts": [
+    {
+      "key": "postgres-repeat-a",
+      "description": "First observation of the PostgreSQL decision",
+      "scenario": "repeated",
+      "match": { "type": "decision", "content_equals": "Decision: use PostgreSQL with pgvector as the only database dialect" }
+    },
+    {
+      "key": "postgres-repeat-b",
+      "description": "Second (identical) observation of the PostgreSQL decision",
+      "scenario": "repeated",
+      "match": { "type": "decision", "content_equals": "Decision: use PostgreSQL with pgvector as the only database dialect" }
+    },
+    {
+      "key": "redis-decision-a",
+      "description": "Redis caching decision, wording A",
+      "scenario": "repeated",
+      "match": { "type": "decision", "content_contains": "Redis for caching session data" }
+    },
+    {
+      "key": "redis-decision-b",
+      "description": "Redis caching decision, wording B (paraphrase)",
+      "scenario": "repeated",
+      "match": { "type": "decision", "content_contains": "Redis as the cache for session data" }
+    },
+    {
+      "key": "failure-repeat-a",
+      "description": "First observation of the MODULE_NOT_FOUND failure",
+      "scenario": "repeated",
+      "match": { "type": "failure", "content_contains": "MODULE_NOT_FOUND" }
+    },
+    {
+      "key": "failure-repeat-b",
+      "description": "Second observation of the MODULE_NOT_FOUND failure",
+      "scenario": "repeated",
+      "match": { "type": "failure", "content_contains": "MODULE_NOT_FOUND" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "database-choice",
+      "project": "alpha",
+      "query": "which database did we choose",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["postgres-repeat-a"],
+      "forbidden": []
+    },
+    {
+      "id": "cache-decision",
+      "project": "alpha",
+      "query": "what caching decision did we make",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["redis-decision-a", "redis-decision-b"],
+      "forbidden": []
+    },
+    {
+      "id": "module-failure",
+      "project": "alpha",
+      "query": "cannot find module schema",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["failure-repeat-a"],
+      "forbidden": []
+    }
+  ],
+  "consolidation": [
+    {
+      "id": "exact-repeat-decision",
+      "observations": 2,
+      "facts": ["postgres-repeat-a", "postgres-repeat-b"],
+      "note": "Identical statements in two sessions collapse to one memory at ingest (event dedupe) / store (content-hash dedupe)."
+    },
+    {
+      "id": "paraphrase-decision",
+      "observations": 2,
+      "facts": ["redis-decision-a", "redis-decision-b"],
+      "note": "Two wordings of the same decision: pre-M14 they stay separate (no near-duplicate merge)."
+    },
+    {
+      "id": "repeated-failure",
+      "observations": 2,
+      "facts": ["failure-repeat-a", "failure-repeat-b"],
+      "note": "Same failure signature and resolution twice: content-hash dedupe keeps one row; occurrence counting is M14."
+    }
+  ]
+}

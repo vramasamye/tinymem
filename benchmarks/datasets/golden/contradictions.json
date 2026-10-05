@@ -1,0 +1,64 @@
+{
+  "schema_version": "1",
+  "id": "contradictions",
+  "title": "Contradictory facts: pre-M14 baseline (reported, not gated)",
+  "description": "Two mutually exclusive database decisions in one project, ingested without supersession. Nothing in the engine resolves them today (automatic contradiction detection + authority resolution is M14), so the probe measures how often the engine surfaces an unresolved conflict. Reported only; the coordinator flips this gate on after M14 merges.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    { "key": "alpha", "name": "alpha", "description": "Project with a contradictory database decision" }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-contradiction",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-contradiction",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "We decided to use MySQL for the primary datastore."
+    }
+  ],
+  "facts": [
+    {
+      "key": "postgres-decision",
+      "description": "Older PostgreSQL decision",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_contains": "PostgreSQL" }
+    },
+    {
+      "key": "mysql-decision",
+      "description": "Newer MySQL decision",
+      "scenario": "contradictory",
+      "match": { "type": "decision", "content_contains": "MySQL" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "database-decision",
+      "project": "alpha",
+      "query": "which database did we decide to use",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["postgres-decision", "mysql-decision"],
+      "forbidden": []
+    }
+  ],
+  "contradictions": [
+    {
+      "id": "database-dialect",
+      "query": "which database did we decide to use",
+      "project": "alpha",
+      "authority": "mysql-decision",
+      "contradicted": ["postgres-decision"],
+      "note": "Newer decision should win under memory-model.md §9 (same class, newer observed_at); M14 owns the resolution."
+    }
+  ]
+}

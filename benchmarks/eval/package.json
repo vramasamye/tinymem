@@ -1,0 +1,29 @@
+{
+  "name": "@onememory/benchmarks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "onememory memory-quality evaluation harness (spec §25 subset): golden datasets, metric math, and CI regression gates over the real engine",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "bench:run": "bun run src/cli.ts"
+  },
+  "dependencies": {
+    "@onememory/core": "workspace:*",
+    "@onememory/extraction": "workspace:*",
+    "@onememory/retrieval": "workspace:*",
+    "@onememory/security": "workspace:*",
+    "@onememory/storage": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2"
+  }
+}
