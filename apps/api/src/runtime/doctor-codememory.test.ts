@@ -246,8 +246,11 @@ describe('the code-memory section in a real runtime report', () => {
       info: [...report.checks, ...report.runtimes].filter((entry) => entry.status === 'info').length,
     };
     expect(report.summary).toEqual(recount);
-    // The section never inflates the informational count (the runtime-wiring group owns it).
-    expect(report.summary.info).toBe(2);
+    // The section never inflates the informational count (the runtime-wiring group owns it):
+    // every info entry belongs to the runtimes group, however many runtimes are wired.
+    expect(report.checks.filter((entry) => entry.status === 'info')).toEqual([]);
+    expect(report.summary.info).toBe(report.runtimes.filter((entry) => entry.status === 'info').length);
+    expect(report.runtimes.map((entry) => entry.status)).toEqual(['info', 'info', 'info']);
     expect(report.exit_code).toBe(0);
   }, 30_000);
 

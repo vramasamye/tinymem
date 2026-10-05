@@ -15,6 +15,7 @@ import {
   mergeMemoryPointerBlock,
 } from '@onememory/adapter-claude';
 import { scaffoldCodex } from '@onememory/adapter-codex';
+import { scaffoldCursor } from '@onememory/adapter-cursor';
 
 import { daemonMcpUrl, evaluateRuntimeScaffold, runtimeScaffoldChecks, type RuntimeScaffoldState } from './runtime-scaffolds';
 
@@ -127,11 +128,12 @@ describe('evaluateRuntimeScaffold', () => {
 });
 
 describe('runtimeScaffoldChecks (real files)', () => {
-  test('an empty project reports both runtimes as info', () => {
+  test('an empty project reports all three runtimes as info', () => {
     const checks = runtimeScaffoldChecks(tempDir(), CONTEXT);
     expect(checks.map((check) => [check.id, check.status])).toEqual([
       ['runtime-claude-code', 'info'],
       ['runtime-codex', 'info'],
+      ['runtime-cursor', 'info'],
     ]);
   });
 
@@ -139,10 +141,11 @@ describe('runtimeScaffoldChecks (real files)', () => {
     const root = tempDir();
     writeClaude(root, URL_7331);
     scaffoldCodex({ scope: 'project', root, projectId: PROJECT_ID, transport: 'http', url: URL_7331 });
+    scaffoldCursor({ root, projectName: 'demo', transport: 'http', url: URL_7331 });
     const ok = runtimeScaffoldChecks(root, { ...CONTEXT, projectId: PROJECT_ID });
-    expect(ok.map((check) => check.status)).toEqual(['pass', 'pass']);
+    expect(ok.map((check) => check.status)).toEqual(['pass', 'pass', 'pass']);
 
     const moved = runtimeScaffoldChecks(root, { ...CONTEXT, expectedUrl: 'http://127.0.0.1:7400/mcp', projectId: PROJECT_ID });
-    expect(moved.map((check) => check.status)).toEqual(['warn', 'warn']);
+    expect(moved.map((check) => check.status)).toEqual(['warn', 'warn', 'warn']);
   });
 });

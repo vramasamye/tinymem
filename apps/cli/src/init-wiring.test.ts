@@ -138,13 +138,14 @@ describe('consent', () => {
         prompt,
       );
       expect(code).toBe(0);
-      expect(offered.map((option) => option.value)).toEqual(['claude-code', 'codex']);
+      expect(offered.map((option) => option.value)).toEqual(['claude-code', 'codex', 'cursor']);
       expect(offered[0]!.hint).toContain(join(home, '.claude'));
       expect(preselected).toEqual(['claude-code']);
       const document = JSON.parse(out);
       expect(document.runtimes.wired.map((wired: { runtime: string }) => wired.runtime)).toEqual(['claude-code']);
       expect(existsSync(join(dir, '.mcp.json'))).toBeTrue();
       expect(existsSync(join(dir, '.codex'))).toBeFalse();
+      expect(existsSync(join(dir, '.cursor'))).toBeFalse();
     },
     BOOT_TIMEOUT,
   );
@@ -214,7 +215,7 @@ describe('--with-claude --with-codex', () => {
   });
 
   test(
-    'doctor reports both runtimes as pass against the configured daemon URL',
+    'doctor reports the wired runtimes as pass (Cursor stays opt-in info) against the configured daemon URL',
     async () => {
       const doctor = await cli(['doctor', '--cwd', dir, '--no-probe', '--json']);
       expect(doctor.exitCode).toBe(0);
@@ -222,10 +223,12 @@ describe('--with-claude --with-codex', () => {
       expect(report.runtimes.map((check: { id: string; status: string }) => [check.id, check.status])).toEqual([
         ['runtime-claude-code', 'pass'],
         ['runtime-codex', 'pass'],
+        ['runtime-cursor', 'info'],
       ]);
       const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
       expect(human.out).toContain('agent runtimes');
       expect(human.out).toContain('[ok] Claude Code');
+      expect(human.out).toContain('[info] Cursor');
     },
     BOOT_TIMEOUT,
   );
@@ -257,7 +260,7 @@ describe('--with-claude --with-codex', () => {
       const configPath = join(dir, '.onememory', 'onememory.yaml');
       writeFileSync(configPath, read(configPath).replace(/^  port: 7331$/m, '  port: 7400'));
       const stale = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
-      expect(stale.runtimes.map((check: { status: string }) => check.status)).toEqual(['warn', 'warn']);
+      expect(stale.runtimes.map((check: { status: string }) => check.status)).toEqual(['warn', 'warn', 'info']);
       expect(stale.runtimes[0].detail).toContain('http://127.0.0.1:7400/mcp');
 
       const rewired = json(await cli(['init', '--cwd', dir, '--with-claude', '--with-codex', '--json']));
@@ -267,7 +270,7 @@ describe('--with-claude --with-codex', () => {
       expect(toml['mcp_servers']['onememory']['url']).toBe('http://127.0.0.1:7400/mcp');
 
       const fresh = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
-      expect(fresh.runtimes.map((check: { status: string }) => check.status)).toEqual(['pass', 'pass']);
+      expect(fresh.runtimes.map((check: { status: string }) => check.status)).toEqual(['pass', 'pass', 'info']);
     },
     BOOT_TIMEOUT,
   );
@@ -283,7 +286,7 @@ describe('already initialized', () => {
       expect(again.exitCode).toBe(0);
       expect(again.out).toContain('already initialized');
       expect(again.out).toContain('onemem doctor');
-      expect(again.out).toContain('re-run with --with-claude and/or --with-codex');
+      expect(again.out).toContain('re-run with --with-claude, --with-codex and/or --with-cursor');
       expect(existsSync(join(dir, '.mcp.json'))).toBeFalse();
     },
     BOOT_TIMEOUT,
@@ -315,17 +318,125 @@ describe('already initialized', () => {
   );
 });
 
+describe('--with-cursor', () => {
+  let dir: string;
+  let first: any;
+
+  beforeAll(async () => {
+    dir = projectDir();
+    // A pre-existing Cursor config the merges must preserve.
+    mkdirSync(join(dir, '.cursor'), { recursive: true });
+    writeFileSync(
+      join(dir, '.cursor', 'mcp.json'),
+      `${JSON.stringify({ mcpServers: { linear: { url: 'https://mcp.linear.app/sse' } } }, null, 2)}\n`,
+    );
+    writeFileSync(
+      join(dir, '.cursor', 'hooks.json'),
+      `${JSON.stringify({ version: 1, hooks: { afterFileEdit: [{ command: './format.sh' }] } }, null, 2)}\n`,
+    );
+    const result = await cli(['init', '--preset', 'local', '--name', 'cursor-demo', '--cwd', dir, '--with-cursor', '--json']);
+    expect(result.exitCode).toBe(0);
+    first = json(result);
+  }, BOOT_TIMEOUT);
+
+  test('writes .cursor/mcp.json with the daemon http entry beside the user server', () => {
+    const document = JSON.parse(read(join(dir, '.cursor', 'mcp.json'))) as { mcpServers: Record<string, unknown> };
+    expect(document.mcpServers['onememory']).toEqual({ url: URL_7331 });
+    expect(document.mcpServers['linear']).toEqual({ url: 'https://mcp.linear.app/sse' });
+  });
+
+  test('writes .cursor/hooks.json with the capture hooks beside the user hooks', () => {
+    const document = JSON.parse(read(join(dir, '.cursor', 'hooks.json'))) as {
+      version: number;
+      hooks: Record<string, Array<{ command: string }>>;
+    };
+    expect(document.version).toBe(1);
+    expect(document.hooks['afterFileEdit']?.map((entry) => entry.command)).toEqual([
+      './format.sh',
+      'bun node_modules/@onememory/adapter-cursor/src/bin.ts',
+    ]);
+    expect(document.hooks['sessionStart']).toBeDefined();
+    expect(document.hooks['sessionEnd']).toBeDefined();
+    // stop is deliberately not subscribed.
+    expect(document.hooks['stop']).toBeUndefined();
+  });
+
+  test('writes the always-applied .cursor/rules/onememory.mdc pointer', () => {
+    const rule = read(join(dir, '.cursor', 'rules', 'onememory.mdc'));
+    expect(rule.startsWith('---\ndescription: "')).toBe(true);
+    expect(rule).toContain('alwaysApply: true');
+    expect(rule).toContain('onemem:begin');
+  });
+
+  test('the result reports the three files, the review step and the daemon-first next step', () => {
+    const wired = first.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'cursor');
+    expect(wired.files.map((file: { action: string }) => file.action)).toEqual(['patched', 'patched', 'created']);
+    expect(first.required_review.join('\n')).toContain('Cursor: Cursor asks for tool approval');
+    expect(
+      first.next_steps.some((step: string) => step.startsWith('onemem serve — start the daemon BEFORE launching Cursor')),
+    ).toBeTrue();
+  });
+
+  test(
+    'doctor detects the Cursor wiring as pass against the configured daemon URL',
+    async () => {
+      const report = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
+      const cursor = report.runtimes.find((check: { id: string }) => check.id === 'runtime-cursor');
+      expect(cursor.status).toBe('pass');
+      expect(cursor.detail).toContain('http://127.0.0.1:7331/mcp');
+      const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
+      expect(human.out).toContain('[ok] Cursor');
+    },
+    BOOT_TIMEOUT,
+  );
+
+  test(
+    're-running is an idempotent no-op and a changed port is re-wired',
+    async () => {
+      const before = ['.cursor/mcp.json', '.cursor/hooks.json', '.cursor/rules/onememory.mdc'].map((path) =>
+        read(join(dir, path)),
+      );
+      const again = json(await cli(['init', '--cwd', dir, '--with-cursor', '--json']));
+      const wired = again.runtimes.wired.find((entry: { runtime: string }) => entry.runtime === 'cursor');
+      expect(wired.files.map((file: { action: string }) => file.action)).toEqual(['unchanged', 'unchanged', 'unchanged']);
+      expect(['.cursor/mcp.json', '.cursor/hooks.json', '.cursor/rules/onememory.mdc'].map((path) => read(join(dir, path)))).toEqual(
+        before,
+      );
+
+      const configPath = join(dir, '.onememory', 'onememory.yaml');
+      writeFileSync(configPath, read(configPath).replace(/^  port: 7331$/m, '  port: 7400'));
+      const stale = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
+      const staleCursor = stale.runtimes.find((check: { id: string }) => check.id === 'runtime-cursor');
+      expect(staleCursor.status).toBe('warn');
+      expect(staleCursor.detail).toContain('http://127.0.0.1:7400/mcp');
+
+      json(await cli(['init', '--cwd', dir, '--with-cursor', '--json']));
+      expect(JSON.parse(read(join(dir, '.cursor', 'mcp.json'))).mcpServers.onememory.url).toBe('http://127.0.0.1:7400/mcp');
+    },
+    BOOT_TIMEOUT,
+  );
+});
+
 describe('scaffold phase units', () => {
   test('detection reads HOME / CODEX_HOME from the injected env only', () => {
     const seen: string[] = [];
     const detection = detectRuntimes('/repo', { HOME: '/h', CODEX_HOME: '/ch' }, (path) => {
       seen.push(path);
-      return path === '/ch' || path === '/repo/.claude';
+      return path === '/ch' || path === '/repo/.claude' || path === '/h/.cursor';
     });
-    expect(seen).toEqual(['/h/.claude', '/repo/.claude', '/ch', '/h/.codex', '/repo/.codex']);
+    expect(seen).toEqual([
+      '/h/.claude',
+      '/repo/.claude',
+      '/ch',
+      '/h/.codex',
+      '/repo/.codex',
+      '/h/.cursor',
+      '/repo/.cursor',
+    ]);
     expect(detection).toEqual([
       { runtime: 'claude-code', detected: true, evidence: ['/repo/.claude'] },
       { runtime: 'codex', detected: true, evidence: ['/ch'] },
+      { runtime: 'cursor', detected: true, evidence: ['/h/.cursor'] },
     ]);
     expect(detectRuntimes('/repo', {}, () => false).every((entry) => !entry.detected)).toBeTrue();
   });

@@ -250,12 +250,13 @@ describe('the durable write path (real storage)', () => {
     expect(report.exit_code).toBe(0);
     expect(report.status).toBe('degraded');
     expect(report.checks.some((check) => check.id === 'embedder' && check.status === 'warn')).toBeTrue();
-    // No runtime was wired in this project: both are informational, never warnings.
+    // No runtime was wired in this project: all are informational, never warnings.
     expect(report.runtimes.map((check) => [check.id, check.status])).toEqual([
       ['runtime-claude-code', 'info'],
       ['runtime-codex', 'info'],
+      ['runtime-cursor', 'info'],
     ]);
-    expect(report.summary.info).toBe(2);
+    expect(report.summary.info).toBe(3);
   });
 
   test('the HTTP backend over the real REST app returns the same answers', async () => {

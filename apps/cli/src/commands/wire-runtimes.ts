@@ -3,13 +3,14 @@
  * ones to the daemon's MCP surface (ADR-0010 amendment 2026-10-04).
  *
  * - Detection is filesystem-only (no spawning): Claude Code when `~/.claude` or `<root>/.claude`
- *   exists, Codex when `$CODEX_HOME`, `~/.codex` or `<root>/.codex` exists. HOME comes from the
- *   injected environment, never from the OS, so tests cannot see the developer's real home.
- * - Consent: explicit `--with-claude` / `--with-codex` flags, or the interactive multi-select
- *   (detected runtimes preselected). Without either, nothing is written — init never creates
- *   runtime files the user did not ask for.
- * - Writes: Claude Code files are merged here through the adapter's pure builders; Codex files
- *   are written by the adapter's own `scaffoldCodex`. Every step is idempotent, so the phase is
+ *   exists, Codex when `$CODEX_HOME`, `~/.codex` or `<root>/.codex` exists, Cursor when `~/.cursor`
+ *   or `<root>/.cursor` exists. HOME comes from the injected environment, never from the OS, so
+ *   tests cannot see the developer's real home.
+ * - Consent: explicit `--with-claude` / `--with-codex` / `--with-cursor` flags, or the interactive
+ *   multi-select (detected runtimes preselected). Without either, nothing is written — init never
+ *   creates runtime files the user did not ask for.
+ * - Writes: Claude Code files are merged here through the adapter's pure builders; Codex and Cursor
+ *   files are written by the adapters' own scaffolds. Every step is idempotent, so the phase is
  *   safe to re-run, and files that cannot be parsed are reported and left untouched.
  */
 
@@ -26,22 +27,25 @@ import {
   type ScaffoldMergeResult,
 } from '@onememory/adapter-claude';
 import { scaffoldCodex } from '@onememory/adapter-codex';
+import { scaffoldCursor } from '@onememory/adapter-cursor';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';
 
-export type AgentRuntime = 'claude-code' | 'codex';
+export type AgentRuntime = 'claude-code' | 'codex' | 'cursor';
 
-export const AGENT_RUNTIMES: readonly AgentRuntime[] = ['claude-code', 'codex'];
+export const AGENT_RUNTIMES: readonly AgentRuntime[] = ['claude-code', 'codex', 'cursor'];
 
 export const RUNTIME_TITLES: Record<AgentRuntime, string> = {
   'claude-code': 'Claude Code',
   codex: 'Codex',
+  cursor: 'Cursor',
 };
 
 export const RUNTIME_FLAGS: Record<AgentRuntime, string> = {
   'claude-code': '--with-claude',
   codex: '--with-codex',
+  cursor: '--with-cursor',
 };
 
 export type PathExists = (path: string) => boolean;
@@ -68,6 +72,7 @@ export function detectRuntimes(
       ...(home === null ? [] : [join(home, '.codex')]),
       join(root, '.codex'),
     ],
+    cursor: [...(home === null ? [] : [join(home, '.cursor')]), join(root, '.cursor')],
   };
   return AGENT_RUNTIMES.map((runtime) => {
     const evidence = [...new Set(candidates[runtime])].filter((path) => pathExists(path));
@@ -174,6 +179,16 @@ export function wireCodex(root: string, mcpUrl: string, projectId: string): Wire
   };
 }
 
+/** Delegate to the Cursor adapter's own scaffold (`.cursor/mcp.json`, hooks, the rules pointer). */
+export function wireCursor(root: string, mcpUrl: string, projectName: string): WiredRuntime {
+  const result = scaffoldCursor({ root, projectName, transport: 'http', url: mcpUrl });
+  return {
+    runtime: 'cursor',
+    files: result.files.map((file) => ({ path: file.path, action: file.action })),
+    warnings: [...result.warnings],
+  };
+}
+
 /** Run the scaffold phase for the consented runtimes. */
 export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseResult {
   const notes: string[] = [];
@@ -189,7 +204,7 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
   if (options.runtimes.length === 0) {
     if (options.detected.length === 0) {
       notes.push(
-        'no agent runtime was detected (~/.claude, ~/.codex, .claude/, .codex/) and none was requested — nothing was wired; pass --with-claude and/or --with-codex to wire one',
+        'no agent runtime was detected (~/.claude, ~/.codex, ~/.cursor, .claude/, .codex/, .cursor/) and none was requested — nothing was wired; pass --with-claude, --with-codex and/or --with-cursor to wire one',
       );
     }
     return result;
@@ -207,7 +222,9 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
     result.wired.push(
       runtime === 'claude-code'
         ? wireClaude(options.root, options.mcpUrl, options.projectName)
-        : wireCodex(options.root, options.mcpUrl, options.projectId),
+        : runtime === 'codex'
+          ? wireCodex(options.root, options.mcpUrl, options.projectId)
+          : wireCursor(options.root, options.mcpUrl, options.projectName),
     );
   }
   return result;
@@ -218,7 +235,7 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
  * multi-select (detected runtimes preselected); otherwise none.
  */
 export async function chooseRuntimes(
-  flags: { withClaude?: boolean; withCodex?: boolean },
+  flags: { withClaude?: boolean; withCodex?: boolean; withCursor?: boolean },
   detection: RuntimeDetection[],
   io: Io,
   prompt: Prompt,
@@ -226,6 +243,7 @@ export async function chooseRuntimes(
   const flagged: AgentRuntime[] = [
     ...(flags.withClaude === true ? (['claude-code'] as const) : []),
     ...(flags.withCodex === true ? (['codex'] as const) : []),
+    ...(flags.withCursor === true ? (['cursor'] as const) : []),
   ];
   if (flagged.length > 0 || !io.interactive) return flagged;
   const chosen = await prompt.multiselect<AgentRuntime>(
