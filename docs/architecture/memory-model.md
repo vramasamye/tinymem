@@ -221,9 +221,15 @@ Session-scoped scratchpad, same table (`type = working`), never in default retri
 - Kinds: current task, hypothesis, file being edited, current error, temporary decision, open
   question.
 - `session_id` bound; `expires_at` = session end + grace period.
-- Session-end sweep: promotion filter (`importance ≥ 0.5` OR explicitly flagged by user/agent)
-  → re-enters pipeline at EXTRACT as durable candidate (with provenance). The rest expires and is
-  purged (working memory is the one category where deletion is allowed — it was never durable).
+- Session-end sweep (as-built, mission 14a): observing a `session.end` in ingest runs an
+  idempotent, DB-only lifecycle pass for that session (stored *and* duplicate end events trigger
+  it). A working row promotes iff it is unpromoted, carries its own source and at least one
+  evidence span, and has `importance ≥ 0.5` (the "explicitly flagged" arm awaits a schema field).
+  Promoted rows become durable **episodic** memories through the audited create path with
+  verbatim provenance — they are already extraction output, so they do not re-enter at EXTRACT;
+  exact-content duplicates link onto the existing durable memory. The rest expires and is purged
+  by the TTL sweep, which is global and preserves promoted rows (working memory is the one
+  category where deletion is allowed — it was never durable).
 - Rationale: matches how agents actually work (hypotheses change mid-task; most scratch context
   has zero future value) and keeps durable memory clean.
 

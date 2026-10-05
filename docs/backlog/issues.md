@@ -164,7 +164,8 @@ Issues:
 3. Contradiction detection + authority resolution (explicit > decision > newer > confidence; tie →
    `disputed`) + supersession (`valid_until`, `superseded_by`).
 4. Decay/archive scheduler (prominence formula; decisions/verified procedures decay-resistant).
-5. Project digest rollup + working-memory promotion sweep.
+5. Project digest rollup + working-memory promotion sweep (the sweep half landed as mission 14a,
+   merged 2026-10-05 — see the M14a cross-follow-ups below; the digest rollup remains M14 scope).
 6. Events compaction (summarize → `sources`, purge raw payload after retention window).
 
 ## M15 — Skill generation [P5] [epic]
@@ -275,3 +276,31 @@ remain future work.
    The M7b redaction follow-up is resolved by the security boundary fix (`a23fedc`): known
    credential prefixes embedded after `_`/`-` in tool-name strings are now redacted without
    blanket-redacting useful tool identifiers.
+
+---
+
+## Cross-mission follow-ups — raised by M14a (session-end working-memory sweep)
+
+Merged `642787e` (mission report: `docs/plan/mission-reports/mission-14a-session-sweep.md`, which
+numbers the follow-ups below). The pass runs inline in `ingestEvents` on stored or duplicate
+`session.end` events, is idempotent, and rides `IngestResult.warnings` for its summaries.
+
+1. **Async-extraction lag (same-batch rows)** [P1] — the pass runs before the async extract
+   handler produces working rows from the same ingest batch, so last-moment rows promote only on a
+   later end event (duplicate ends heal, but no adapter contract guarantees one). Structural fix:
+   fire from the extract handler on a `session.end` group, or add a job kind.
+2. ~~**`createSession` upsert wipes the recorded end**~~ ✅ Resolved (coordinator, 2026-10-05,
+   `4460cd3`): `ended_at`/`summary` now coalesce newest-non-null-wins on conflict (a later explicit
+   end overwrites; a start-only upsert never erases); asserted in the embedded + Postgres storage
+   matrix.
+3. **"Explicitly flagged" promotion arm** [P2] — memory-model.md §10 specifies `importance ≥ 0.5`
+   OR explicitly flagged; working rows carry no flag field, so only the threshold arm is enforced.
+   Needs a schema field (with migration) or the doc arm should be retired.
+4. **`IngestResult` lifecycle field** [P3] — summaries ride `warnings`; a dedicated field needs
+   `types.ts` + OpenAPI + `IngestResponseSchema` changes.
+5. **`user_id`/`agent_id` not carried onto promoted memories** [P3] — working rows hold neither;
+   promoted memories are project-scoped via the ingest endpoint's authoritative project.
+6. **Session-scoped sweep** [P3] — `sweepWorking` is global by storage design; the pass labels the
+   purge as a global TTL sweep. A session filter or `getSession` read port would tighten this.
+7. **`sessions.stats` not updated** [P3] — no writer reads it today; revisit alongside a future
+   capture-health ledger.

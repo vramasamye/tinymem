@@ -149,3 +149,21 @@ extraction pipeline stays parked while the synchronous pass is exercised determi
    sweep job remains M14 backlog ("decay/archive scheduler").
 7. **The pass does not update `sessions.stats`** with promotion counts (no writer reads it today);
    the audit trail + `warnings` summary are the surfaces.
+
+## Coordinator review amendments (2026-10-05)
+
+Post-review (standards + spec, two independent reviewers) fixes applied on the branch before
+merge (`54f635a`):
+
+- promoted token estimates reuse `estimateTokens` from `@onememory/retrieval` (the sibling
+  durable-write path's estimator) instead of a local `content.length / 4`;
+- `SessionEndLifecycleResult.skipped_total` is computed by the pass, so callers cannot undercount
+  by omitting a skip reason;
+- the unused injectable-clock option was removed (no caller, no test) and the ingest warning now
+  labels `expired_purged` as the global TTL sweep it is;
+- storage follow-up 2 was resolved by the coordinator after merge (`4460cd3`): `createSession`
+  coalesces `ended_at`/`summary` newest-non-null-wins on conflict — a later explicit end
+  overwrites (not max(), as suggested below: newest non-null is the auditable rule), a start-only
+  upsert never erases.
+
+Follow-ups 1, 3–7 are recorded in `docs/backlog/issues.md` under "raised by M14a".

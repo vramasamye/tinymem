@@ -53,6 +53,12 @@ Definition of done (Phase 2):
 - "How does authentication work?" returns procedures with code refs; project digest answers "what is this project" in < 300 tokens.
 - Session lifecycle: session start injects compact context; session end sweeps working memory with promotion filter.
 
+**Status (2026-10-05):** session-end promotion + sweep shipped (`mission/14a-session-sweep`, merged
+`642787e`; semantics synced in `docs/architecture/memory-model.md` §10). Drift marking, the
+zero-token oracle, rename retargeting, and code-symbol staleness shipped with M4a–4e. Remaining
+Phase 2 items — re-index orchestration, the architecture digest, and the procedures-with-code-refs
+retrieval check — are in flight in `mission/4f-reindex-digest`.
+
 ## Phase 3 — Intelligent memory
 
 | Mission | Branch | Scope |
