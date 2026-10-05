@@ -1,0 +1,124 @@
+{
+  "schema_version": "1",
+  "id": "temporal-node-versions",
+  "title": "Outdated facts: the Node 20 → 22 → 24 supersession chain",
+  "description": "Three version facts for one project, chained by explicit audited supersession (the primitive the engine supports today; M14 automates detection). Probes current truth, two point-in-time snapshots and full history.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Fixture project with a version supersession chain"
+    }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-node20",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We upgraded to Node 20 for the project runtime."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-node22",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "We upgraded to Node 22 across all packages last week."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-node24",
+      "offset_seconds": 30,
+      "role": "user",
+      "content": "We upgraded to Node 24 for the release tooling."
+    }
+  ],
+  "supersessions": [
+    {
+      "loser": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 20" },
+      "winner": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 22" },
+      "reason": "Node 22 replaced Node 20 for the project runtime"
+    },
+    {
+      "loser": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 22" },
+      "winner": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 24" },
+      "reason": "Node 24 replaced Node 22 for the release tooling"
+    }
+  ],
+  "facts": [
+    {
+      "key": "node-20",
+      "description": "Node 20 was the runtime version",
+      "scenario": "outdated",
+      "match": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 20" }
+    },
+    {
+      "key": "node-22",
+      "description": "Node 22 replaced Node 20",
+      "scenario": "outdated",
+      "match": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 22" }
+    },
+    {
+      "key": "node-24",
+      "description": "Node 24 replaced Node 22 (current truth)",
+      "scenario": "outdated",
+      "match": { "type": "episodic", "subtype": "semantic.version", "content_equals": "Version: Node 24" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "node-current",
+      "project": "alpha",
+      "query": "which Node version does the project run on",
+      "max_tokens": 500,
+      "kind": "temporal",
+      "expected": ["node-24"],
+      "forbidden": ["node-20", "node-22"]
+    },
+    {
+      "id": "node-point-in-time-20",
+      "project": "alpha",
+      "query": "which Node version does the project run on",
+      "max_tokens": 500,
+      "kind": "temporal",
+      "as_of": "2026-10-03T09:00:15.000Z",
+      "expected": ["node-20"],
+      "forbidden": ["node-22", "node-24"]
+    },
+    {
+      "id": "node-point-in-time-22",
+      "project": "alpha",
+      "query": "which Node version does the project run on",
+      "max_tokens": 500,
+      "kind": "temporal",
+      "as_of": "2026-10-03T09:00:25.000Z",
+      "expected": ["node-22"],
+      "forbidden": ["node-20", "node-24"]
+    },
+    {
+      "id": "node-point-in-time-24",
+      "project": "alpha",
+      "query": "which Node version does the project run on",
+      "max_tokens": 500,
+      "kind": "temporal",
+      "as_of": "2026-10-03T09:00:35.000Z",
+      "expected": ["node-24"],
+      "forbidden": ["node-20", "node-22"]
+    },
+    {
+      "id": "node-history",
+      "project": "alpha",
+      "query": "which Node version does the project run on",
+      "max_tokens": 500,
+      "kind": "temporal",
+      "temporal_mode": "historical",
+      "expected": ["node-20", "node-22", "node-24"],
+      "forbidden": []
+    }
+  ]
+}

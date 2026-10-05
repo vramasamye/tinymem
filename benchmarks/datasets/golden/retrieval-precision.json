@@ -1,0 +1,156 @@
+{
+  "schema_version": "1",
+  "id": "retrieval-precision",
+  "title": "Retrieval precision/recall over decisions, preferences, procedures and failures",
+  "description": "One project, six distinct memories across the content types the heuristic extractor produces. Each query declares the fact it must return, so precision@k and recall@k measure ranking quality on the lexical + graph default.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Single-project retrieval fixture"
+    }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "I prefer bun test over jest because it is faster."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 30,
+      "role": "user",
+      "content": "Please always run bun install before bun test in CI."
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 40,
+      "command": "bun test",
+      "exit_code": 1,
+      "output_digest": "error: Cannot find module \"./schema\" imported from src/store.ts"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 50,
+      "command": "bun test",
+      "exit_code": 0,
+      "output_digest": "87 pass, 0 fail"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 60,
+      "command": "terraform apply -auto-approve",
+      "exit_code": 0,
+      "output_digest": "Apply complete! Resources: 4 added, 0 changed, 0 destroyed."
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-retrieval",
+      "offset_seconds": 70,
+      "command": "terraform apply -auto-approve",
+      "exit_code": 0,
+      "output_digest": "No changes. Your infrastructure matches the configuration."
+    }
+  ],
+  "facts": [
+    {
+      "key": "database-decision",
+      "description": "PostgreSQL + pgvector chosen as the only database dialect",
+      "scenario": "project-scoped",
+      "match": { "type": "decision", "content_contains": "PostgreSQL with pgvector" }
+    },
+    {
+      "key": "test-runner-preference",
+      "description": "bun test preferred over jest",
+      "scenario": "other",
+      "match": { "type": "preference", "content_contains": "bun test over jest" }
+    },
+    {
+      "key": "ci-order-preference",
+      "description": "bun install must run before bun test in CI",
+      "scenario": "procedural",
+      "match": { "type": "preference", "content_contains": "bun install before bun test" }
+    },
+    {
+      "key": "module-resolution-failure",
+      "description": "MODULE_NOT_FOUND failure with its resolution command",
+      "scenario": "failure-solution",
+      "match": { "type": "failure", "content_contains": "MODULE_NOT_FOUND" }
+    },
+    {
+      "key": "terraform-procedure",
+      "description": "Recurring terraform apply procedure",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_contains": "terraform apply" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "which-database",
+      "project": "alpha",
+      "query": "which database do we use",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["database-decision"],
+      "forbidden": []
+    },
+    {
+      "id": "which-test-runner",
+      "project": "alpha",
+      "query": "which test runner do we prefer",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["test-runner-preference"],
+      "forbidden": []
+    },
+    {
+      "id": "ci-order",
+      "project": "alpha",
+      "query": "what should run before bun test in CI",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["ci-order-preference"],
+      "forbidden": []
+    },
+    {
+      "id": "module-error",
+      "project": "alpha",
+      "query": "cannot find module schema error",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["module-resolution-failure"],
+      "forbidden": []
+    },
+    {
+      "id": "terraform-deploy",
+      "project": "alpha",
+      "query": "how do we apply the infrastructure with terraform",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["terraform-procedure"],
+      "forbidden": []
+    }
+  ]
+}

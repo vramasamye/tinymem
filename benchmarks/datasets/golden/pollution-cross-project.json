@@ -1,0 +1,87 @@
+{
+  "schema_version": "1",
+  "id": "pollution-cross-project",
+  "title": "Memory pollution: project-specific vs cross-project vs user-global facts",
+  "description": "Two projects with a competing database decision each, plus one user-global preference (project_id NULL). Probes that a project-scoped query ranks its own fact first, that a global fact is reachable from any project, and measures how often a declared distractor leaks into the result set.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    { "key": "alpha", "name": "alpha", "description": "PostgreSQL project" },
+    { "key": "beta", "name": "beta", "description": "MySQL project" }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-alpha",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "beta",
+      "session": "sess-beta",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "We decided to use MySQL for the analytics service."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "global",
+      "session": "sess-global",
+      "offset_seconds": 30,
+      "role": "user",
+      "content": "I prefer tabs over spaces in every project."
+    }
+  ],
+  "facts": [
+    {
+      "key": "alpha-postgres",
+      "description": "Project alpha uses PostgreSQL + pgvector",
+      "scenario": "project-scoped",
+      "match": { "type": "decision", "project": "alpha", "content_contains": "PostgreSQL" }
+    },
+    {
+      "key": "beta-mysql",
+      "description": "Project beta uses MySQL",
+      "scenario": "cross-project",
+      "match": { "type": "decision", "project": "beta", "content_contains": "MySQL" }
+    },
+    {
+      "key": "global-tabs",
+      "description": "User-global preference for tabs over spaces",
+      "scenario": "cross-project",
+      "match": { "type": "preference", "project": "global", "content_contains": "tabs over spaces" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "alpha-database",
+      "project": "alpha",
+      "query": "which database do we use for this project",
+      "max_tokens": 800,
+      "kind": "pollution",
+      "expected": ["alpha-postgres"],
+      "forbidden": ["beta-mysql"]
+    },
+    {
+      "id": "beta-database",
+      "project": "beta",
+      "query": "which database do we use for this project",
+      "max_tokens": 800,
+      "kind": "pollution",
+      "expected": ["beta-mysql"],
+      "forbidden": ["alpha-postgres"]
+    },
+    {
+      "id": "alpha-global-preference",
+      "project": "alpha",
+      "query": "tabs or spaces for indentation",
+      "max_tokens": 800,
+      "kind": "pollution",
+      "expected": ["global-tabs"],
+      "forbidden": []
+    }
+  ]
+}

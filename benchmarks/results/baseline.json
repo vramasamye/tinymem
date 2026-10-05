@@ -1,0 +1,1079 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-10-05T10:06:21.956Z",
+  "engine": {
+    "profile": "embedded",
+    "embedder": "none (lexical + graph default)",
+    "extraction": "heuristic (no-LLM baseline)",
+    "default_max_tokens": 800,
+    "clocks": [
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z"
+    ]
+  },
+  "datasets": [
+    {
+      "id": "consolidation-repeats",
+      "title": "Repeated facts and repeated failures: pre-M14 consolidation baseline (reported, not gated)",
+      "description": "Exact repeats, paraphrases and a repeated failure. Exact content-hash dedupe (memory-model.md §8 stage 6) is the only collapse mechanism today; episodic→semantic derivation and near-duplicate merging are M14. The metric is reported, not gated, until M14 merges.",
+      "extraction": {
+        "events_processed": 6,
+        "memories_inserted": 5,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 5,
+      "superseded": 0,
+      "facts": [
+        {
+          "key": "postgres-repeat-a",
+          "scenario": "repeated",
+          "description": "First observation of the PostgreSQL decision",
+          "memory_id": "01a10b87-414c-7000-b1c6-cbded8398b61",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "postgres-repeat-b",
+          "scenario": "repeated",
+          "description": "Second (identical) observation of the PostgreSQL decision",
+          "memory_id": "01a10b87-414c-7000-b1c6-cbded8398b61",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "redis-decision-a",
+          "scenario": "repeated",
+          "description": "Redis caching decision, wording A",
+          "memory_id": "01a10b87-4169-7000-8d3a-17c351e7ab22",
+          "content": "Decision: use Redis for caching session data"
+        },
+        {
+          "key": "redis-decision-b",
+          "scenario": "repeated",
+          "description": "Redis caching decision, wording B (paraphrase)",
+          "memory_id": "01a10b87-415f-7000-b376-718634787916",
+          "content": "Decision: on Redis as the cache for session data"
+        },
+        {
+          "key": "failure-repeat-a",
+          "scenario": "repeated",
+          "description": "First observation of the MODULE_NOT_FOUND failure",
+          "memory_id": "01a10b87-417e-7000-94e3-d6a370b62d4e",
+          "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
+        },
+        {
+          "key": "failure-repeat-b",
+          "scenario": "repeated",
+          "description": "Second observation of the MODULE_NOT_FOUND failure",
+          "memory_id": "01a10b87-417e-7000-94e3-d6a370b62d4e",
+          "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
+        }
+      ],
+      "queries": [
+        {
+          "id": "database-choice",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "returnedIds": [
+            "01a10b87-414c-7000-b1c6-cbded8398b61"
+          ],
+          "expectedIds": [
+            "01a10b87-414c-7000-b1c6-cbded8398b61"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 17,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "cache-decision",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "returnedIds": [
+            "01a10b87-414c-7000-b1c6-cbded8398b61",
+            "01a10b87-4169-7000-8d3a-17c351e7ab22",
+            "01a10b87-415f-7000-b376-718634787916"
+          ],
+          "expectedIds": [
+            "01a10b87-4169-7000-8d3a-17c351e7ab22",
+            "01a10b87-415f-7000-b376-718634787916"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 40,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "module-failure",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4128-7000-87e6-1c3e81fcd409",
+          "returnedIds": [
+            "01a10b87-417e-7000-94e3-d6a370b62d4e"
+          ],
+          "expectedIds": [
+            "01a10b87-417e-7000-94e3-d6a370b62d4e"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 18,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 3,
+          "k": 5,
+          "precision_at_k": 0.8889,
+          "recall_at_k": 1,
+          "precision_full": 0.8889,
+          "recall_full": 1,
+          "mrr": 0.8333
+        },
+        "tokens": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "mean_used": 25,
+          "max_used": 40,
+          "p95_used": 40,
+          "mean_tokens_per_expected": 18.33
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 5,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 3,
+          "quality": 0.3333,
+          "fully_consolidated": 2,
+          "details": [
+            {
+              "id": "consolidation-repeats:exact-repeat-decision",
+              "observations": 2,
+              "distinct": 1,
+              "compression": 0.5
+            },
+            {
+              "id": "consolidation-repeats:paraphrase-decision",
+              "observations": 2,
+              "distinct": 2,
+              "compression": 0
+            },
+            {
+              "id": "consolidation-repeats:repeated-failure",
+              "observations": 2,
+              "distinct": 1,
+              "compression": 0.5
+            }
+          ]
+        }
+      },
+      "warnings": [
+        "event at offset 20s (conversation.message) was not stored: duplicate",
+        "event at offset 70s (terminal.output) was not stored: duplicate"
+      ]
+    },
+    {
+      "id": "contradictions",
+      "title": "Contradictory facts: pre-M14 baseline (reported, not gated)",
+      "description": "Two mutually exclusive database decisions in one project, ingested without supersession. Nothing in the engine resolves them today (automatic contradiction detection + authority resolution is M14), so the probe measures how often the engine surfaces an unresolved conflict. Reported only; the coordinator flips this gate on after M14 merges.",
+      "extraction": {
+        "events_processed": 2,
+        "memories_inserted": 2,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 2,
+      "superseded": 0,
+      "facts": [
+        {
+          "key": "postgres-decision",
+          "scenario": "contradictory",
+          "description": "Older PostgreSQL decision",
+          "memory_id": "01a10b87-478a-7000-b92d-26416dcbe421",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "mysql-decision",
+          "scenario": "contradictory",
+          "description": "Newer MySQL decision",
+          "memory_id": "01a10b87-4780-7000-9c4f-15ecc357de95",
+          "content": "Decision: use MySQL for the primary datastore"
+        }
+      ],
+      "queries": [
+        {
+          "id": "database-decision",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4775-7000-843d-16d2f285dde8",
+          "returnedIds": [
+            "01a10b87-478a-7000-b92d-26416dcbe421",
+            "01a10b87-4780-7000-9c4f-15ecc357de95"
+          ],
+          "expectedIds": [
+            "01a10b87-478a-7000-b92d-26416dcbe421",
+            "01a10b87-4780-7000-9c4f-15ecc357de95"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 29,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "contradiction-database-dialect",
+          "kind": "contradiction",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4775-7000-843d-16d2f285dde8",
+          "returnedIds": [
+            "01a10b87-478a-7000-b92d-26416dcbe421",
+            "01a10b87-4780-7000-9c4f-15ecc357de95"
+          ],
+          "expectedIds": [
+            "01a10b87-4780-7000-9c4f-15ecc357de95"
+          ],
+          "forbiddenIds": [
+            "01a10b87-478a-7000-b92d-26416dcbe421"
+          ],
+          "usedTokens": 29,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 1,
+          "k": 5,
+          "precision_at_k": 1,
+          "recall_at_k": 1,
+          "precision_full": 1,
+          "recall_full": 1,
+          "mrr": 1
+        },
+        "tokens": {
+          "queries": 2,
+          "budget_compliance": 1,
+          "mean_used": 29,
+          "max_used": 29,
+          "p95_used": 29,
+          "mean_tokens_per_expected": 21.75
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 2,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 1,
+          "resolved": 0,
+          "accuracy": 0,
+          "authority_top1": 0,
+          "silent_conflicts": 1
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        }
+      },
+      "warnings": []
+    },
+    {
+      "id": "pollution-cross-project",
+      "title": "Memory pollution: project-specific vs cross-project vs user-global facts",
+      "description": "Two projects with a competing database decision each, plus one user-global preference (project_id NULL). Probes that a project-scoped query ranks its own fact first, that a global fact is reachable from any project, and measures how often a declared distractor leaks into the result set.",
+      "extraction": {
+        "events_processed": 3,
+        "memories_inserted": 3,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 3,
+      "superseded": 0,
+      "facts": [
+        {
+          "key": "alpha-postgres",
+          "scenario": "project-scoped",
+          "description": "Project alpha uses PostgreSQL + pgvector",
+          "memory_id": "01a10b87-4cca-7000-b173-f621e0e2acbb",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "beta-mysql",
+          "scenario": "cross-project",
+          "description": "Project beta uses MySQL",
+          "memory_id": "01a10b87-4cd4-7000-9f31-1de38804be65",
+          "content": "Decision: use MySQL for the analytics service"
+        },
+        {
+          "key": "global-tabs",
+          "scenario": "cross-project",
+          "description": "User-global preference for tabs over spaces",
+          "memory_id": "01a10b87-4cd8-7000-9c6d-50ff9a2ac470",
+          "content": "Preference: tabs over spaces in every project"
+        }
+      ],
+      "queries": [
+        {
+          "id": "alpha-database",
+          "kind": "pollution",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4cc1-7000-9460-45f4ddfca278",
+          "returnedIds": [
+            "01a10b87-4cca-7000-b173-f621e0e2acbb",
+            "01a10b87-4cd4-7000-9f31-1de38804be65",
+            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+          ],
+          "expectedIds": [
+            "01a10b87-4cca-7000-b173-f621e0e2acbb"
+          ],
+          "forbiddenIds": [
+            "01a10b87-4cd4-7000-9f31-1de38804be65"
+          ],
+          "usedTokens": 41,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "beta-database",
+          "kind": "pollution",
+          "projectKey": "beta",
+          "projectId": "01a10b87-4cc1-7001-b468-9603ab1ebc04",
+          "returnedIds": [
+            "01a10b87-4cd4-7000-9f31-1de38804be65",
+            "01a10b87-4cca-7000-b173-f621e0e2acbb",
+            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+          ],
+          "expectedIds": [
+            "01a10b87-4cd4-7000-9f31-1de38804be65"
+          ],
+          "forbiddenIds": [
+            "01a10b87-4cca-7000-b173-f621e0e2acbb"
+          ],
+          "usedTokens": 41,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "alpha-global-preference",
+          "kind": "pollution",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-4cc1-7000-9460-45f4ddfca278",
+          "returnedIds": [
+            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+          ],
+          "expectedIds": [
+            "01a10b87-4cd8-7000-9c6d-50ff9a2ac470"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 12,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 0,
+          "k": 5,
+          "precision_at_k": 0,
+          "recall_at_k": 0,
+          "precision_full": 0,
+          "recall_full": 0,
+          "mrr": 0
+        },
+        "tokens": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "mean_used": 31.33,
+          "max_used": 41,
+          "p95_used": 41,
+          "mean_tokens_per_expected": 31.33
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0.2857,
+          "irrelevant_leakage_rate": 0.3333,
+          "returned": 7,
+          "leaked": 2
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        }
+      },
+      "warnings": []
+    },
+    {
+      "id": "retrieval-precision",
+      "title": "Retrieval precision/recall over decisions, preferences, procedures and failures",
+      "description": "One project, six distinct memories across the content types the heuristic extractor produces. Each query declares the fact it must return, so precision@k and recall@k measure ranking quality on the lexical + graph default.",
+      "extraction": {
+        "events_processed": 7,
+        "memories_inserted": 6,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 6,
+      "superseded": 0,
+      "facts": [
+        {
+          "key": "database-decision",
+          "scenario": "project-scoped",
+          "description": "PostgreSQL + pgvector chosen as the only database dialect",
+          "memory_id": "01a10b87-52f2-7000-9503-2c1c7f6214d5",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "test-runner-preference",
+          "scenario": "other",
+          "description": "bun test preferred over jest",
+          "memory_id": "01a10b87-52ff-7000-8a6e-ff15f5587578",
+          "content": "Preference: bun test over jest because it is faster"
+        },
+        {
+          "key": "ci-order-preference",
+          "scenario": "procedural",
+          "description": "bun install must run before bun test in CI",
+          "memory_id": "01a10b87-52fc-7000-8a71-afaee5ece250",
+          "content": "Preference: bun install before bun test in CI"
+        },
+        {
+          "key": "module-resolution-failure",
+          "scenario": "failure-solution",
+          "description": "MODULE_NOT_FOUND failure with its resolution command",
+          "memory_id": "01a10b87-52f9-7000-a893-69a5498c2ed9",
+          "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
+        },
+        {
+          "key": "terraform-procedure",
+          "scenario": "procedural",
+          "description": "Recurring terraform apply procedure",
+          "memory_id": "01a10b87-5307-7000-9874-94ff28abd8e9",
+          "content": "Recurring command: `terraform apply` (used 2 times)"
+        }
+      ],
+      "queries": [
+        {
+          "id": "which-database",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "returnedIds": [
+            "01a10b87-52f2-7000-9503-2c1c7f6214d5"
+          ],
+          "expectedIds": [
+            "01a10b87-52f2-7000-9503-2c1c7f6214d5"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 17,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "which-test-runner",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "returnedIds": [
+            "01a10b87-52fc-7000-8a71-afaee5ece250",
+            "01a10b87-52ff-7000-8a6e-ff15f5587578",
+            "01a10b87-52f9-7000-a893-69a5498c2ed9",
+            "01a10b87-5302-7000-9655-5fa8bb97f402"
+          ],
+          "expectedIds": [
+            "01a10b87-52ff-7000-8a6e-ff15f5587578"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 54,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "ci-order",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "returnedIds": [
+            "01a10b87-52f9-7000-a893-69a5498c2ed9",
+            "01a10b87-52fc-7000-8a71-afaee5ece250",
+            "01a10b87-52ff-7000-8a6e-ff15f5587578",
+            "01a10b87-5302-7000-9655-5fa8bb97f402"
+          ],
+          "expectedIds": [
+            "01a10b87-52fc-7000-8a71-afaee5ece250"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 54,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "module-error",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "returnedIds": [
+            "01a10b87-52f9-7000-a893-69a5498c2ed9"
+          ],
+          "expectedIds": [
+            "01a10b87-52f9-7000-a893-69a5498c2ed9"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 18,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "terraform-deploy",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-52e3-7000-9f83-875f735c25f4",
+          "returnedIds": [
+            "01a10b87-5307-7000-9874-94ff28abd8e9"
+          ],
+          "expectedIds": [
+            "01a10b87-5307-7000-9874-94ff28abd8e9"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 13,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 5,
+          "k": 5,
+          "precision_at_k": 0.7,
+          "recall_at_k": 1,
+          "precision_full": 0.7,
+          "recall_full": 1,
+          "mrr": 0.8
+        },
+        "tokens": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "mean_used": 31.2,
+          "max_used": 54,
+          "p95_used": 54,
+          "mean_tokens_per_expected": 31.2
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 11,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        }
+      },
+      "warnings": []
+    },
+    {
+      "id": "temporal-node-versions",
+      "title": "Outdated facts: the Node 20 → 22 → 24 supersession chain",
+      "description": "Three version facts for one project, chained by explicit audited supersession (the primitive the engine supports today; M14 automates detection). Probes current truth, two point-in-time snapshots and full history.",
+      "extraction": {
+        "events_processed": 3,
+        "memories_inserted": 3,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 3,
+      "superseded": 2,
+      "facts": [
+        {
+          "key": "node-20",
+          "scenario": "outdated",
+          "description": "Node 20 was the runtime version",
+          "memory_id": "01a10b87-5874-7000-8430-0ad182efdd40",
+          "content": "Version: Node 20"
+        },
+        {
+          "key": "node-22",
+          "scenario": "outdated",
+          "description": "Node 22 replaced Node 20",
+          "memory_id": "01a10b87-587b-7000-a968-615d9af1cce9",
+          "content": "Version: Node 22"
+        },
+        {
+          "key": "node-24",
+          "scenario": "outdated",
+          "description": "Node 24 replaced Node 22 (current truth)",
+          "memory_id": "01a10b87-5880-7000-9667-0bcfa64ace87",
+          "content": "Version: Node 24"
+        }
+      ],
+      "queries": [
+        {
+          "id": "node-current",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "returnedIds": [
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "expectedIds": [
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "forbiddenIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40",
+            "01a10b87-587b-7000-a968-615d9af1cce9"
+          ],
+          "usedTokens": 4,
+          "budget": 500,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "current"
+        },
+        {
+          "id": "node-point-in-time-20",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "returnedIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40"
+          ],
+          "expectedIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40"
+          ],
+          "forbiddenIds": [
+            "01a10b87-587b-7000-a968-615d9af1cce9",
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "usedTokens": 4,
+          "budget": 500,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "point_in_time"
+        },
+        {
+          "id": "node-point-in-time-22",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "returnedIds": [
+            "01a10b87-587b-7000-a968-615d9af1cce9"
+          ],
+          "expectedIds": [
+            "01a10b87-587b-7000-a968-615d9af1cce9"
+          ],
+          "forbiddenIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40",
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "usedTokens": 4,
+          "budget": 500,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "point_in_time"
+        },
+        {
+          "id": "node-point-in-time-24",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "returnedIds": [
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "expectedIds": [
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "forbiddenIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40",
+            "01a10b87-587b-7000-a968-615d9af1cce9"
+          ],
+          "usedTokens": 4,
+          "budget": 500,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "point_in_time"
+        },
+        {
+          "id": "node-history",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10b87-5868-7000-9b9a-90ce3e802999",
+          "returnedIds": [
+            "01a10b87-5880-7000-9667-0bcfa64ace87",
+            "01a10b87-587b-7000-a968-615d9af1cce9",
+            "01a10b87-5874-7000-8430-0ad182efdd40"
+          ],
+          "expectedIds": [
+            "01a10b87-5874-7000-8430-0ad182efdd40",
+            "01a10b87-587b-7000-a968-615d9af1cce9",
+            "01a10b87-5880-7000-9667-0bcfa64ace87"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 12,
+          "budget": 500,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "history"
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 0,
+          "k": 5,
+          "precision_at_k": 0,
+          "recall_at_k": 0,
+          "precision_full": 0,
+          "recall_full": 0,
+          "mrr": 0
+        },
+        "tokens": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "mean_used": 5.6,
+          "max_used": 12,
+          "p95_used": 12,
+          "mean_tokens_per_expected": 4
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 7,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 5,
+          "correct": 5,
+          "accuracy": 1,
+          "current": {
+            "probes": 1,
+            "correct": 1
+          },
+          "point_in_time": {
+            "probes": 3,
+            "correct": 3
+          },
+          "history": {
+            "probes": 1,
+            "correct": 1
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        }
+      },
+      "warnings": []
+    }
+  ],
+  "metrics": {
+    "retrieval": {
+      "queries": 9,
+      "k": 5,
+      "precision_at_k": 0.7963,
+      "recall_at_k": 1,
+      "precision_full": 0.7963,
+      "recall_full": 1,
+      "mrr": 0.8333
+    },
+    "tokens": {
+      "queries": 18,
+      "budget_compliance": 1,
+      "mean_used": 22.83,
+      "max_used": 54,
+      "p95_used": 54,
+      "mean_tokens_per_expected": 20.47
+    },
+    "pollution": {
+      "cross_project_top1_rate": 0,
+      "cross_project_leakage_rate": 0.0625,
+      "irrelevant_leakage_rate": 0.1111,
+      "returned": 32,
+      "leaked": 2
+    },
+    "temporal": {
+      "probes": 5,
+      "correct": 5,
+      "accuracy": 1,
+      "current": {
+        "probes": 1,
+        "correct": 1
+      },
+      "point_in_time": {
+        "probes": 3,
+        "correct": 3
+      },
+      "history": {
+        "probes": 1,
+        "correct": 1
+      }
+    },
+    "contradiction": {
+      "groups": 1,
+      "resolved": 0,
+      "accuracy": 0,
+      "authority_top1": 0,
+      "silent_conflicts": 1
+    },
+    "consolidation": {
+      "groups": 3,
+      "quality": 0.3333,
+      "fully_consolidated": 2,
+      "details": [
+        {
+          "id": "consolidation-repeats:exact-repeat-decision",
+          "observations": 2,
+          "distinct": 1,
+          "compression": 0.5
+        },
+        {
+          "id": "consolidation-repeats:paraphrase-decision",
+          "observations": 2,
+          "distinct": 2,
+          "compression": 0
+        },
+        {
+          "id": "consolidation-repeats:repeated-failure",
+          "observations": 2,
+          "distinct": 1,
+          "compression": 0.5
+        }
+      ]
+    }
+  },
+  "gates": {
+    "passed": true,
+    "thresholds": {
+      "temporal_accuracy": 1,
+      "token_budget_compliance": 1,
+      "cross_project_top1_rate": 0,
+      "retrieval_precision_at_k": 0.7,
+      "retrieval_recall_at_k": 0.9,
+      "irrelevant_leakage_rate": 0.2
+    },
+    "checks": [
+      {
+        "metric": "temporal_accuracy",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_precision_at_k",
+        "actual": 0.7963,
+        "threshold": 0.7,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_recall_at_k",
+        "actual": 1,
+        "threshold": 0.9,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "token_budget_compliance",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "cross_project_top1_rate",
+        "actual": 0,
+        "threshold": 0,
+        "comparison": "max",
+        "passed": true
+      },
+      {
+        "metric": "irrelevant_leakage_rate",
+        "actual": 0.1111,
+        "threshold": 0.2,
+        "comparison": "max",
+        "passed": true
+      }
+    ],
+    "reported_only": {
+      "contradiction_accuracy": 0,
+      "consolidation_quality": 0.3333
+    }
+  },
+  "network_attempts": 0
+}
