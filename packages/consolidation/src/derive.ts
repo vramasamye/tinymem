@@ -42,6 +42,14 @@ export interface MergeSourceView {
   valid_from: string;
   confidence: number;
   importance: number;
+  /**
+   * `provenance.source.kind === 'explicit'` — carried from the record so the representative
+   * tie-break orders by the real authority facts (an explicit-kind source wins over a newer
+   * inferred one), never by a hardcoded default.
+   */
+  explicit: boolean;
+  /** `type === 'decision'` — carried (always false in the episodic derivation pool, but honest). */
+  isDecision: boolean;
   /** The provenance source anchoring the derived memory (the representative's, M3d semantics). */
   source_id: string;
   evidence: EvidenceSpan[];
@@ -55,6 +63,8 @@ export function mergeSourceOf(memory: MemoryRecord): MergeSourceView {
     valid_from: memory.valid_from,
     confidence: memory.confidence,
     importance: memory.importance,
+    explicit: memory.provenance.source.kind === 'explicit',
+    isDecision: memory.type === 'decision',
     source_id: memory.provenance.source.id,
     evidence: memory.provenance.evidence,
   };
@@ -79,7 +89,7 @@ export function representativeSource(
   })[0]!;
 }
 
-/** Authority view of a source projection (the explicit/decision facts a MemoryRecord carries). */
+/** Authority view of a source projection — the authority facts the view carries from the record. */
 function authorityViewOfProjection(source: MergeSourceView): {
   explicit: boolean;
   isDecision: boolean;
@@ -88,8 +98,8 @@ function authorityViewOfProjection(source: MergeSourceView): {
   id: string;
 } {
   return {
-    explicit: false,
-    isDecision: false,
+    explicit: source.explicit,
+    isDecision: source.isDecision,
     observedAt: source.observed_at,
     confidence: source.confidence,
     id: source.id,

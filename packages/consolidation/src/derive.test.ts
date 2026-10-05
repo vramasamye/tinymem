@@ -57,9 +57,22 @@ describe('mergeSourceOf', () => {
       valid_from: memory.valid_from,
       confidence: 0.8,
       importance: 0.5,
+      explicit: false,
+      isDecision: false,
       source_id: SOURCE_ID,
       evidence: memory.provenance.evidence,
     });
+  });
+
+  test('carries the authority facts onto the view (explicit source kind, decision type)', () => {
+    // Review quality finding 9: the projection hardcoded explicit: false and
+    // isDecision: false, so an explicit-kind source could not win a representative tie.
+    const explicit = mergeSourceOf(memoryFixture({ source_kind: 'explicit' }));
+    expect(explicit.explicit).toBeTrue();
+    expect(explicit.isDecision).toBeFalse();
+    const decision = mergeSourceOf(memoryFixture({ type: 'decision' }));
+    expect(decision.explicit).toBeFalse();
+    expect(decision.isDecision).toBeTrue();
   });
 });
 
@@ -94,6 +107,20 @@ describe('representativeSource', () => {
     expect(representativeSource([newer, confident], new Map([[newer.id, 1.5], [confident.id, 1.5]])).id).toBe(
       confident.id,
     );
+  });
+
+  test('an explicit-kind source wins a centrality tie over a newer inferred source', () => {
+    // The authority order, not just recency, breaks representative ties (finding 9): the
+    // explicit statement anchors the derived memory even when the inferred one is newer.
+    const explicit = clusterFixture([
+      { content: 'uses bun (explicit)', observed_at: '2026-01-01T00:00:00.000Z', source_kind: 'explicit' },
+    ])[0]!;
+    const newerInferred = clusterFixture([{ content: 'uses bun (inferred)', observed_at: '2026-02-01T00:00:00.000Z' }])[0]!;
+    const tie = new Map([
+      [explicit.id, 1.5],
+      [newerInferred.id, 1.5],
+    ]);
+    expect(representativeSource([explicit, newerInferred], tie).id).toBe(explicit.id);
   });
 });
 
