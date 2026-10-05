@@ -32,6 +32,7 @@ import { runContradictionPass, type ContradictionDetector } from './contradictio
 import { runDecayPass } from './decay';
 import { runDerivationPass } from './derive';
 import { runMergePass } from './merge';
+import { errorMessage } from './util';
 import {
   DEFAULT_CONSOLIDATION_ACTOR,
   resolveConsolidationConfig,
@@ -321,8 +322,4 @@ async function probeIndex(
 function exclude(pool: readonly MemoryRecord[], ids: readonly string[]): MemoryRecord[] {
   const out = new Set(ids);
   return pool.filter((memory) => !out.has(memory.id));
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

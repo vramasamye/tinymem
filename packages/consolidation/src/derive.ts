@@ -23,6 +23,7 @@ import { z } from 'zod';
 import type { EmbeddingIndex, EvidenceSpan, MemoryRecord, NewMemory, Store } from '@onememory/core';
 
 import { mergeKeeperOrder, authorityViewOf } from './authority';
+import { cosineComponents, scopeKeyOf } from './cluster';
 import type { ContradictionDetector } from './contradiction';
 import { contradictsHeuristically, contradictionTemplate } from './contradiction';
 import type { DerivationRecord, DerivationSkip } from './types';
@@ -325,7 +326,7 @@ export async function runDerivationPass(
       skipped.push({ source_ids: [memory.id], reason: 'no primary entity (no bindings, no tech mention)' });
       continue;
     }
-    const groupKey = `${memory.project_id ?? '∅'}|${memory.user_id ?? '∅'}|${key.entityKey}`;
+    const groupKey = `${scopeKeyOf(memory)}|${key.entityKey}`;
     const group = groups.get(groupKey);
     if (group) group.push(memory);
     else groups.set(groupKey, [memory]);
@@ -335,49 +336,14 @@ export async function runDerivationPass(
   for (const [groupKey, group] of groups) {
     if (group.length < options.minClusterSize) continue;
 
-    // 3. Cluster by cosine within the group (union-find over the vector channel's matches).
-    const index = new Map(group.map((memory) => [memory.id, memory]));
-    const parent = new Map<string, string>(group.map((memory) => [memory.id, memory.id]));
-    const pairCosine = new Map<string, number>();
-    const cosineSum = new Map<string, number>();
-    const find = (id: string): string => {
-      let root = id;
-      while (parent.get(root) !== root) root = parent.get(root)!;
-      return root;
-    };
-    const union = (aId: string, bId: string): void => {
-      const ra = find(aId);
-      const rb = find(bId);
-      if (ra !== rb) parent.set(ra, rb);
-    };
-    for (const memory of group) {
-      const vector = embeddings.get(memory.id);
-      if (vector === undefined) continue;
-      const matches = await vectors.search(
-        [...vector],
-        options.maxClusterSize + 1,
-        { minCosine: options.minClusterCosine },
-      );
-      for (const match of matches) {
-        const other = index.get(match.memory_id);
-        if (other === undefined || other.id === memory.id) continue;
-        union(memory.id, other.id);
-        const key = match.memory_id < memory.id ? `${match.memory_id}|${memory.id}` : `${memory.id}|${match.memory_id}`;
-        pairCosine.set(key, Math.max(pairCosine.get(key) ?? 0, match.cosine));
-        cosineSum.set(memory.id, (cosineSum.get(memory.id) ?? 0) + match.cosine);
-        cosineSum.set(other.id, (cosineSum.get(other.id) ?? 0) + match.cosine);
-      }
-    }
+    // 3. Cluster by cosine within the group (union-find over the vector channel's matches —
+    //    the shared shape; `cosineSum` is the centrality signal for the representative).
+    const { components, cosineSum } = await cosineComponents(group, vectors, embeddings, {
+      minCosine: options.minClusterCosine,
+      neighbors: options.maxClusterSize + 1,
+    });
 
-    const components = new Map<string, MemoryRecord[]>();
-    for (const memory of group) {
-      const root = find(memory.id);
-      const component = components.get(root);
-      if (component) component.push(memory);
-      else components.set(root, [memory]);
-    }
-
-    for (const component of components.values()) {
+    for (const component of components) {
       const ids = component.map((memory) => memory.id);
       if (component.length < options.minClusterSize) continue;
       if (component.length > options.maxClusterSize) {

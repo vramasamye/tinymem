@@ -27,7 +27,9 @@
 import type { MemoryRecord, Store } from '@onememory/core';
 
 import { winnerOf, authorityViewOf } from './authority';
+import { scopeKeyOf } from './cluster';
 import type { ContradictionRecord, ContradictionSkip } from './types';
+import { errorMessage } from './util';
 
 /** Blank every scalar (digits, incl. decimal/multi-part versions) and normalize the statement. */
 export function contradictionTemplate(content: string): string {
@@ -78,11 +80,6 @@ export function contradictsHeuristically(a: MemoryRecord, b: MemoryRecord): bool
  */
 export type ContradictionDetector = (a: MemoryRecord, b: MemoryRecord) => boolean;
 
-/** Stable unordered pair key. */
-export function pairKey(aId: string, bId: string): string {
-  return aId < bId ? `${aId}|${bId}` : `${bId}|${aId}`;
-}
-
 /**
  * WHERE a resolved loser's validity window closes — the only temporal choice the pass makes
  * (the winner itself is decided by the authority fields alone, never by window shapes):
@@ -132,7 +129,7 @@ export async function runContradictionPass(
   // 1. Candidate pairs: same scope + same template + differing values + overlapping validity.
   const groups = new Map<string, MemoryRecord[]>();
   for (const memory of pool) {
-    const key = `${memory.project_id ?? '∅'}|${memory.user_id ?? '∅'}|${contradictionTemplate(memory.content)}`;
+    const key = `${scopeKeyOf(memory)}|${contradictionTemplate(memory.content)}`;
     const group = groups.get(key);
     if (group) group.push(memory);
     else groups.set(key, [memory]);
@@ -246,8 +243,4 @@ function olderOf(a: MemoryRecord, b: MemoryRecord): MemoryRecord {
 
 function newerOf(a: MemoryRecord, b: MemoryRecord): MemoryRecord {
   return a.observed_at <= b.observed_at ? b : a;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

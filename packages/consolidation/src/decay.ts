@@ -19,7 +19,11 @@ import type { MemoryRecord, Store } from '@onememory/core';
 import type { ArchiveRecord } from './types';
 
 const DAY_MS = 86_400_000;
-const DEFAULT_HALF_LIFE_DAYS = 180;
+// The fallback for a type MISSING from the shared per-type table (180 days — the same span
+// retrieval gives failures). Not to be confused with retrieval's default table itself, which
+// types.ts imports as CONSOLIDATION_HALF_LIFE_DAYS — the shared table decides the rate; this
+// only covers a type nobody listed.
+const FALLBACK_HALF_LIFE_DAYS = 180;
 
 /** Decisions, and procedures with verification evidence, resist decay (memory-model.md §7). */
 export function isDecayResistant(memory: MemoryRecord): boolean {
@@ -93,7 +97,7 @@ export async function runDecayPass(
   const warnings: string[] = [];
 
   for (const memory of pool) {
-    const halfLife = options.halfLifeDays[memory.type] ?? DEFAULT_HALF_LIFE_DAYS;
+    const halfLife = options.halfLifeDays[memory.type] ?? FALLBACK_HALF_LIFE_DAYS;
     const value = prominence(memory, options.now, halfLife, options.resistantImportanceFloor);
     if (value >= options.archiveThreshold) continue;
     try {

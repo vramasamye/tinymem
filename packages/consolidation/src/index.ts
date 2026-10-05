@@ -34,13 +34,15 @@ export {
   contradictionTemplate,
   contradictsHeuristically,
   numericValues,
-  pairKey,
   supersessionValidUntil,
   runContradictionPass,
   temporalOverlap,
   type ContradictionDetector,
   type ContradictionPassResult,
 } from './contradiction';
+
+// The shared clustering primitives (pair keys, scope keys, connected components)
+export { pairKey } from './cluster';
 
 // Near-duplicate merge (the pass over the vector channel)
 export { runMergePass, type MergePassResult } from './merge';

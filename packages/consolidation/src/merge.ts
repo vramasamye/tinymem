@@ -19,7 +19,8 @@
 import type { EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
 
 import { authorityViewOf, mergeKeeperOrder } from './authority';
-import { contradictsHeuristically, pairKey, type ContradictionDetector } from './contradiction';
+import { cosineComponents, pairKey, scopeKeyOf } from './cluster';
+import { contradictsHeuristically, type ContradictionDetector } from './contradiction';
 import type { MergeRecord } from './types';
 
 export interface MergePassResult {
@@ -62,7 +63,7 @@ export async function runMergePass(
   // 1. Group by scope + type (a merge never crosses scopes or types).
   const groups = new Map<string, MemoryRecord[]>();
   for (const memory of pool) {
-    const key = `${memory.project_id ?? '∅'}|${memory.user_id ?? '∅'}|${memory.type}`;
+    const key = `${scopeKeyOf(memory)}|${memory.type}`;
     const group = groups.get(key);
     if (group) group.push(memory);
     else groups.set(key, [memory]);
@@ -70,45 +71,16 @@ export async function runMergePass(
 
   for (const group of groups.values()) {
     if (group.length < 2) continue;
-    const index = new Map(group.map((memory) => [memory.id, memory]));
 
-    // 2. Union-find over near-duplicate pairs from the vector channel.
-    const parent = new Map<string, string>(group.map((memory) => [memory.id, memory.id]));
-    const pairCosine = new Map<string, number>();
-    const find = (id: string): string => {
-      let root = id;
-      while (parent.get(root) !== root) root = parent.get(root)!;
-      return root;
-    };
-    const union = (aId: string, bId: string): void => {
-      const ra = find(aId);
-      const rb = find(bId);
-      if (ra !== rb) parent.set(ra, rb);
-    };
-    for (const memory of group) {
-      const vector = embeddings.get(memory.id);
-      if (vector === undefined) continue;
-      const matches = await vectors.search([...vector], options.neighbors, {
-        minCosine: options.cosineThreshold,
-      });
-      for (const match of matches) {
-        const other = index.get(match.memory_id);
-        if (other === undefined || other.id === memory.id) continue;
-        union(memory.id, other.id);
-        const key = match.memory_id < memory.id ? `${match.memory_id}|${memory.id}` : `${memory.id}|${match.memory_id}`;
-        pairCosine.set(key, Math.max(pairCosine.get(key) ?? 0, match.cosine));
-      }
-    }
+    // 2. Union-find over near-duplicate pairs from the vector channel (the shared shape —
+    //    only pairs the channel certifies at the threshold are recorded, which is what the
+    //    pairwise keeper gating below reads).
+    const { components, pairCosine } = await cosineComponents(group, vectors, embeddings, {
+      minCosine: options.cosineThreshold,
+      neighbors: options.neighbors,
+    });
 
-    const components = new Map<string, MemoryRecord[]>();
-    for (const memory of group) {
-      const root = find(memory.id);
-      const component = components.get(root);
-      if (component) component.push(memory);
-      else components.set(root, [memory]);
-    }
-
-    for (const component of components.values()) {
+    for (const component of components) {
       if (component.length < 2) continue;
       // The arbitration guard: a merge must never absorb a conflicting claim. Any flagged
       // pair disqualifies the WHOLE cluster — pruning only the flagged members would resolve
@@ -221,7 +193,7 @@ async function mergeCluster(
   // The merged audit event on the keeper: the evidence union of the whole cluster, recorded
   // verbatim (the Store port has no evidence-append primitive; the audit trail is where the
   // union lives — every absorbed row keeps its own evidence in history).
-  const evidenceUnion = [keeper, ...mergedSourcesIdentities(component, keeper)].flatMap(
+  const evidenceUnion = [keeper, ...membersExceptKeeper(component, keeper)].flatMap(
     (memory) => memory.provenance.evidence,
   );
   await store.appendMemoryEvent({
@@ -248,10 +220,11 @@ async function mergeCluster(
   });
 }
 
-/** Every cluster member except the keeper (for the evidence union). */
-function mergedSourcesIdentities(
-  component: readonly MemoryRecord[],
-  keeper: MemoryRecord,
-): MemoryRecord[] {
+/**
+ * Every cluster member except the keeper — absorbed AND skipped ones (the evidence union
+ * covers the whole cluster; `merged_sources` on the report record means absorbed-only, so
+ * the two must not share a name).
+ */
+function membersExceptKeeper(component: readonly MemoryRecord[], keeper: MemoryRecord): MemoryRecord[] {
   return component.filter((memory) => memory.id !== keeper.id);
 }
