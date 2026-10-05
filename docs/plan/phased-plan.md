@@ -99,6 +99,17 @@ M14.6 (events compaction) remain open scope.
 Definition of done (Phase 4): all five runtimes pass the conformance suite; `onemem doctor`
 auto-configures any of them in a fresh project.
 
+**Status (2026-10-06):** Phase 4 underway. M8 landed (`mission/8-cursor`, merged `2dd3c9f`,
+mission report `docs/plan/mission-reports/mission-8-cursor.md`): new `packages/adapters/cursor`
+package (35 files, TS strict, Zod at boundaries), `.cursor/mcp.json` + `.cursor/hooks.json` +
+`.cursor/rules/onememory.mdc` written idempotently, 14 conformance tests in
+`benchmarks/eval/src/adapter-conformance/` prove byte-identical memory results vs Claude, with
+the pre-existing Codex normalization gap pinned. The shared conformance `scenario.ts` +
+`pipeline.ts` live in `benchmarks/eval/src/adapter-conformance/` so M9 and M5b can reuse them.
+M9 (`mission/9-pi-opencode`) and M5b (`mission/5b-mcp-hardening`) are the remaining Phase 4 lanes;
+the conformance suite's "all five runtimes" still requires M9's two runtimes to land before it
+becomes Phase-4 DoD-completable.
+
 ## Phase 5 — Self improvement
 
 | Mission | Branch | Scope |

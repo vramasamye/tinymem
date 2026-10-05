@@ -123,6 +123,16 @@ Issues:
 ## M8 — Cursor adapter [P4] [integration]
 Branch: `mission/8-cursor` · `.cursor/mcp.json` + rules; conformance green.
 
+Status: ✅ Completed 2026-10-06 (merged `2dd3c9f`). Mission report at
+`docs/plan/mission-reports/mission-8-cursor.md`. New package
+`@onememory/adapter-cursor` (35 files), 14 new conformance tests in
+`benchmarks/eval/src/adapter-conformance/`. Conexts cursor to the
+shared 10-fact canonical session via a real-engine pipeline; byte-identical
+to Claude, with one pre-existing Codex normalization gap pinned by a
+test so it cannot grow silently. Cursor-specific limits (no exit code
+on `postToolUseFailure`, undocumented transcript) are documented
+honestly rather than fabricated.
+
 ## M9 — Pi + OpenCode adapters [P4] [integration]
 Branch: `mission/9-pi-opencode` · pi extension/config; opencode.json MCP + skills; conformance green.
 
@@ -452,3 +462,33 @@ remaining items below are honest residual risk or doc follow-ups.
    add ~25s (~8–12s each) to a clean run. Ceilings are bounded (60s); the tests don't share
    fixtures. Mark a slow tier when the project's test-runner tiering is set up; do not shorten
    the ceilings.
+
+---
+
+## Cross-mission follow-ups — raised by M8 (Cursor adapter)
+
+Merged `2dd3c9f` (mission report: `docs/plan/mission-reports/mission-8-cursor.md`, 2026-10-06).
+Cursor passes conformance today (byte-identical memory results vs Claude, with one pre-existing
+Codex normalization gap pinned). Honest remaining items below.
+
+1. **Hoist the remember-clause extractor into a shared adapter kit** [P2] — `packages/adapters/cursor/src/remember.ts`
+   is documented as byte-identical to Claude's. Either factor it into a `packages/adapters/_shared/`
+   module reused by claude/codex/cursor, or accept the duplication once the conformance gap closes
+   on the Codex side. Keep AC: conformance must stay bit-identical.
+2. **Codex: strip the `explicit.remember` trailing punctuation** [P2, other mission's lane] — the
+   pinned normalization gap (Codex keeps the trailing period) closes with one tiny edit. M9's
+   OpenCode adapter should land the same fix; if M9 captures it, coordinate a back-port.
+3. **Map an exit code if Cursor ever documents one for failed Shell** [P3] — Cursor's
+   `postToolUseFailure` currently carries only `error_message`/`failure_type`, so the suite asserts
+   `exit_code: null`. Adopt the real field the day Cursor ships it.
+4. **Add `--transcript` backfill once Cursor documents the transcript file format** [P3] — refusing
+   to parse an undocumented `transcript_path` is the right call today; revisit when Cursor publishes
+   the schema.
+5. **Add a vector-channel conformance variant when an offline embedder lands** [P3] — the suite
+   currently runs lexical+graph only; the warning is recorded in the runner. No silent fallback.
+6. **Cursor user-scope (`~/.cursor`) global scaffold** [P2] — project-scope only today; the user
+   cross-follow-up #11 already covers Claude/Codex. Open with explicit consent + safe-merge tests
+   the same way.
+7. **`bun.lock` drift on merge** (same recurrence as M13c item 5) — the cursor package added a new
+   workspace edge. `bun install` after merge is part of the merge dance; consider encoding it in
+   the contributor notes the next time two workspace edges land in the same wave.
