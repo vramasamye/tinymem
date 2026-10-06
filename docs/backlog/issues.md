@@ -629,8 +629,17 @@ Honest residual items below.
 3. **Quality dashboard data wiring** [P3] — the dashboard panel renders from API endpoints,
    but some duplicate/stale/conflict counts require the upcoming M5b-quality metrics. When
    M5b-quality lands, extend the dashboard to consume them directly.
-4. **Pagination on memories list** [P3] — current list scrolls; add keyed pagination using
-   cursor + page-size from the API once `apps/api` exposes it.
+4. ~~**Pagination on memories list**~~ ✅ Closed (2026-10-06): keyset pagination end to end.
+   `apps/api` exposes `GET /v1/projects/{id}/memories` — `page_size` (1..200, default 50),
+   optional `cursor`, `types` and `include` as comma lists over fixed vocabularies, newest
+   observation first, `next_cursor: null` on the last page. The cursor is opaque base64url
+   `[observed_at_us, id]`: `timestamptz` stores microseconds, so a millisecond ISO cursor
+   could skip or repeat rows sharing a millisecond (mutation-verified in
+   `packages/storage/src/repositories/search-page.test.ts`). `apps/web` gains the `/browse`
+   surface — the whole project walked one page at a time, cursor in the URL (deep-linkable,
+   back button returns to the previous page), no ranking and no token budget, unlike search.
+   `listMemoryPage` reuses the same filter planner and row mapper as search, so a page and a
+   search agree on what a filter means.
 
 ---
 
