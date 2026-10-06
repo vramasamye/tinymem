@@ -1,0 +1,126 @@
+{
+  "schema_version": "1",
+  "id": "failure-queries",
+  "title": "Failure queries: per-type retrieval precision/recall (M11b-quality)",
+  "description": "Three durable failure memories, each extracted from a real failure-then-resolution pair (a failing command later passing in the same session; the failure statement records the command and its signature, and each pair also leaves the command's recurring-procedural memory in the corpus — a realistic byproduct the queries must rank against). Every query is typed 'failure' (query_type) and targets one failure's distinctive tokens, so recall measures whether the right failure surfaces.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Failure-query fixture"
+    }
+  ],
+  "events": [
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-module-failure",
+      "offset_seconds": 10,
+      "command": "bun test",
+      "exit_code": 1,
+      "output_digest": "error: Cannot find module \"./schema\" imported from src/store.ts"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-module-failure",
+      "offset_seconds": 20,
+      "command": "bun test",
+      "exit_code": 0,
+      "output_digest": "87 pass, 0 fail"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-docker-failure",
+      "offset_seconds": 30,
+      "command": "docker compose up -d",
+      "exit_code": 1,
+      "output_digest": "Error response from daemon: port is already allocated"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-docker-failure",
+      "offset_seconds": 40,
+      "command": "docker compose up -d",
+      "exit_code": 0,
+      "output_digest": "Container started"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-terraform-failure",
+      "offset_seconds": 50,
+      "command": "terraform plan",
+      "exit_code": 1,
+      "output_digest": "Invalid provider configuration for the storage backend"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-terraform-failure",
+      "offset_seconds": 60,
+      "command": "terraform plan",
+      "exit_code": 0,
+      "output_digest": "Plan: 1 to add, 0 to change, 0 to destroy."
+    }
+  ],
+  "facts": [
+    {
+      "key": "module-failure",
+      "description": "MODULE_NOT_FOUND failure resolved by rerunning bun test",
+      "scenario": "failure-solution",
+      "match": { "type": "failure", "content_contains": "MODULE_NOT_FOUND" }
+    },
+    {
+      "key": "docker-port-failure",
+      "description": "Docker compose NONZERO_EXIT failure resolved by rerunning the command",
+      "scenario": "failure-solution",
+      "match": { "type": "failure", "content_contains": "docker compose" }
+    },
+    {
+      "key": "terraform-provider-failure",
+      "description": "Terraform plan NONZERO_EXIT failure resolved by rerunning the command",
+      "scenario": "failure-solution",
+      "match": { "type": "failure", "content_contains": "terraform plan" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "module-resolution",
+      "project": "alpha",
+      "query": "cannot find module schema error",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "failure",
+      "expected": ["module-failure"],
+      "forbidden": [],
+      "oracle_min_tokens": 15
+    },
+    {
+      "id": "docker-port",
+      "project": "alpha",
+      "query": "docker compose port already allocated",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "failure",
+      "expected": ["docker-port-failure"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    },
+    {
+      "id": "terraform-provider",
+      "project": "alpha",
+      "query": "terraform invalid provider configuration",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "failure",
+      "expected": ["terraform-provider-failure"],
+      "forbidden": [],
+      "oracle_min_tokens": 15
+    }
+  ]
+}

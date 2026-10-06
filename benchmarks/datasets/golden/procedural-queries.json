@@ -1,0 +1,156 @@
+{
+  "schema_version": "1",
+  "id": "procedural-queries",
+  "title": "Procedural queries: per-type retrieval precision/recall (M11b-quality)",
+  "description": "Five procedures in one project — four explicit user statements (verbatim, the highest authority source) and one recurring command the heuristic extractor derives from two terminal runs. Every query is typed 'procedural' (query_type) and declares the procedure it must return.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Procedure-query fixture"
+    }
+  ],
+  "events": [
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-install-first",
+      "offset_seconds": 10,
+      "type": "procedural",
+      "content": "Run bun install before bun test in CI."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-deploy",
+      "offset_seconds": 20,
+      "type": "procedural",
+      "content": "Deploy the api service with bun run deploy after the migrations."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-fixtures",
+      "offset_seconds": 30,
+      "type": "procedural",
+      "content": "Update the test fixtures whenever the schema changes."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-lint",
+      "offset_seconds": 40,
+      "type": "procedural",
+      "content": "Run the linter with bun run lint before every commit."
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-icons",
+      "offset_seconds": 50,
+      "command": "bun run build:icons",
+      "exit_code": 0,
+      "output_digest": "icons rebuilt: 12 files"
+    },
+    {
+      "kind": "terminal.output",
+      "project": "alpha",
+      "session": "sess-icons",
+      "offset_seconds": 60,
+      "command": "bun run build:icons",
+      "exit_code": 0,
+      "output_digest": "icons rebuilt: 12 files, 0 stale"
+    }
+  ],
+  "facts": [
+    {
+      "key": "install-first",
+      "description": "bun install must run before bun test in CI",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_equals": "Run bun install before bun test in CI." }
+    },
+    {
+      "key": "deploy-api",
+      "description": "Deploy the api service after the migrations",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_contains": "bun run deploy" }
+    },
+    {
+      "key": "fixtures-schema",
+      "description": "Test fixtures must be updated whenever the schema changes",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_contains": "test fixtures" }
+    },
+    {
+      "key": "lint-commit",
+      "description": "The linter runs before every commit",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_contains": "linter" }
+    },
+    {
+      "key": "icons-command",
+      "description": "Recurring command that rebuilds the icons",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_contains": "build:icons" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "ci-order",
+      "project": "alpha",
+      "query": "what should run before bun test in ci",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "procedural",
+      "expected": ["install-first"],
+      "forbidden": [],
+      "oracle_min_tokens": 10
+    },
+    {
+      "id": "api-deploy",
+      "project": "alpha",
+      "query": "how do we deploy the api service",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "procedural",
+      "expected": ["deploy-api"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    },
+    {
+      "id": "schema-fixtures",
+      "project": "alpha",
+      "query": "what should happen when the schema changes",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "procedural",
+      "expected": ["fixtures-schema"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    },
+    {
+      "id": "pre-commit-lint",
+      "project": "alpha",
+      "query": "run the linter before every commit",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "procedural",
+      "expected": ["lint-commit"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    },
+    {
+      "id": "icons-build",
+      "project": "alpha",
+      "query": "how do we build the icons",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "procedural",
+      "expected": ["icons-command"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    }
+  ]
+}

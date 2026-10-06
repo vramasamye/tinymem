@@ -1,0 +1,112 @@
+{
+  "schema_version": "1",
+  "id": "pollution-quality",
+  "title": "Memory pollution: archived-but-cited (stale) and near-duplicate memories that surfaced in retrieval",
+  "description": "M11b-quality pollution fixture. Observations are 60 days old (base_time 60 days before now) and the dataset opts into the M14 consolidation pass with decay.archiveThreshold raised to 0.2 — high enough to archive the low-prominence 60-day-old version fact (episodic half-life 30d), far below every explicit statement's prominence. The point-in-time probe then still serves that archived memory (as-of queries include archived rows) and REINFORCES it, producing the honest stale state the pollution audit detects: status 'archived' but cited within the last 30 days. The two procedural statements differ only in capitalization, so ingest's content-hash dedupe keeps both while their deterministic vectors are cosine-identical — the near-duplicate pair the offline merge pass (vector-gated, no embedder) leaves behind, and the third statement is the negative control (same type and project, dissimilar wording, must NOT flag).",
+  "base_time": "2026-08-04T10:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Pollution fixture: stale archive + near-duplicate pair"
+    }
+  ],
+  "consolidation_pass": {
+    "config": {
+      "decay": {
+        "archiveThreshold": 0.2
+      }
+    }
+  },
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-node18",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We upgraded to Node 18 for the CI runner."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-install-a",
+      "offset_seconds": 20,
+      "type": "procedural",
+      "content": "Always run bun install before bun test in CI."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-install-b",
+      "offset_seconds": 30,
+      "type": "procedural",
+      "content": "always run bun install before bun test in ci"
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-migrations",
+      "offset_seconds": 40,
+      "type": "procedural",
+      "content": "Run the migrations before deploying the api service."
+    }
+  ],
+  "facts": [
+    {
+      "key": "stale-node-18",
+      "description": "Node 18 version fact the decay pass archives 60 days later (still served by point-in-time probes)",
+      "scenario": "outdated",
+      "match": { "type": "episodic", "subtype": "semantic.version", "content_contains": "Node 18" }
+    },
+    {
+      "key": "install-first-a",
+      "description": "Procedural statement, wording A (capitalized)",
+      "scenario": "repeated",
+      "match": { "type": "procedural", "content_equals": "Always run bun install before bun test in CI." }
+    },
+    {
+      "key": "install-first-b",
+      "description": "Procedural statement, wording B (lowercase — near-duplicate of A that ingest dedupe cannot collapse)",
+      "scenario": "repeated",
+      "match": { "type": "procedural", "content_equals": "always run bun install before bun test in ci" }
+    },
+    {
+      "key": "migrations-before-deploy",
+      "description": "Dissimilar procedural statement (the duplicate scan's negative control)",
+      "scenario": "procedural",
+      "match": { "type": "procedural", "content_equals": "Run the migrations before deploying the api service." }
+    }
+  ],
+  "queries": [
+    {
+      "id": "ci-runner-node-history",
+      "project": "alpha",
+      "query": "which node version does the ci runner use",
+      "max_tokens": 800,
+      "kind": "temporal",
+      "as_of": "2026-09-03T10:00:00.000Z",
+      "expected": ["stale-node-18"],
+      "forbidden": []
+    },
+    {
+      "id": "install-first",
+      "project": "alpha",
+      "query": "what should run before bun test in ci",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["install-first-a", "install-first-b"],
+      "forbidden": []
+    },
+    {
+      "id": "migrations-deploy",
+      "project": "alpha",
+      "query": "what must run before deploying the api service",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "expected": ["migrations-before-deploy"],
+      "forbidden": []
+    }
+  ]
+}

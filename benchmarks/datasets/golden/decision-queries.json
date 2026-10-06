@@ -1,0 +1,146 @@
+{
+  "schema_version": "1",
+  "id": "decision-queries",
+  "title": "Decision queries: per-type retrieval precision/recall (M11b-quality)",
+  "description": "Five architecture decisions in one project — four extracted from decision language and one explicit user statement (the highest authority source). Every query is typed 'decision' (query_type), so this dataset feeds the M11b per-type precision/recall and token-efficiency metrics: each query declares the decision it must return, and the corpus contains nothing else that matches its wording.",
+  "base_time": "2026-10-03T09:00:00.000Z",
+  "now": "2026-10-03T10:00:00.000Z",
+  "projects": [
+    {
+      "key": "alpha",
+      "name": "alpha",
+      "description": "Decision-query fixture"
+    }
+  ],
+  "events": [
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-database",
+      "offset_seconds": 10,
+      "role": "user",
+      "content": "We decided to use PostgreSQL with pgvector as the only database dialect."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-branching",
+      "offset_seconds": 20,
+      "role": "user",
+      "content": "We decided to adopt trunk-based development for all repositories."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-releases",
+      "offset_seconds": 30,
+      "role": "user",
+      "content": "We decided to ship releases every Thursday morning."
+    },
+    {
+      "kind": "conversation.message",
+      "project": "alpha",
+      "session": "sess-approvals",
+      "offset_seconds": 40,
+      "role": "user",
+      "content": "We decided to require two approvals for every pull request."
+    },
+    {
+      "kind": "explicit.remember",
+      "project": "alpha",
+      "session": "sess-versioning",
+      "offset_seconds": 50,
+      "type": "decision",
+      "content": "We version every API through the URL path."
+    }
+  ],
+  "facts": [
+    {
+      "key": "database-decision",
+      "description": "PostgreSQL + pgvector chosen as the only database dialect",
+      "scenario": "project-scoped",
+      "match": { "type": "decision", "content_contains": "PostgreSQL" }
+    },
+    {
+      "key": "trunk-based-decision",
+      "description": "Trunk-based development adopted for all repositories",
+      "scenario": "other",
+      "match": { "type": "decision", "content_contains": "trunk-based" }
+    },
+    {
+      "key": "release-cadence-decision",
+      "description": "Releases ship every Thursday morning",
+      "scenario": "other",
+      "match": { "type": "decision", "content_contains": "Thursday" }
+    },
+    {
+      "key": "approvals-decision",
+      "description": "Two approvals required for every pull request",
+      "scenario": "other",
+      "match": { "type": "decision", "content_contains": "two approvals" }
+    },
+    {
+      "key": "api-versioning-decision",
+      "description": "Every API is versioned through the URL path (explicit user decision)",
+      "scenario": "other",
+      "match": { "type": "decision", "content_contains": "URL path" }
+    }
+  ],
+  "queries": [
+    {
+      "id": "which-database",
+      "project": "alpha",
+      "query": "which database do we use",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "decision",
+      "expected": ["database-decision"],
+      "forbidden": [],
+      "oracle_min_tokens": 15
+    },
+    {
+      "id": "branching-model",
+      "project": "alpha",
+      "query": "did we adopt trunk-based development",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "decision",
+      "expected": ["trunk-based-decision"],
+      "forbidden": [],
+      "oracle_min_tokens": 15
+    },
+    {
+      "id": "release-cadence",
+      "project": "alpha",
+      "query": "when do we ship releases",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "decision",
+      "expected": ["release-cadence-decision"],
+      "forbidden": [],
+      "oracle_min_tokens": 12
+    },
+    {
+      "id": "pull-request-approvals",
+      "project": "alpha",
+      "query": "how many approvals does a pull request need",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "decision",
+      "expected": ["approvals-decision"],
+      "forbidden": [],
+      "oracle_min_tokens": 14
+    },
+    {
+      "id": "api-versioning",
+      "project": "alpha",
+      "query": "how do we version the api",
+      "max_tokens": 800,
+      "kind": "retrieval",
+      "query_type": "decision",
+      "expected": ["api-versioning-decision"],
+      "forbidden": [],
+      "oracle_min_tokens": 11
+    }
+  ]
+}

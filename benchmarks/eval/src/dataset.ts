@@ -119,6 +119,14 @@ const SupersessionFixtureSchema = z.strictObject({
   reason: z.string().min(1),
 });
 
+/**
+ * The M11b-quality query types: which content kind the query's golden answer belongs to
+ * (phased-plan Phase 5 row M11b — "procedural, decision, failure query sets"). Queries that
+ * carry a type feed the per-type precision/recall and token-efficiency metrics; queries without
+ * one keep feeding only the aggregate metrics.
+ */
+export const QUALITY_QUERY_TYPES = ['procedural', 'decision', 'failure'] as const;
+
 const QueryFixtureSchema = z.strictObject({
   id: z.string().regex(/^[a-z0-9-]+$/),
   /** Omitted = unscoped (all projects); {@link GLOBAL_PROJECT_KEY} is not valid here. */
@@ -133,6 +141,15 @@ const QueryFixtureSchema = z.strictObject({
   forbidden: z.array(z.string()).default([]),
   /** Which metric bucket this query feeds. */
   kind: z.enum(['retrieval', 'temporal', 'pollution']).default('retrieval'),
+  /** M11b-quality: the content kind this query measures (optional). */
+  query_type: z.enum(QUALITY_QUERY_TYPES).optional(),
+  /**
+   * M11b-quality token-efficiency oracle annotation (optional): the committed record of the
+   * minimum tokens the packer needs to return exactly the `expected` facts in their most compact
+   * (titles-only) representation. The harness recomputes this from the golden facts with the
+   * engine's own estimator and fails loudly on drift, so the annotation can never silently stale.
+   */
+  oracle_min_tokens: z.number().int().min(1).optional(),
 });
 
 /**
@@ -274,6 +291,12 @@ function validateReferences(dataset: GoldenDataset, source: string): GoldenDatas
     if (query.project !== undefined) requireProject(query.project, `query '${query.id}'`);
     requireFacts(query.expected, `query '${query.id}'.expected`);
     requireFacts(query.forbidden, `query '${query.id}'.forbidden`);
+    // M11b-quality: a typed query (and a token oracle) needs a golden answer set to measure.
+    if ((query.query_type !== undefined || query.oracle_min_tokens !== undefined) && query.expected.length === 0) {
+      throw new Error(
+        `dataset ${source}: query '${query.id}' carries query_type/oracle_min_tokens but declares no expected facts`,
+      );
+    }
   }
   for (const group of dataset.contradictions) {
     requireProject(group.project, `contradiction '${group.id}'`);
