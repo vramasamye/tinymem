@@ -738,10 +738,26 @@ Signature recurrence matching → SKILL.md candidates → review/promote flow �
    `FakeSkillStore`, mutation-verified: forcing `stale = false` fails two) plus the end-to-end
    CLI leg in `skills-command.test.ts` (fresh report, human mode, required-note refusal,
    unknown-id refusal, audited flip, terminal refusal, deprecated rows exit the assessment).
-3. **Skill missions→AGENTS.md / SKILL.md write surface** [P3] — Claude Code and OpenCode
-   both consume `SKILL.md` files from a project-local or global path. The filesystem
-   write is correct today; the canonical *location* and `manifest.json` (per the runtime's
-   discovery rules) is currently a fixed default. Make it configurable per runtime.
+3. ~~**Skill missions→AGENTS.md / SKILL.md write surface** [P3]~~ ✅ Closed (2026-10-06): the
+   canonical skill write location is now configurable per runtime. Grounding first: research
+   against each runtime's own docs (recorded with source URLs in the new
+   `packages/core/src/types/runtime-skills.ts` table) established that **every** runtime
+   discovers skills by scanning a skills root for `<name>/SKILL.md`, and **none** consumes a
+   `manifest.json` for local discovery — the follow-up's manifest premise was ungrounded (the one
+   index file in the ecosystem, OpenCode v2's `index.json`, is only for remote HTTP catalogs).
+   So the only knob is the root. As built: `RUNTIME_SKILL_TARGETS` maps the five runtimes
+   (claude-code `.claude/skills`, codex `.agents/skills`, cursor `.cursor/skills`, pi
+   `.pi/skills`, opencode `.opencode/skills`, plus each runtime's compatibility roots) with
+   `primarySkillRoot`/`resolveSkillRoots`/`runtimeForSkillDir` resolvers; `onemem skills promote
+   <id> --runtime <id>` writes into a runtime's own root; `skills.dir` in the config sets the
+   default (project-relative or `~/global`); `--dir` still overrides. Precedence is
+   `--dir` → `--runtime` → `skills.dir` → `<project root>/skills`, and the audit row records the
+   chosen root plus how it was chosen. The engine already renders the `name`/`description`
+   frontmatter every runtime requires with the directory named after the skill, so the same bytes
+   serve all five. Pinned by `packages/core/src/types/runtime-skills.test.ts` (11 tests),
+   `apps/cli/src/skills-target.test.ts` (precedence + refusals, 11 tests) and an end-to-end CLI
+   leg in `apps/cli/src/skills-command.test.ts`; mutation-verified (ignoring `--runtime`, or
+   ignoring `skills.dir`, fails the suite).
 4. **Skill content review UI in `apps/web`** [P3] — M10's web dashboard currently shows
    the skills list. Add a dedicated `/skills/:id/review` route that renders the SKILL.md
    body and exposes the `approve | reject` action surface directly (no CLI-only).

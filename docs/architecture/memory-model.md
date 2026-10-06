@@ -254,6 +254,14 @@ be queryable, a later migration adds the column; no query consumer exists today.
   `skills/<slug>/SKILL.md` (when to use, prerequisites, procedure, commands, validation, known
   failure modes). Promotion requires verification; `auto_promote_skills = false` by default (writes
   candidate, asks user via `onemem skills review`).
+- **Where the artifact lands** (as-built, M15 follow-up 3): `skills.path` on the row is the
+  canonical project-relative identity (`skills/<slug>/SKILL.md`), while the *write* root is
+  configurable per runtime. Precedence: `--dir <path>` → `--runtime <id>` (that runtime's own
+  skills root, from the `@onememory/core` runtime table) → `skills.dir` in the config →
+  `<project root>/skills`. The audit row records the chosen root and how it was chosen
+  (`skills_root`, `skills_root_source`) beside `written_path`. Every runtime discovers skills by
+  scanning a root for `<name>/SKILL.md` — none consumes a manifest — and the rendered
+  `name`/`description` frontmatter with a directory named after the skill satisfies all five.
 - **Decision capture**: a decision candidate must eventually carry alternatives + rationale to be
   promoted from `proposed`; otherwise it remains an episodic note.
 

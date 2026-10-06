@@ -31,6 +31,11 @@ agent-authored Markdown skills where the memory service itself makes no LLM call
 5. **Serving**: skills are files (`skills/<slug>/SKILL.md`) so runtime-native skill loaders
    (Claude Code, OpenCode) pick them up directly; the MCP `memory_skills` tool lists them for
    every other runtime.
+   - *As-built (M15 follow-up 3, 2026-10-06)*: the file location is configurable. The row's
+     `skills.path` remains the canonical project-relative identity; the write root is chosen by
+     `--dir <path>` → `--runtime <id>` (the runtime's own skills root) → `skills.dir` in the
+     config → `<project root>/skills`. Every runtime discovers skills by scanning a root for
+     `<name>/SKILL.md` (none consumes a manifest), so the same rendered bytes serve all five.
 
 ## Consequences
 
