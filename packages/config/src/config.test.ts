@@ -62,7 +62,19 @@ describe('strict schema validation', () => {
     expect(config.daemon.host).toBe('127.0.0.1');
     expect(config.daemon.port).toBe(DEFAULT_DAEMON_PORT);
     expect(config.security.network_guard).toBe('auto');
+    expect(config.skills.dir).toBeUndefined(); // absent → promote defaults to <project root>/skills
     expect(networkGuardPlan(config).enforce).toBe(true);
+  });
+
+  test('skills.dir is optional and accepts a runtime skills root (project-relative or ~/global)', () => {
+    expect(parseConfig({ version: 1, skills: { dir: '.claude/skills' } }).skills.dir).toBe('.claude/skills');
+    expect(parseConfig({ version: 1, skills: { dir: '~/.opencode/skills' } }).skills.dir).toBe('~/.opencode/skills');
+    expect(parseConfig({ version: 1, skills: {} }).skills.dir).toBeUndefined();
+  });
+
+  test('an empty skills.dir is rejected (a directory, not a blank string)', () => {
+    const result = safeParseConfig({ version: 1, skills: { dir: '' } });
+    expect(result.success).toBeFalse();
   });
 
   test('an unknown key is rejected with its path (a typo is not forward compatibility)', () => {

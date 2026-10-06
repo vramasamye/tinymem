@@ -32,6 +32,7 @@ export {
   DaemonSectionSchema,
   RedactionSectionSchema,
   SecuritySectionSchema,
+  SkillsSectionSchema,
   OnememoryConfigSchema,
   parseConfig,
   safeParseConfig,
@@ -50,6 +51,7 @@ export {
   type LlmRouteSection,
   type DaemonSection,
   type SecuritySection,
+  type SkillsSection,
   type NetworkGuardMode,
 } from './schema';
 

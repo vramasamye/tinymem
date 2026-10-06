@@ -99,6 +99,13 @@ security:
   #   groups: { jwt: false }                                  # turn a built-in detector group off
   #   extra_patterns:
   #     - { id: stripe, kind: api-key, pattern: 'sk_live_[A-Za-z0-9]{24}' }
+
+# Skill artifacts (M15): where 'onemem skills promote' writes SKILL.md. Absent dir → <project
+# root>/skills. Point dir at a runtime's own skills root so that runtime's loader finds the file:
+#   .claude/skills (Claude Code)   .opencode/skills (OpenCode)   .cursor/skills (Cursor)
+#   .pi/skills (Pi)   .agents/skills (Codex/Cursor/Pi)   ~/.claude/skills (global, any runtime)
+# Per-run overrides: 'onemem skills promote <id> --runtime <id>' or '--dir <path>'.
+skills: {}
 `;
 }
 

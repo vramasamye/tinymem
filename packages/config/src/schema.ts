@@ -198,6 +198,21 @@ export const SecuritySectionSchema = z.strictObject({
 });
 export type SecuritySection = z.infer<typeof SecuritySectionSchema>;
 
+/**
+ * Skill-artifact write surface (M15 follow-up 3, ADR-0009 rule 5). Skills are files
+ * (`<skills-root>/<name>/SKILL.md`) so runtime-native loaders find them; every runtime scans a
+ * skills root (none consumes a manifest — see `@onememory/core`'s runtime-skill table).
+ */
+export const SkillsSectionSchema = z.strictObject({
+  /**
+   * Default directory `onemem skills promote` writes into. Absent → `<project root>/skills` (the
+   * documented default). A `~/...` value resolves against HOME (e.g. `~/.claude/skills`). Per-run
+   * `--dir <path>` and `--runtime <id>` override it.
+   */
+  dir: identifier.optional(),
+});
+export type SkillsSection = z.infer<typeof SkillsSectionSchema>;
+
 // ---------------------------------------------------------------------------
 // Root schema + fail-closed cross-field rules
 // ---------------------------------------------------------------------------
@@ -210,6 +225,7 @@ const RootShape = {
   llm: LlmSectionSchema.default(() => LlmSectionSchema.parse({})),
   daemon: DaemonSectionSchema.default(() => DaemonSectionSchema.parse({})),
   security: SecuritySectionSchema.default(() => SecuritySectionSchema.parse({})),
+  skills: SkillsSectionSchema.default(() => SkillsSectionSchema.parse({})),
 };
 
 /** One actionable validation failure (path + message; never a secret value). */
