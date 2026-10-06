@@ -12,6 +12,9 @@ export * from './schema/index';
 // Memory model (ADR-0003): types, transitions, hashing, temporal predicates, ids
 export * from './model/index';
 
+// Retention / events-compaction contract (M14.6 — the EventsCompactor port + plan types)
+export * from './types/retention';
+
 // Shared pure defaults used across engine packages
 export * from './shared';
 
