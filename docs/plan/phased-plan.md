@@ -89,8 +89,12 @@ merged `e0f504e`) closed the M11a-raised backlog item 5: the harness now runs re
 for opted-in datasets, and both dependent metrics are CI-gated
 (`contradiction_accuracy ≥ 0.8`, measured 0.8333, 5/6 groups;
 `consolidation_quality ≥ 0.3`, measured 0.3333 — the cross-phrasing
-detector miss is documented and tracked as a follow-up). M14.5 (project digest rollup) and
-M14.6 (events compaction) remain open scope.
+detector miss is documented and tracked as a follow-up). M14.5 (`mission/14e-digest-rollup`, merged 2026-10-06) and
+M14.6 (`mission/14f-events-compaction`, fast-forwarded onto main 2026-10-06) closed the two
+Phase 3 follow-ups: `onemem digest` produces a token-budgeted `memory_project_context`
+(default 750) and `onemem compact` preserves the audit trail + sources while honoring the
+retention window. All Phase 3 backlog items are now closed; only the M14-onward items flagged
+as P3 (cross-phrasing detector miss, config wiring) remain as open scope.
 
 ## Phase 4 — Universal agents
 

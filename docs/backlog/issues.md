@@ -557,3 +557,45 @@ Honest residual items below.
 6. **`bun.lock` drift on merge** — the same recurrence as M13c item 5 / M8 item 7. Rebase + `bun
    install` before the merge is part of the dance; three workspace edges in three missions
    confirms it. Coordinator candidate to encode in `AGENTS.md` contributor notes.
+
+---
+
+## Cross-mission follow-ups — raised by M14.5 + M14.6 (digest rollup + events compaction)
+
+Both missions landed 2026-10-06 onto `main` (M14.5: `1b6559b`; M14.6: fast-forwarded onto
+main). Mission reports at `docs/plan/mission-reports/mission-{14e,14f}-*.md`. Phase 3 backlog
+is now fully closed. Honest residual items below — read with a generous eye: the digest and
+compaction passes are deliberately narrow and the next two items are about tightening their
+windows, not about their correctness.
+
+### M14.5 — project digest rollup
+
+1. **Digest windowing policy** [P3, coordinator ADR] — `runProjectDigest` defaults are honest
+   but undecided: which sources count toward the budget (`memory.kind ∈ {decision, failure,
+   procedure}` only — declared today; document it in `docs/architecture/retrieval.md` §2
+   alongside `projects.digest`), how often the digest may re-fire without thrashing, and how
+   parameter sets survive across config migrations. Propose ADR amendment in the report; do
+   not write the ADR here — coordinator-owned.
+2. **Digest wiring into the existing `memory_project_context` tool** [P3] — the tool surface
+   exists; the digest pass writes the underlying memory. Confirm via `onemem digest` →
+   `mcp memory_project_context` round trip (no schema change, no new endpoint). Capture any
+   token-budget deviation in either direction.
+3. **M14.5 + M8 shared remember-clause overlap** [P2 back-port] — the `remember-clause
+   extractor` is documented as byte-identical between Claude and Cursor; M14.5's digest might
+   want to reuse the same extractor for the decision line of the same. Decide during a
+   shared-adapter-kit follow-up; not blocking.
+
+### M14.6 — events compaction
+
+1. **Retention window default** [P3, coordinator ADR] — `runEventsCompaction` accepts a
+   `--retention-window` flag; the default is intentionally 0 (keep forever) so a fresh
+   install doesn't surprise. Choose a sensible per-install default in `onememory.config.yaml`
+   via an M16 follow-up; document the choice in `docs/architecture/memory-model.md` §13.
+2. **`memory_events_digest` table growth** [P3] — summarized events live forever; the
+   compaction pass keeps `memory_events` bounded but the digest table itself is unbounded.
+   Add a separate retention window or a per-project ceiling in a future mission; not
+   blocking today.
+3. **`sources` lineage across summaries** [P3] — the invariant test asserts every memory
+   still has its full provenance. Today this is via the original event id; if a memory is
+   further compacted (decay/archive decision), the link must not break. Verify at the next
+   consolidation run; defer.
