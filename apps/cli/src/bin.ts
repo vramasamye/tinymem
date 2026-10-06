@@ -26,6 +26,7 @@ import { runStats } from './commands/stats';
 import { runServe } from './commands/serve';
 import { runConsolidate } from './commands/consolidate';
 import { runDigest } from './commands/digest';
+import { runCompact, parseWindowDays } from './commands/compact';
 
 export interface MainDeps {
   /** Injected stdout (tests capture it; `--json` still routes through it). */
@@ -64,6 +65,18 @@ function positivePort(value: string): number {
   const parsed = int(value);
   if (parsed > 65_535) throw new InvalidOptionArgumentError('expected a port between 1 and 65535');
   return parsed;
+}
+
+/**
+ * Whole-day duration for the compaction windows (`90`, `90d`; `0` = keep forever — the window
+ * constraints themselves are enforced by the core schema at the command boundary).
+ */
+function windowDays(value: string): number {
+  try {
+    return parseWindowDays(value, '--retention-window/--summary-window');
+  } catch (error) {
+    throw new InvalidOptionArgumentError(error instanceof Error ? error.message : String(error));
+  }
 }
 
 /** The built program plus a way to read the exit code its actions decided on. */
@@ -390,7 +403,7 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
       );
     });
 
-  common(program.command('digest'))
+common(program.command('digest'))
     .description(
       'build the project digest rollup: one token-bounded project_context memory summarizing the ' +
         "top decisions, known failures and current procedures — it feeds the memory_project_context tool",
@@ -406,6 +419,32 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.project === undefined ? {} : { projectId: String(options.project) }),
             env,
             ...(options.budget === undefined ? {} : { budget: Number(options.budget) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(program.command('compact'))
+    .description(
+      'compact the raw event log: summarize old events into memory_events_digest, purge raw rows ' +
+        'past the retention window (lineage preserved; the audit trail and sources never move)',
+    )
+    .option('--dry-run', 'print the typed plan without changing anything')
+    .option('--retention-window <dur>', 'days a raw event is kept, e.g. 90 or 90d (0 = keep forever)', windowDays)
+    .option('--summary-window <dur>', 'days before a raw event is summarized, e.g. 30 or 30d', windowDays)
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runCompact(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            dryRun: options.dryRun === true,
+            ...(options.retentionWindow === undefined ? {} : { retentionWindowDays: options.retentionWindow }),
+            ...(options.summaryWindow === undefined ? {} : { summaryWindowDays: options.summaryWindow }),
           },
           io,
         ),
