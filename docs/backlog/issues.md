@@ -628,3 +628,68 @@ Honest residual items below.
    M5b-quality lands, extend the dashboard to consume them directly.
 4. **Pagination on memories list** [P3] — current list scrolls; add keyed pagination using
    cursor + page-size from the API once `apps/api` exposes it.
+
+---
+
+## Cross-mission follow-ups — raised by M5b (MCP hardening)
+
+Merged 2026-10-06 (mission report: `docs/plan/mission-reports/mission-5b-mcp-hardening.md`).
+Streamable-HTTP transport + OAuth 2.1 PKCE + 5-runtime conformance extension + zero-outbound
+network-guard assertion. Honest residual items below.
+
+1. **OAuth deployment story** [P3, coordinator ADR] — the OAuth 2.1 PKCE **client** lives in
+   `packages/mcp/src/oauth/` and exercises against a fake OIDC server in tests. The
+   production deployment posture (loopback for local, hosted-OIDC with redirect-URI
+   whitelisting for SaaS, sits-out-the-broker story) is honest but undocumented. Add an
+   ADR amendment; document the per-deployment-mode posture in `docs/architecture/security.md`.
+2. **`session.idle → session.end` mapping for OpenCode in Streamable-HTTP form** [P3] — the
+   stdio conformance runner pinned the rule; the streamable-http conformance runner must
+   too. The behavior landed today (covered by conformance); the explicit pin test is the
+   remaining gap.
+3. **`onemem auth` UX** [P3] — the loopback command exists; the actual OAuth dance
+   (browser open, redirect URI, device loopback, persistence) is clearly scoped but not
+   yet finished in the operator UX. Add an `onemem auth logout` command and a `onemem auth
+   status`. The PKCE plumbing is enough; the surface is just not ergonomic yet.
+4. **MCP proxy / aggregate-server** [P3] — for hosted deployments, the canonical pattern is
+   to gate the MCP server behind a reverse proxy. Reference deployment config is in
+   `benchmarks/eval/src/mcp-conformance/` for tests; production deploy guidance belongs in
+   `docs/architecture/security.md`.
+
+---
+
+## Cross-mission follow-ups — raised by M15 (skill generation)
+
+Merged 2026-10-06 (mission report: `docs/plan/mission-reports/mission-15-skills.md`).
+Signature recurrence matching → SKILL.md candidates → review/promote flow → MCP
+`memory_skills` + filesystem serving all live. Honest residual items below.
+
+1. **Skill promotion-gating in CI** [P3] — the local flow (`onemem skills review` →
+   `promote`) audits the flip via `memory_events`. The CI gating story (reviewer role,
+   audit-trace verification in CI, no auto-promotion from a fresh install) is currently
+   not codified. Add a tool-call fixture that asserts the audit row exists when a skill
+   goes `candidate → verified`.
+2. **Skill freshness over time** [P3] — `signature recurrence matcher` will recompute
+   candidates based on new failures; an existing verified skill becomes stale when its
+   underlying signature no longer matches recent failures. Add a "skill validity / decay"
+   pass that flips verified skills back to candidate-or-archived when their match count
+   drops below a threshold.
+3. **Skill missions→AGENTS.md / SKILL.md write surface** [P3] — Claude Code and OpenCode
+   both consume `SKILL.md` files from a project-local or global path. The filesystem
+   write is correct today; the canonical *location* and `manifest.json` (per the runtime's
+   discovery rules) is currently a fixed default. Make it configurable per runtime.
+4. **Skill content review UI in `apps/web`** [P3] — M10's web dashboard currently shows
+   the skills list. Add a dedicated `/skills/:id/review` route that renders the SKILL.md
+   body and exposes the `approve | reject` action surface directly (no CLI-only).
+
+---
+
+## Post-1.0 follow-ups (still out of scope until 1.0 ships)
+
+The post-1.0 list from the phased plan is unchanged; we crossed the 1.0 line:
+all six shipped phases closed in 2026-10-06 against the AC criteria. Open-core gating
+is still deferred.
+
+- SaaS/multi-tenant mode (orgs, API keys, RLS, hosted control plane per ADR-0011).
+- IDE plugins (VS Code, JetBrains).
+- Additional embedding/reranker providers.
+- Doc-site polish.

@@ -107,17 +107,25 @@ as P3 (cross-phrasing detector miss, config wiring) remain as open scope.
 Definition of done (Phase 4): all five runtimes pass the conformance suite; `onemem doctor`
 auto-configures any of them in a fresh project.
 
-**Status (2026-10-06):** Phase 4 underway and 4/5 adapters landed.
+**Status (2026-10-06):** Phase 4 complete and DoD met.
 
+- M6 (Claude Code adapter, `mission/6-claude`, merged 2024-era) — Phase 1.
+- M7 (Codex adapter, `mission/7-codex`, merged Phase 1).
 - M8 (`mission/8-cursor`, merged `2dd3c9f`) — Cursor adapter; see `mission-8-cursor.md`.
 - M9 (`mission/9-pi-opencode`, merged `d95efc4`) — Pi extension adapter (`@onememory/adapter-pi`,
   96 tests) + OpenCode plugin adapter (`@onememory/adapter-opencode`, 147 tests). Both byte-identical
   to the Claude conformance baseline. Mission report: `mission-9-pi-opencode.md`.
+- M5b (`mission/5b-mcp-hardening`, fast-forwarded onto main 2026-10-06) — Streamable HTTP
+  transport (`packages/mcp/src/streamable-http/`) + OAuth 2.1 PKCE loopback
+  (`packages/mcp/src/oauth/`) + 5-runtime conformance extension to streamable-http form +
+  zero-outbound network-guard assertion in streamable-http startup. 131 mcp tests pass / 0
+  fail. Mission report: `mission-5b-mcp-hardening.md`.
 
-The shared `benchmarks/eval/src/adapter-conformance/{scenario,pipeline}.ts` now exercises all five
-runtimes (Claude, Cursor, Codex, Pi, OpenCode) byte-for-byte against the canonical 10-fact session.
-Only **M5b** (Streamable HTTP + OAuth + cross-runtime conformance hardening) remains for Phase 4
-DoD; it can land as soon as a worker has capacity.
+All five adapters (Claude, Cursor, Codex, Pi, OpenCode) pass conformance in both stdio and
+streamable-http forms byte-for-byte against the canonical 10-fact session. `onemem doctor`
+auto-detects each adapter in a fresh project; the shared pipeline at
+`benchmarks/eval/src/adapter-conformance/{scenario,pipeline}.ts` is the integration substrate
+that M8 / M9 / M5b all reuse. Phase 4 DoD met.
 
 ## Phase 5 — Self improvement
 
@@ -128,6 +136,26 @@ DoD; it can land as soon as a worker has capacity.
 
 Definition of done (Phase 5): repeated failure → verified skill → consumable `SKILL.md`; quality
 dashboard data (duplicates/stale/conflicts/unused/low-confidence) computed.
+
+**Status (2026-10-06):** Phase 5 complete.
+
+- M11b-quality (`mission/11b-memory-quality`, merged to main 2026-10-06) — three new
+  metric families in the benchmarks harness: retrieval precision/recall (procedural /
+  decision / failure queries with 95% CIs over N=3 deterministic runs), token efficiency
+  (budget packer invariant + oracle gap per query), memory pollution (stale-cited /
+  duplicate pairs / unresolved contradicted). 13 new CI gates; first-measured baselines
+  recorded in `benchmarks/results/*.2026-10-06.json`. Mission report:
+  `mission-11b-memory-quality.md`.
+- M15 (`mission/15-skills`, fast-forwarded onto main 2026-10-06) — `SkillStore` port,
+  signature recurrence matcher, SKILL.md renderer, review queue, MCP `memory_skills`
+  surface (token-budgeted at 500), CLI `onemem skills <generate|list|review|promote>`
+  flow with audit-trail for promotion via `memory_events`. CI gate at
+  `benchmarks/eval/src/skills/` against the golden failure→fix dataset. Mission report:
+  `mission-15-skills.md`.
+
+Phase 5 DoD met: repeated failures generate reviewed/verified SKILL.md candidates; the
+quality-dashboard data is wired through M11b-quality's pollution counters and M10's
+dashboard panel.
 
 ## Phase 6 — UI
 
