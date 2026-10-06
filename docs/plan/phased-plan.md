@@ -170,6 +170,8 @@ a memory (source, evidence, status, history, score). Compose profile `--profile 
 landed the `apps/web` Vite + React memory explorer (12 source files, 73 tests pass /
 0 fail). Every claim on screen flows from `apps/api` REST endpoints — no
 client-side truth. Mission report: `docs/plan/mission-reports/mission-10-web-ui.md`.
+The DoD's `--profile web` compose profile landed afterwards (2026-10-06):
+`docker compose --profile web up` brings up Postgres + the daemon + the explorer.
 
 ## Post-1.0 (explicitly out of scope until 1.0 ships, no open-core gating)
 

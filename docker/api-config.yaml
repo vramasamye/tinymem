@@ -1,0 +1,29 @@
+# Server-mode configuration for the `memory-api` container (docker/compose.yaml,
+# `web` profile). Mounted read-only at /data/onememory.yaml inside the image, so the
+# daemon's config_dir is /data — writable, which the daemon-lock needs.
+#
+# Keys are validated strictly by @onememory/config (an unknown key is a boot failure,
+# not forward compatibility). Every value here is deliberate; the daemon's loopback
+# default is overridden because the web container reaches this process over the
+# compose network, and the REST API has no authentication of its own (ADR-0012) —
+# the compose port mapping therefore publishes on host loopback only.
+
+version: 1
+
+project:
+  name: onememory
+
+storage:
+  # Postgres + pgvector, served by the compose `postgres` service. `pg_url` names an
+  # environment variable (never an inline password) — compose sets ONEMEMORY_PG_URL to a
+  # credential-free URL and passes the user/password through PGUSER/PGPASSWORD, which the
+  # `pg` driver reads. A URL carrying inline userinfo is rejected at boot by design.
+  mode: server
+  data_dir: /data/data
+  pg_url: ONEMEMORY_PG_URL
+  vector_backend: auto
+
+daemon:
+  # Non-loopback bind: the CLI must also pass --listen-public to acknowledge it.
+  host: 0.0.0.0
+  port: 7331

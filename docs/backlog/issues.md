@@ -619,10 +619,13 @@ Honest residual items below.
 1. **API endpoints the UI needs but `apps/api` does not yet expose** [P2] — list them
    concretely in the mission report and triage as coordinator follow-ups. Add one the UI
    needs (depends on which feature surfaced the gap) at the next opportunity.
-2. **`--profile web` compose profile** [P3] — the AC explicitly mentions a `--profile web`
-   compose profile. Today, `apps/web` runs standalone against `apps/api`; the compose
-   story is not yet built. Add a `docker/web.compose.yaml` or a config profile that brings
-   web + api up together.
+2. ~~**`--profile web` compose profile**~~ ✅ Closed (2026-10-06): `docker/compose.yaml` now
+   carries a `web` profile — `docker compose --profile web up` brings up Postgres + the daemon
+   (`memory-api`, 7331) + the built explorer (`web`, 4173), with `docker/api-config.yaml` as the
+   container's server-mode config and `docker/api.Dockerfile` / `docker/web.Dockerfile` as the
+   images. Verified end to end: `/v1/health` through the preview proxy reports
+   `storage.profile: server` on pgvector. The default `docker compose up` still starts Postgres
+   alone, so the env-gated integration suite is unchanged.
 3. **Quality dashboard data wiring** [P3] — the dashboard panel renders from API endpoints,
    but some duplicate/stale/conflict counts require the upcoming M5b-quality metrics. When
    M5b-quality lands, extend the dashboard to consume them directly.

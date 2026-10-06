@@ -1,6 +1,16 @@
 # onememory local server stack (ADR-0002 `server` profile default).
-# memory-api / web / ollama services are added by their missions (M13 / M10).
-# Postgres parity target for the storage integration suite (ONEMEMORY_PG_URL).
+#
+# `postgres` runs by default — it is the parity target for the env-gated storage
+# integration suite. The daemon (memory-api) and the explorer UI (web) are opt-in via
+# the `web` profile, so nothing changes for `docker compose up`:
+#
+#   docker compose up                     # Postgres only (parity target)
+#   docker compose --profile web up       # Postgres + daemon (7331) + UI (4173)
+#
+# The storage integration suite reads ONEMEMORY_PG_URL itself (it does not go through the
+# config loader, so it may carry credentials):
+#
+#   ONEMEMORY_PG_URL=postgresql://onememory:onememory@localhost:5433/onememory bun test
 
 name: onememory
 
@@ -12,7 +22,11 @@ services:
       POSTGRES_PASSWORD: onememory
       POSTGRES_DB: onememory
     ports:
-      - "5433:5432" # avoid clashing with a local 5432 Postgres
+      # Host-side access for the test suite (`ONEMEMORY_PG_URL=...localhost:5433/onememory`).
+      # Overridable because 5433 can itself be taken — the same reason this avoids 5432.
+      # Inside the stack, memory-api reaches Postgres over the compose network as
+      # `postgres:5432` and never uses this mapping.
+      - "${ONEMEMORY_PG_HOST_PORT:-5433}:5432"
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
@@ -22,5 +36,50 @@ services:
       timeout: 3s
       retries: 10
 
-# Test connection string for the storage suite:
-#   postgresql://onememory:onememory@localhost:5433/onememory
+  memory-api:
+    profiles: ["web"]
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+    environment:
+      # Credential-free URL by contract: @onememory/config rejects a pg_url that carries
+      # inline userinfo. The credentials travel in the standard libpq variables the `pg`
+      # driver reads (PGUSER/PGPASSWORD), so the URL names only host/port/database.
+      ONEMEMORY_PG_URL: postgresql://postgres:5432/onememory
+      PGUSER: onememory
+      PGPASSWORD: onememory
+    volumes:
+      - api-data:/data
+      - ./api-config.yaml:/data/onememory.yaml:ro
+    # Host loopback only. The REST API has no authentication (ADR-0012); the daemon
+    # binds 0.0.0.0 inside the container so the web container can reach it, but
+    # publishing on 0.0.0.0 would expose every stored memory to the local network.
+    ports:
+      - "127.0.0.1:7331:7331"
+    healthcheck:
+      # bun is the one HTTP client guaranteed present in the image (no curl dependency).
+      test: ["CMD-SHELL", "bun -e \"const r = await fetch('http://127.0.0.1:7331/v1/health'); process.exit(Number(!r.ok))\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    profiles: ["web"]
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+    environment:
+      # vite.config.ts reads this at config load; the preview server proxies /v1 to it.
+      ONEMEMORY_API_PROXY_TARGET: http://memory-api:7331
+    ports:
+      - "127.0.0.1:4173:4173" # vite preview; loopback only, matching memory-api
+    depends_on:
+      memory-api:
+        condition: service_healthy
+
+volumes:
+  api-data: # daemon data dir (/data/data) + the daemon lock (/data)

@@ -1,0 +1,34 @@
+# Build context exclusions for the docker/ images (context = repo root).
+# Keep this list tight: the images run `bun install --frozen-lockfile`, which needs
+# every workspace's package.json, so source stays in and only bulk/derived state goes out.
+
+.git
+.github
+node_modules
+**/node_modules
+
+# Local state and secrets — never baked into an image
+.onememory
+.pgdata
+docker/.pgdata
+.env
+.env.*
+*.pem
+*.key
+
+# Build output (rebuilt inside the image)
+dist
+**/dist
+build
+**/build
+out
+coverage
+
+# Benchmarks write large result sets; the API/web images do not need them
+benchmarks/results
+
+# OS / editor noise
+.DS_Store
+.idea
+.vscode
+*.log

@@ -26,6 +26,43 @@ deployed build behind a different origin, set `VITE_ONEMORY_API` (absolute base 
 requires CORS on the API; see the mission report follow-up) and/or
 `ONEMEMORY_API_PROXY_TARGET` (dev proxy target).
 
+## Run the whole stack with Docker Compose
+
+`docker/compose.yaml` has a `web` profile that brings up Postgres + the daemon + this
+UI as three containers, so one command gives a working stack with no host toolchain:
+
+```sh
+docker compose -f docker/compose.yaml --profile web up   # then open http://localhost:4173
+```
+
+| Service | What it is | Host address |
+|---|---|---|
+| `postgres` | pgvector/pgvector:pg17 — the daemon's storage | `127.0.0.1:5433` (`ONEMEMORY_PG_HOST_PORT` overrides) |
+| `memory-api` | the daemon in server mode, built from `docker/api.Dockerfile` | `127.0.0.1:7331` |
+| `web` | `vite build` output served by `vite preview` (`docker/web.Dockerfile`) | `127.0.0.1:4173` |
+
+`docker/api-config.yaml` is the container's config: Postgres-backed storage with a
+credential-free `pg_url` (credentials travel in `PGUSER`/`PGPASSWORD`, because
+`@onememory/config` rejects inline userinfo). Both published ports bind loopback only —
+the REST API has no authentication of its own (ADR-0012), and the daemon's non-loopback
+bind is acknowledged inside the container by `--listen-public`.
+
+The `preview` server proxies `/v1` to `memory-api` exactly as the dev server does, so the
+built bundle stays same-origin. Plain `docker compose up` still starts Postgres alone —
+the profile is additive, and the env-gated Postgres test suite is unaffected.
+
+The stack starts **empty**: no project is registered, so the explorer shows its honest
+empty state. Point the CLI at the same database to fill it, from the host:
+
+```sh
+export ONEMEMORY_PG_URL=postgresql://postgres:5432/onememory   # the compose Postgres
+onemem init && onemem doctor                                    # register this repo
+```
+
+(`/v1/projects` lists only the project registered in `.onememory/project.json` — a
+storage list-projects query is still an open coordinator follow-up, so a server-mode
+daemon with no local project file reports an empty list plus that warning.)
+
 ## Scripts
 
 | Script | What it does |
