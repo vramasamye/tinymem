@@ -1,12 +1,16 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-10-05T11:36:54.437Z",
+  "generated_at": "2026-10-06T06:45:15.277Z",
   "engine": {
     "profile": "embedded",
     "embedder": "none (lexical + graph default)",
     "extraction": "heuristic (no-LLM baseline)",
     "default_max_tokens": 800,
     "clocks": [
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
+      "2026-10-03T10:00:00.000Z",
       "2026-10-03T10:00:00.000Z",
       "2026-10-03T10:00:00.000Z",
       "2026-10-03T10:00:00.000Z",
@@ -48,42 +52,42 @@
           "key": "postgres-repeat-a",
           "scenario": "repeated",
           "description": "First observation of the PostgreSQL decision",
-          "memory_id": "01a10bda-25ff-7000-83bb-5fdd69cc1313",
+          "memory_id": "01a10ff5-6926-7000-933e-26f4a4190b5b",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "postgres-repeat-b",
           "scenario": "repeated",
           "description": "Second (identical) observation of the PostgreSQL decision",
-          "memory_id": "01a10bda-25ff-7000-83bb-5fdd69cc1313",
+          "memory_id": "01a10ff5-6926-7000-933e-26f4a4190b5b",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "redis-decision-a",
           "scenario": "repeated",
           "description": "Redis caching decision, wording A",
-          "memory_id": "01a10bda-2614-7000-bfea-529958364c2a",
+          "memory_id": "01a10ff5-693f-7000-87b9-9c8f4a161b90",
           "content": "Decision: use Redis for caching session data"
         },
         {
           "key": "redis-decision-b",
           "scenario": "repeated",
           "description": "Redis caching decision, wording B (paraphrase)",
-          "memory_id": "01a10bda-260e-7000-ba85-0911efb9df10",
+          "memory_id": "01a10ff5-6935-7000-abda-e7b2e2123886",
           "content": "Decision: on Redis as the cache for session data"
         },
         {
           "key": "failure-repeat-a",
           "scenario": "repeated",
           "description": "First observation of the MODULE_NOT_FOUND failure",
-          "memory_id": "01a10bda-261e-7000-a842-17668d05e0e7",
+          "memory_id": "01a10ff5-6946-7000-bfd2-61091ca5d13b",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         },
         {
           "key": "failure-repeat-b",
           "scenario": "repeated",
           "description": "Second observation of the MODULE_NOT_FOUND failure",
-          "memory_id": "01a10bda-261e-7000-a842-17668d05e0e7",
+          "memory_id": "01a10ff5-6946-7000-bfd2-61091ca5d13b",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         }
       ],
@@ -92,12 +96,12 @@
           "id": "database-choice",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
+          "projectId": "01a10ff5-6909-7000-847d-bafd17f3a14b",
           "returnedIds": [
-            "01a10bda-25ff-7000-83bb-5fdd69cc1313"
+            "01a10ff5-6926-7000-933e-26f4a4190b5b"
           ],
           "expectedIds": [
-            "01a10bda-25ff-7000-83bb-5fdd69cc1313"
+            "01a10ff5-6926-7000-933e-26f4a4190b5b"
           ],
           "forbiddenIds": [],
           "usedTokens": 17,
@@ -111,15 +115,15 @@
           "id": "cache-decision",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
+          "projectId": "01a10ff5-6909-7000-847d-bafd17f3a14b",
           "returnedIds": [
-            "01a10bda-25ff-7000-83bb-5fdd69cc1313",
-            "01a10bda-2614-7000-bfea-529958364c2a",
-            "01a10bda-260e-7000-ba85-0911efb9df10"
+            "01a10ff5-6926-7000-933e-26f4a4190b5b",
+            "01a10ff5-693f-7000-87b9-9c8f4a161b90",
+            "01a10ff5-6935-7000-abda-e7b2e2123886"
           ],
           "expectedIds": [
-            "01a10bda-2614-7000-bfea-529958364c2a",
-            "01a10bda-260e-7000-ba85-0911efb9df10"
+            "01a10ff5-693f-7000-87b9-9c8f4a161b90",
+            "01a10ff5-6935-7000-abda-e7b2e2123886"
           ],
           "forbiddenIds": [],
           "usedTokens": 40,
@@ -133,12 +137,12 @@
           "id": "module-failure",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-25cb-7000-979e-e27588eccea1",
+          "projectId": "01a10ff5-6909-7000-847d-bafd17f3a14b",
           "returnedIds": [
-            "01a10bda-261e-7000-a842-17668d05e0e7"
+            "01a10ff5-6946-7000-bfd2-61091ca5d13b"
           ],
           "expectedIds": [
-            "01a10bda-261e-7000-a842-17668d05e0e7"
+            "01a10ff5-6946-7000-bfd2-61091ca5d13b"
           ],
           "forbiddenIds": [],
           "usedTokens": 18,
@@ -222,6 +226,208 @@
               "compression": 0.5
             }
           ]
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
         }
       },
       "warnings": [
@@ -263,84 +469,84 @@
           "key": "postgres-decision",
           "scenario": "contradictory",
           "description": "Older PostgreSQL decision (cross-phrasing pair, undetected by the template heuristic)",
-          "memory_id": "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
+          "memory_id": "01a10ff5-6e73-7000-926d-a061f68e4f2b",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "mysql-decision",
           "scenario": "contradictory",
           "description": "Newer MySQL decision (cross-phrasing pair, undetected by the template heuristic)",
-          "memory_id": "01a10bda-2b9d-7000-91ba-bc61aa46fb28",
+          "memory_id": "01a10ff5-6e6c-7000-a709-5d30866700e3",
           "content": "Decision: use MySQL for the primary datastore"
         },
         {
           "key": "gateway-port-explicit",
           "scenario": "contradictory",
           "description": "Explicit user statement of the API gateway port (source kind 'explicit')",
-          "memory_id": "01a10bda-2bbd-7000-b564-5ec19fa0f848",
+          "memory_id": "01a10ff5-6e78-7000-9dd2-c9cde8563491",
           "content": "Decision: port 8081 for the API gateway"
         },
         {
           "key": "gateway-port-decision",
           "scenario": "contradictory",
           "description": "Newer conversation decision naming a different API gateway port",
-          "memory_id": "01a10bda-2bc8-7000-854d-8a160c781ed4",
+          "memory_id": "01a10ff5-6e7c-7000-8d41-8a69167b8efa",
           "content": "Decision: port 8080 for the API gateway"
         },
         {
           "key": "port-standard-decision",
           "scenario": "contradictory",
           "description": "Explicit decision memory declaring the standard API port",
-          "memory_id": "01a10bda-2bd1-7000-b0aa-1731a5897e32",
+          "memory_id": "01a10ff5-6e81-7000-9316-a1010d4df24c",
           "content": "Port 5432 is the standard API port for all services."
         },
         {
           "key": "port-standard-semantic",
           "scenario": "contradictory",
           "description": "Newer explicit observation of the standard API port (durable semantic)",
-          "memory_id": "01a10bda-2bd6-7000-bb81-c108d53534d9",
+          "memory_id": "01a10ff5-6e85-7000-abfb-9be3bbad20f6",
           "content": "Port 5433 is the standard API port for all services."
         },
         {
           "key": "pool-cap-20",
           "scenario": "contradictory",
           "description": "Older connection pool cap decision",
-          "memory_id": "01a10bda-2bdc-7000-9929-7dbe69775746",
+          "memory_id": "01a10ff5-6e8b-7000-a741-4874709a5f3d",
           "content": "Decision: capping the connection pool at 20 connections"
         },
         {
           "key": "pool-cap-50",
           "scenario": "contradictory",
           "description": "Newer connection pool cap decision",
-          "memory_id": "01a10bda-2be0-7000-8f88-2c1497a1309b",
+          "memory_id": "01a10ff5-6e90-7000-ad2f-98ce95dc47f0",
           "content": "Decision: capping the connection pool at 50 connections"
         },
         {
           "key": "retention-30",
           "scenario": "contradictory",
           "description": "Log retention decided by the user (confidence 0.85)",
-          "memory_id": "01a10bda-2beb-7000-9fc6-16fcbbf08d0c",
+          "memory_id": "01a10ff5-6e95-7000-a538-79a942d23521",
           "content": "Decision: 30 days of log retention"
         },
         {
           "key": "retention-90",
           "scenario": "contradictory",
           "description": "Log retention inferred by the assistant at the same instant (confidence 0.6)",
-          "memory_id": "01a10bda-2bf0-7000-9c44-e5e9baac995e",
+          "memory_id": "01a10ff5-6e9c-7000-b5ff-4e34af7aa31c",
           "content": "Decision: 90 days of log retention"
         },
         {
           "key": "rate-limit-100",
           "scenario": "contradictory",
           "description": "One side of the full-authority tie on the API rate limit",
-          "memory_id": "01a10bda-2bf5-7000-9434-1ad0582d589b",
+          "memory_id": "01a10ff5-6ea4-7000-84f7-787800e28e61",
           "content": "Decision: an API rate limit of 100 requests per minute"
         },
         {
           "key": "rate-limit-1000",
           "scenario": "contradictory",
           "description": "Other side of the full-authority tie on the API rate limit",
-          "memory_id": "01a10bda-2bff-7000-ad1c-1407583b558d",
+          "memory_id": "01a10ff5-6ea8-7000-be10-6d27f0f4ac09",
           "content": "Decision: an API rate limit of 1000 requests per minute"
         }
       ],
@@ -349,14 +555,14 @@
           "id": "database-decision",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
-            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
+            "01a10ff5-6e73-7000-926d-a061f68e4f2b",
+            "01a10ff5-6e6c-7000-a709-5d30866700e3"
           ],
           "expectedIds": [
-            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
-            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
+            "01a10ff5-6e73-7000-926d-a061f68e4f2b",
+            "01a10ff5-6e6c-7000-a709-5d30866700e3"
           ],
           "forbiddenIds": [],
           "usedTokens": 29,
@@ -370,16 +576,16 @@
           "id": "contradiction-database-dialect",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12",
-            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
+            "01a10ff5-6e73-7000-926d-a061f68e4f2b",
+            "01a10ff5-6e6c-7000-a709-5d30866700e3"
           ],
           "expectedIds": [
-            "01a10bda-2b9d-7000-91ba-bc61aa46fb28"
+            "01a10ff5-6e6c-7000-a709-5d30866700e3"
           ],
           "forbiddenIds": [
-            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12"
+            "01a10ff5-6e73-7000-926d-a061f68e4f2b"
           ],
           "usedTokens": 29,
           "budget": 800,
@@ -392,18 +598,18 @@
           "id": "contradiction-explicit-over-decision",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
-            "01a10bda-2bd1-7000-b0aa-1731a5897e32",
-            "01a10bda-2b9d-7000-91ba-bc61aa46fb28",
-            "01a10bda-2bb2-7000-8f8b-9a9151cc4e12"
+            "01a10ff5-6e78-7000-9dd2-c9cde8563491",
+            "01a10ff5-6e81-7000-9316-a1010d4df24c",
+            "01a10ff5-6e6c-7000-a709-5d30866700e3",
+            "01a10ff5-6e73-7000-926d-a061f68e4f2b"
           ],
           "expectedIds": [
-            "01a10bda-2bbd-7000-b564-5ec19fa0f848"
+            "01a10ff5-6e78-7000-9dd2-c9cde8563491"
           ],
           "forbiddenIds": [
-            "01a10bda-2bc8-7000-854d-8a160c781ed4"
+            "01a10ff5-6e7c-7000-8d41-8a69167b8efa"
           ],
           "usedTokens": 52,
           "budget": 800,
@@ -416,16 +622,16 @@
           "id": "contradiction-decision-over-observation",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
-            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+            "01a10ff5-6e78-7000-9dd2-c9cde8563491",
+            "01a10ff5-6e81-7000-9316-a1010d4df24c"
           ],
           "expectedIds": [
-            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+            "01a10ff5-6e81-7000-9316-a1010d4df24c"
           ],
           "forbiddenIds": [
-            "01a10bda-2bd6-7000-bb81-c108d53534d9"
+            "01a10ff5-6e85-7000-abfb-9be3bbad20f6"
           ],
           "usedTokens": 23,
           "budget": 800,
@@ -438,15 +644,15 @@
           "id": "contradiction-newer-decision-wins",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2be0-7000-8f88-2c1497a1309b"
+            "01a10ff5-6e90-7000-ad2f-98ce95dc47f0"
           ],
           "expectedIds": [
-            "01a10bda-2be0-7000-8f88-2c1497a1309b"
+            "01a10ff5-6e90-7000-ad2f-98ce95dc47f0"
           ],
           "forbiddenIds": [
-            "01a10bda-2bdc-7000-9929-7dbe69775746"
+            "01a10ff5-6e8b-7000-a741-4874709a5f3d"
           ],
           "usedTokens": 14,
           "budget": 800,
@@ -459,15 +665,15 @@
           "id": "contradiction-confidence-wins",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2beb-7000-9fc6-16fcbbf08d0c"
+            "01a10ff5-6e95-7000-a538-79a942d23521"
           ],
           "expectedIds": [
-            "01a10bda-2beb-7000-9fc6-16fcbbf08d0c"
+            "01a10ff5-6e95-7000-a538-79a942d23521"
           ],
           "forbiddenIds": [
-            "01a10bda-2bf0-7000-9c44-e5e9baac995e"
+            "01a10ff5-6e9c-7000-b5ff-4e34af7aa31c"
           ],
           "usedTokens": 9,
           "budget": 800,
@@ -480,15 +686,15 @@
           "id": "contradiction-full-tie-disputed",
           "kind": "contradiction",
           "projectKey": "alpha",
-          "projectId": "01a10bda-2b85-7000-b96f-2aaa72b911f6",
+          "projectId": "01a10ff5-6e5f-7000-a026-8518b5141881",
           "returnedIds": [
-            "01a10bda-2bbd-7000-b564-5ec19fa0f848",
-            "01a10bda-2bd1-7000-b0aa-1731a5897e32"
+            "01a10ff5-6e78-7000-9dd2-c9cde8563491",
+            "01a10ff5-6e81-7000-9316-a1010d4df24c"
           ],
           "expectedIds": [],
           "forbiddenIds": [
-            "01a10bda-2bf5-7000-9434-1ad0582d589b",
-            "01a10bda-2bff-7000-ad1c-1407583b558d"
+            "01a10ff5-6ea4-7000-84f7-787800e28e61",
+            "01a10ff5-6ea8-7000-be10-6d27f0f4ac09"
           ],
           "usedTokens": 23,
           "budget": 800,
@@ -552,11 +758,997 @@
           "quality": 0,
           "fully_consolidated": 0,
           "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 1,
+            "memories": [
+              {
+                "label": "Decision: use PostgreSQL with pgvector as the only database dial…",
+                "status": "active",
+                "expected_mark": "superseded"
+              }
+            ]
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 1,
+            "memories": [
+              {
+                "label": "Decision: use PostgreSQL with pgvector as the only database dial…",
+                "status": "active",
+                "expected_mark": "superseded"
+              }
+            ]
+          }
         }
       },
       "warnings": [
         "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
       ]
+    },
+    {
+      "id": "decision-queries",
+      "title": "Decision queries: per-type retrieval precision/recall (M11b-quality)",
+      "description": "Five architecture decisions in one project — four extracted from decision language and one explicit user statement (the highest authority source). Every query is typed 'decision' (query_type), so this dataset feeds the M11b per-type precision/recall and token-efficiency metrics: each query declares the decision it must return, and the corpus contains nothing else that matches its wording.",
+      "extraction": {
+        "events_processed": 5,
+        "memories_inserted": 5,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 5,
+      "superseded": 0,
+      "consolidation": null,
+      "facts": [
+        {
+          "key": "database-decision",
+          "scenario": "project-scoped",
+          "description": "PostgreSQL + pgvector chosen as the only database dialect",
+          "memory_id": "01a10ff5-73d0-7000-b9d7-77bfa7f833a6",
+          "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
+        },
+        {
+          "key": "trunk-based-decision",
+          "scenario": "other",
+          "description": "Trunk-based development adopted for all repositories",
+          "memory_id": "01a10ff5-73d7-7000-9767-12fcd475489c",
+          "content": "Decision: adopt trunk-based development for all repositories"
+        },
+        {
+          "key": "release-cadence-decision",
+          "scenario": "other",
+          "description": "Releases ship every Thursday morning",
+          "memory_id": "01a10ff5-73dc-7000-967f-08def9a327c0",
+          "content": "Decision: ship releases every Thursday morning"
+        },
+        {
+          "key": "approvals-decision",
+          "scenario": "other",
+          "description": "Two approvals required for every pull request",
+          "memory_id": "01a10ff5-73df-7000-8a60-bfbc7dfb89aa",
+          "content": "Decision: require two approvals for every pull request"
+        },
+        {
+          "key": "api-versioning-decision",
+          "scenario": "other",
+          "description": "Every API is versioned through the URL path (explicit user decision)",
+          "memory_id": "01a10ff5-73e3-7000-b2d5-79fbcf0846e6",
+          "content": "We version every API through the URL path."
+        }
+      ],
+      "queries": [
+        {
+          "id": "which-database",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-73c7-7000-9a11-8a00c45031c9",
+          "returnedIds": [
+            "01a10ff5-73d0-7000-b9d7-77bfa7f833a6"
+          ],
+          "expectedIds": [
+            "01a10ff5-73d0-7000-b9d7-77bfa7f833a6"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 17,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "branching-model",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-73c7-7000-9a11-8a00c45031c9",
+          "returnedIds": [
+            "01a10ff5-73d7-7000-9767-12fcd475489c"
+          ],
+          "expectedIds": [
+            "01a10ff5-73d7-7000-9767-12fcd475489c"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 15,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "release-cadence",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-73c7-7000-9a11-8a00c45031c9",
+          "returnedIds": [
+            "01a10ff5-73dc-7000-967f-08def9a327c0"
+          ],
+          "expectedIds": [
+            "01a10ff5-73dc-7000-967f-08def9a327c0"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 12,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "pull-request-approvals",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-73c7-7000-9a11-8a00c45031c9",
+          "returnedIds": [
+            "01a10ff5-73df-7000-8a60-bfbc7dfb89aa"
+          ],
+          "expectedIds": [
+            "01a10ff5-73df-7000-8a60-bfbc7dfb89aa"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 14,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "api-versioning",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-73c7-7000-9a11-8a00c45031c9",
+          "returnedIds": [
+            "01a10ff5-73e3-7000-b2d5-79fbcf0846e6"
+          ],
+          "expectedIds": [
+            "01a10ff5-73e3-7000-b2d5-79fbcf0846e6"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 11,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 5,
+          "k": 5,
+          "precision_at_k": 1,
+          "recall_at_k": 1,
+          "precision_full": 1,
+          "recall_full": 1,
+          "mrr": 1
+        },
+        "tokens": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "mean_used": 13.8,
+          "max_used": 17,
+          "p95_used": 17,
+          "mean_tokens_per_expected": 13.8
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 5,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 5,
+              "precision_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 5,
+              "budget_compliance": 1,
+              "oracle_gap": 1.0267,
+              "oracle_gap_when_satisfied": 1.0267
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 1.0267,
+          "oracle_gap_max": 1.1333,
+          "oracle_gap_mean_when_satisfied": 1.0267
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 5,
+              "precision_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 5,
+              "budget_compliance": 1,
+              "oracle_gap": 1.0267,
+              "oracle_gap_when_satisfied": 1.0267
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 1.0267,
+          "oracle_gap_max": 1.1333,
+          "oracle_gap_mean_when_satisfied": 1.0267
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "id": "failure-queries",
+      "title": "Failure queries: per-type retrieval precision/recall (M11b-quality)",
+      "description": "Three durable failure memories, each extracted from a real failure-then-resolution pair (a failing command later passing in the same session; the failure statement records the command and its signature, and each pair also leaves the command's recurring-procedural memory in the corpus — a realistic byproduct the queries must rank against). Every query is typed 'failure' (query_type) and targets one failure's distinctive tokens, so recall measures whether the right failure surfaces.",
+      "extraction": {
+        "events_processed": 6,
+        "memories_inserted": 6,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 6,
+      "superseded": 0,
+      "consolidation": null,
+      "facts": [
+        {
+          "key": "module-failure",
+          "scenario": "failure-solution",
+          "description": "MODULE_NOT_FOUND failure resolved by rerunning bun test",
+          "memory_id": "01a10ff5-7922-7000-92bb-2180b0f5ecf5",
+          "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
+        },
+        {
+          "key": "docker-port-failure",
+          "scenario": "failure-solution",
+          "description": "Docker compose NONZERO_EXIT failure resolved by rerunning the command",
+          "memory_id": "01a10ff5-7932-7000-b3a0-d042f8bad226",
+          "content": "Failure: NONZERO_EXIT — `docker compose up -d` failed — resolved by: `docker compose up -d`"
+        },
+        {
+          "key": "terraform-provider-failure",
+          "scenario": "failure-solution",
+          "description": "Terraform plan NONZERO_EXIT failure resolved by rerunning the command",
+          "memory_id": "01a10ff5-7949-7000-9c1b-1ae0b845e915",
+          "content": "Failure: NONZERO_EXIT — `terraform plan` failed — resolved by: `terraform plan`"
+        }
+      ],
+      "queries": [
+        {
+          "id": "module-resolution",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-7912-7000-9f77-78ee1531680b",
+          "returnedIds": [
+            "01a10ff5-7922-7000-92bb-2180b0f5ecf5",
+            "01a10ff5-7949-7000-9c1b-1ae0b845e915",
+            "01a10ff5-7932-7000-b3a0-d042f8bad226"
+          ],
+          "expectedIds": [
+            "01a10ff5-7922-7000-92bb-2180b0f5ecf5"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 61,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "docker-port",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-7912-7000-9f77-78ee1531680b",
+          "returnedIds": [
+            "01a10ff5-7932-7000-b3a0-d042f8bad226",
+            "01a10ff5-793d-7000-93e8-67d24989c2d3"
+          ],
+          "expectedIds": [
+            "01a10ff5-7932-7000-b3a0-d042f8bad226"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 37,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "terraform-provider",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-7912-7000-9f77-78ee1531680b",
+          "returnedIds": [
+            "01a10ff5-7949-7000-9c1b-1ae0b845e915",
+            "01a10ff5-7952-7000-9732-731116fe9e41"
+          ],
+          "expectedIds": [
+            "01a10ff5-7949-7000-9c1b-1ae0b845e915"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 33,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 3,
+          "k": 5,
+          "precision_at_k": 0.4444,
+          "recall_at_k": 1,
+          "precision_full": 0.4444,
+          "recall_full": 1,
+          "mrr": 1
+        },
+        "tokens": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "mean_used": 43.67,
+          "max_used": 61,
+          "p95_used": 61,
+          "mean_tokens_per_expected": 43.67
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 7,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 3,
+              "precision_at_k": {
+                "mean": 0.4444,
+                "ci95_low": 0.3356,
+                "ci95_high": 0.5533,
+                "samples": 3
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 3
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 3,
+              "budget_compliance": 1,
+              "oracle_gap": 2.9698,
+              "oracle_gap_when_satisfied": 2.9698
+            }
+          ],
+          "oracle_gap_mean": 2.9698,
+          "oracle_gap_max": 4.0667,
+          "oracle_gap_mean_when_satisfied": 2.9698
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 3,
+              "precision_at_k": {
+                "mean": 0.4444,
+                "ci95_low": 0.3356,
+                "ci95_high": 0.5533,
+                "samples": 3
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 3
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 3,
+              "budget_compliance": 1,
+              "oracle_gap": 2.9698,
+              "oracle_gap_when_satisfied": 2.9698
+            }
+          ],
+          "oracle_gap_mean": 2.9698,
+          "oracle_gap_max": 4.0667,
+          "oracle_gap_mean_when_satisfied": 2.9698
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "warnings": []
     },
     {
       "id": "pollution-cross-project",
@@ -579,21 +1771,21 @@
           "key": "alpha-postgres",
           "scenario": "project-scoped",
           "description": "Project alpha uses PostgreSQL + pgvector",
-          "memory_id": "01a10bda-320a-7000-8a51-fb1a5ccf0544",
+          "memory_id": "01a10ff5-7eca-7000-bf1b-90c4f4f03de0",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "beta-mysql",
           "scenario": "cross-project",
           "description": "Project beta uses MySQL",
-          "memory_id": "01a10bda-3210-7000-bbf1-1c50f0ea698c",
+          "memory_id": "01a10ff5-7ed1-7000-8c59-2d289086cd7e",
           "content": "Decision: use MySQL for the analytics service"
         },
         {
           "key": "global-tabs",
           "scenario": "cross-project",
           "description": "User-global preference for tabs over spaces",
-          "memory_id": "01a10bda-3215-7000-ba32-1c3e7d67d18e",
+          "memory_id": "01a10ff5-7ed5-7000-817d-609ee844cc5f",
           "content": "Preference: tabs over spaces in every project"
         }
       ],
@@ -602,17 +1794,17 @@
           "id": "alpha-database",
           "kind": "pollution",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3200-7000-8ad2-b8c23b46d72e",
+          "projectId": "01a10ff5-7ec2-7000-a205-5023c5adfe2b",
           "returnedIds": [
-            "01a10bda-320a-7000-8a51-fb1a5ccf0544",
-            "01a10bda-3210-7000-bbf1-1c50f0ea698c",
-            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
+            "01a10ff5-7eca-7000-bf1b-90c4f4f03de0",
+            "01a10ff5-7ed1-7000-8c59-2d289086cd7e",
+            "01a10ff5-7ed5-7000-817d-609ee844cc5f"
           ],
           "expectedIds": [
-            "01a10bda-320a-7000-8a51-fb1a5ccf0544"
+            "01a10ff5-7eca-7000-bf1b-90c4f4f03de0"
           ],
           "forbiddenIds": [
-            "01a10bda-3210-7000-bbf1-1c50f0ea698c"
+            "01a10ff5-7ed1-7000-8c59-2d289086cd7e"
           ],
           "usedTokens": 41,
           "budget": 800,
@@ -625,17 +1817,17 @@
           "id": "beta-database",
           "kind": "pollution",
           "projectKey": "beta",
-          "projectId": "01a10bda-3201-7000-be14-2523b47fb931",
+          "projectId": "01a10ff5-7ec2-7001-bee0-8533b7d84cb0",
           "returnedIds": [
-            "01a10bda-3210-7000-bbf1-1c50f0ea698c",
-            "01a10bda-320a-7000-8a51-fb1a5ccf0544",
-            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
+            "01a10ff5-7ed1-7000-8c59-2d289086cd7e",
+            "01a10ff5-7eca-7000-bf1b-90c4f4f03de0",
+            "01a10ff5-7ed5-7000-817d-609ee844cc5f"
           ],
           "expectedIds": [
-            "01a10bda-3210-7000-bbf1-1c50f0ea698c"
+            "01a10ff5-7ed1-7000-8c59-2d289086cd7e"
           ],
           "forbiddenIds": [
-            "01a10bda-320a-7000-8a51-fb1a5ccf0544"
+            "01a10ff5-7eca-7000-bf1b-90c4f4f03de0"
           ],
           "usedTokens": 41,
           "budget": 800,
@@ -648,12 +1840,12 @@
           "id": "alpha-global-preference",
           "kind": "pollution",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3200-7000-8ad2-b8c23b46d72e",
+          "projectId": "01a10ff5-7ec2-7000-a205-5023c5adfe2b",
           "returnedIds": [
-            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
+            "01a10ff5-7ed5-7000-817d-609ee844cc5f"
           ],
           "expectedIds": [
-            "01a10bda-3215-7000-ba32-1c3e7d67d18e"
+            "01a10ff5-7ed5-7000-817d-609ee844cc5f"
           ],
           "forbiddenIds": [],
           "usedTokens": 12,
@@ -718,6 +1910,1040 @@
           "quality": 0,
           "fully_consolidated": 0,
           "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "id": "pollution-quality",
+      "title": "Memory pollution: archived-but-cited (stale) and near-duplicate memories that surfaced in retrieval",
+      "description": "M11b-quality pollution fixture. Observations are 60 days old (base_time 60 days before now) and the dataset opts into the M14 consolidation pass with decay.archiveThreshold raised to 0.2 — high enough to archive the low-prominence 60-day-old version fact (episodic half-life 30d), far below every explicit statement's prominence. The point-in-time probe then still serves that archived memory (as-of queries include archived rows) and REINFORCES it, producing the honest stale state the pollution audit detects: status 'archived' but cited within the last 30 days. The two procedural statements differ only in capitalization, so ingest's content-hash dedupe keeps both while their deterministic vectors are cosine-identical — the near-duplicate pair the offline merge pass (vector-gated, no embedder) leaves behind, and the third statement is the negative control (same type and project, dissimilar wording, must NOT flag).",
+      "extraction": {
+        "events_processed": 4,
+        "memories_inserted": 4,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 4,
+      "superseded": 0,
+      "consolidation": {
+        "ran_at": "2026-10-03T10:00:00.000Z",
+        "actor": "bench:consolidation",
+        "pairs": 0,
+        "resolved": 0,
+        "disputed_pairs": 0,
+        "merged_sources": 0,
+        "derived": 0,
+        "archived": 1,
+        "warnings": [
+          "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
+        ]
+      },
+      "facts": [
+        {
+          "key": "stale-node-18",
+          "scenario": "outdated",
+          "description": "Node 18 version fact the decay pass archives 60 days later (still served by point-in-time probes)",
+          "memory_id": "01a10ff5-8464-7000-ac34-2b7c2ec311e1",
+          "content": "Version: Node 18"
+        },
+        {
+          "key": "install-first-a",
+          "scenario": "repeated",
+          "description": "Procedural statement, wording A (capitalized)",
+          "memory_id": "01a10ff5-8482-7000-9737-5a84ad593a10",
+          "content": "Always run bun install before bun test in CI."
+        },
+        {
+          "key": "install-first-b",
+          "scenario": "repeated",
+          "description": "Procedural statement, wording B (lowercase — near-duplicate of A that ingest dedupe cannot collapse)",
+          "memory_id": "01a10ff5-848c-7000-9f5e-b81b17cab3e0",
+          "content": "always run bun install before bun test in ci"
+        },
+        {
+          "key": "migrations-before-deploy",
+          "scenario": "procedural",
+          "description": "Dissimilar procedural statement (the duplicate scan's negative control)",
+          "memory_id": "01a10ff5-84a3-7000-a6d2-e38ceb9295b9",
+          "content": "Run the migrations before deploying the api service."
+        }
+      ],
+      "queries": [
+        {
+          "id": "ci-runner-node-history",
+          "kind": "temporal",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8452-7000-9ebe-f7e6b4db04fa",
+          "returnedIds": [
+            "01a10ff5-848c-7000-9f5e-b81b17cab3e0",
+            "01a10ff5-8482-7000-9737-5a84ad593a10",
+            "01a10ff5-8464-7000-ac34-2b7c2ec311e1"
+          ],
+          "expectedIds": [
+            "01a10ff5-8464-7000-ac34-2b7c2ec311e1"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 27,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ],
+          "temporal_bucket": "point_in_time"
+        },
+        {
+          "id": "install-first",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8452-7000-9ebe-f7e6b4db04fa",
+          "returnedIds": [
+            "01a10ff5-848c-7000-9f5e-b81b17cab3e0",
+            "01a10ff5-8482-7000-9737-5a84ad593a10",
+            "01a10ff5-84a3-7000-a6d2-e38ceb9295b9"
+          ],
+          "expectedIds": [
+            "01a10ff5-8482-7000-9737-5a84ad593a10",
+            "01a10ff5-848c-7000-9f5e-b81b17cab3e0"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 36,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "migrations-deploy",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8452-7000-9ebe-f7e6b4db04fa",
+          "returnedIds": [
+            "01a10ff5-848c-7000-9f5e-b81b17cab3e0",
+            "01a10ff5-8482-7000-9737-5a84ad593a10",
+            "01a10ff5-84a3-7000-a6d2-e38ceb9295b9"
+          ],
+          "expectedIds": [
+            "01a10ff5-84a3-7000-a6d2-e38ceb9295b9"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 36,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 2,
+          "k": 5,
+          "precision_at_k": 0.5,
+          "recall_at_k": 1,
+          "precision_full": 0.5,
+          "recall_full": 1,
+          "mrr": 0.6667
+        },
+        "tokens": {
+          "queries": 3,
+          "budget_compliance": 1,
+          "mean_used": 33,
+          "max_used": 36,
+          "p95_used": 36,
+          "mean_tokens_per_expected": 27
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 9,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 1,
+          "correct": 1,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 1,
+            "correct": 1
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 1,
+            "memories": [
+              {
+                "label": "Version: Node 18",
+                "status": "archived",
+                "last_accessed_at": "2026-10-03T10:00:00.000Z",
+                "access_count": 1
+              }
+            ]
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 1,
+            "pairs": [
+              {
+                "a": "always run bun install before bun test in ci",
+                "b": "Always run bun install before bun test in CI.",
+                "type": "procedural",
+                "cosine": 1
+              }
+            ]
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 1,
+            "memories": [
+              {
+                "label": "Version: Node 18",
+                "status": "archived",
+                "last_accessed_at": "2026-10-03T10:00:00.000Z",
+                "access_count": 1
+              }
+            ]
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 1,
+            "pairs": [
+              {
+                "a": "always run bun install before bun test in ci",
+                "b": "Always run bun install before bun test in CI.",
+                "type": "procedural",
+                "cosine": 1
+              }
+            ]
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "warnings": [
+        "no embedding provider and no vector index: near-duplicate merge and semantic derivation skipped (contradiction resolution and decay still run)"
+      ]
+    },
+    {
+      "id": "procedural-queries",
+      "title": "Procedural queries: per-type retrieval precision/recall (M11b-quality)",
+      "description": "Five procedures in one project — four explicit user statements (verbatim, the highest authority source) and one recurring command the heuristic extractor derives from two terminal runs. Every query is typed 'procedural' (query_type) and declares the procedure it must return.",
+      "extraction": {
+        "events_processed": 6,
+        "memories_inserted": 5,
+        "duplicates": 0,
+        "working_inserted": 0,
+        "candidates_discarded": 0,
+        "needs_review": 0,
+        "re_embed_jobs": 0
+      },
+      "memories": 5,
+      "superseded": 0,
+      "consolidation": null,
+      "facts": [
+        {
+          "key": "install-first",
+          "scenario": "procedural",
+          "description": "bun install must run before bun test in CI",
+          "memory_id": "01a10ff5-8aa5-7000-84df-84100b3c636a",
+          "content": "Run bun install before bun test in CI."
+        },
+        {
+          "key": "deploy-api",
+          "scenario": "procedural",
+          "description": "Deploy the api service after the migrations",
+          "memory_id": "01a10ff5-8aaa-7000-b159-fd0f5b1696bc",
+          "content": "Deploy the api service with bun run deploy after the migrations."
+        },
+        {
+          "key": "fixtures-schema",
+          "scenario": "procedural",
+          "description": "Test fixtures must be updated whenever the schema changes",
+          "memory_id": "01a10ff5-8aad-7000-a942-2cada595f6eb",
+          "content": "Update the test fixtures whenever the schema changes."
+        },
+        {
+          "key": "lint-commit",
+          "scenario": "procedural",
+          "description": "The linter runs before every commit",
+          "memory_id": "01a10ff5-8ab0-7000-86d4-424cf2119b4e",
+          "content": "Run the linter with bun run lint before every commit."
+        },
+        {
+          "key": "icons-command",
+          "scenario": "procedural",
+          "description": "Recurring command that rebuilds the icons",
+          "memory_id": "01a10ff5-8ab3-7000-b1c5-b823cf35c967",
+          "content": "Recurring command: `bun run build:icons` (used 2 times)"
+        }
+      ],
+      "queries": [
+        {
+          "id": "ci-order",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8a9b-7000-9a9c-f204f94661e0",
+          "returnedIds": [
+            "01a10ff5-8aa5-7000-84df-84100b3c636a",
+            "01a10ff5-8ab0-7000-86d4-424cf2119b4e",
+            "01a10ff5-8aaa-7000-b159-fd0f5b1696bc",
+            "01a10ff5-8aad-7000-a942-2cada595f6eb",
+            "01a10ff5-8ab3-7000-b1c5-b823cf35c967"
+          ],
+          "expectedIds": [
+            "01a10ff5-8aa5-7000-84df-84100b3c636a"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 68,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "api-deploy",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8a9b-7000-9a9c-f204f94661e0",
+          "returnedIds": [
+            "01a10ff5-8aaa-7000-b159-fd0f5b1696bc"
+          ],
+          "expectedIds": [
+            "01a10ff5-8aaa-7000-b159-fd0f5b1696bc"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 16,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "schema-fixtures",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8a9b-7000-9a9c-f204f94661e0",
+          "returnedIds": [
+            "01a10ff5-8aad-7000-a942-2cada595f6eb"
+          ],
+          "expectedIds": [
+            "01a10ff5-8aad-7000-a942-2cada595f6eb"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 14,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "pre-commit-lint",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8a9b-7000-9a9c-f204f94661e0",
+          "returnedIds": [
+            "01a10ff5-8aaa-7000-b159-fd0f5b1696bc",
+            "01a10ff5-8ab0-7000-86d4-424cf2119b4e",
+            "01a10ff5-8aa5-7000-84df-84100b3c636a",
+            "01a10ff5-8ab3-7000-b1c5-b823cf35c967"
+          ],
+          "expectedIds": [
+            "01a10ff5-8ab0-7000-86d4-424cf2119b4e"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 54,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        },
+        {
+          "id": "icons-build",
+          "kind": "retrieval",
+          "projectKey": "alpha",
+          "projectId": "01a10ff5-8a9b-7000-9a9c-f204f94661e0",
+          "returnedIds": [
+            "01a10ff5-8ab3-7000-b1c5-b823cf35c967"
+          ],
+          "expectedIds": [
+            "01a10ff5-8ab3-7000-b1c5-b823cf35c967"
+          ],
+          "forbiddenIds": [],
+          "usedTokens": 14,
+          "budget": 800,
+          "packing": "summary",
+          "warnings": [
+            "vector channel unavailable (no embedding provider configured): lexical + graph only"
+          ]
+        }
+      ],
+      "metrics": {
+        "retrieval": {
+          "queries": 5,
+          "k": 5,
+          "precision_at_k": 0.69,
+          "recall_at_k": 1,
+          "precision_full": 0.69,
+          "recall_full": 1,
+          "mrr": 0.9
+        },
+        "tokens": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "mean_used": 33.2,
+          "max_used": 68,
+          "p95_used": 68,
+          "mean_tokens_per_expected": 33.2
+        },
+        "pollution": {
+          "cross_project_top1_rate": 0,
+          "cross_project_leakage_rate": 0,
+          "irrelevant_leakage_rate": 0,
+          "returned": 12,
+          "leaked": 0
+        },
+        "temporal": {
+          "probes": 0,
+          "correct": 0,
+          "accuracy": 1,
+          "current": {
+            "probes": 0,
+            "correct": 0
+          },
+          "point_in_time": {
+            "probes": 0,
+            "correct": 0
+          },
+          "history": {
+            "probes": 0,
+            "correct": 0
+          }
+        },
+        "contradiction": {
+          "groups": 0,
+          "resolved": 0,
+          "accuracy": 1,
+          "authority_top1": 0,
+          "silent_conflicts": 0
+        },
+        "consolidation": {
+          "groups": 0,
+          "quality": 0,
+          "fully_consolidated": 0,
+          "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 5,
+              "precision_at_k": {
+                "mean": 0.69,
+                "ci95_low": 0.3176,
+                "ci95_high": 1,
+                "samples": 5
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 5,
+              "budget_compliance": 1,
+              "oracle_gap": 2.76,
+              "oracle_gap_when_satisfied": 2.76
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 2.76,
+          "oracle_gap_max": 6.8,
+          "oracle_gap_mean_when_satisfied": 2.76
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 5,
+              "precision_at_k": {
+                "mean": 0.69,
+                "ci95_low": 0.3176,
+                "ci95_high": 1,
+                "samples": 5
+              },
+              "recall_at_k": {
+                "mean": 1,
+                "ci95_low": 1,
+                "ci95_high": 1,
+                "samples": 5
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 5,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 5,
+              "budget_compliance": 1,
+              "oracle_gap": 2.76,
+              "oracle_gap_when_satisfied": 2.76
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 2.76,
+          "oracle_gap_max": 6.8,
+          "oracle_gap_mean_when_satisfied": 2.76
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
         }
       },
       "warnings": []
@@ -743,35 +2969,35 @@
           "key": "database-decision",
           "scenario": "project-scoped",
           "description": "PostgreSQL + pgvector chosen as the only database dialect",
-          "memory_id": "01a10bda-3796-7000-a532-3e62aab7817b",
+          "memory_id": "01a10ff5-8fb7-7000-9541-ad7e53ba10a4",
           "content": "Decision: use PostgreSQL with pgvector as the only database dialect"
         },
         {
           "key": "test-runner-preference",
           "scenario": "other",
           "description": "bun test preferred over jest",
-          "memory_id": "01a10bda-37a9-7000-8a88-b5877352f892",
+          "memory_id": "01a10ff5-8fc3-7000-9f4f-629b7a4fdcde",
           "content": "Preference: bun test over jest because it is faster"
         },
         {
           "key": "ci-order-preference",
           "scenario": "procedural",
           "description": "bun install must run before bun test in CI",
-          "memory_id": "01a10bda-37a4-7000-b8bc-c9107b72258d",
+          "memory_id": "01a10ff5-8fc0-7000-8f15-1de60ae2af55",
           "content": "Preference: bun install before bun test in CI"
         },
         {
           "key": "module-resolution-failure",
           "scenario": "failure-solution",
           "description": "MODULE_NOT_FOUND failure with its resolution command",
-          "memory_id": "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
+          "memory_id": "01a10ff5-8fbd-7000-ba1b-38cc30fa1ba9",
           "content": "Failure: MODULE_NOT_FOUND — `bun test` failed — resolved by: `bun test`"
         },
         {
           "key": "terraform-procedure",
           "scenario": "procedural",
           "description": "Recurring terraform apply procedure",
-          "memory_id": "01a10bda-37af-7000-bcec-66b2116b982a",
+          "memory_id": "01a10ff5-8fc7-7000-b465-8b98999dd5b7",
           "content": "Recurring command: `terraform apply` (used 2 times)"
         }
       ],
@@ -780,12 +3006,12 @@
           "id": "which-database",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
+          "projectId": "01a10ff5-8fab-7000-ba04-e6b0c0e86f2f",
           "returnedIds": [
-            "01a10bda-3796-7000-a532-3e62aab7817b"
+            "01a10ff5-8fb7-7000-9541-ad7e53ba10a4"
           ],
           "expectedIds": [
-            "01a10bda-3796-7000-a532-3e62aab7817b"
+            "01a10ff5-8fb7-7000-9541-ad7e53ba10a4"
           ],
           "forbiddenIds": [],
           "usedTokens": 17,
@@ -799,15 +3025,15 @@
           "id": "which-test-runner",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
+          "projectId": "01a10ff5-8fab-7000-ba04-e6b0c0e86f2f",
           "returnedIds": [
-            "01a10bda-37a4-7000-b8bc-c9107b72258d",
-            "01a10bda-37a9-7000-8a88-b5877352f892",
-            "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
-            "01a10bda-37ac-7000-b49d-4f361dca69ee"
+            "01a10ff5-8fc0-7000-8f15-1de60ae2af55",
+            "01a10ff5-8fc3-7000-9f4f-629b7a4fdcde",
+            "01a10ff5-8fbd-7000-ba1b-38cc30fa1ba9",
+            "01a10ff5-8fc5-7000-bfae-53ff79286bf0"
           ],
           "expectedIds": [
-            "01a10bda-37a9-7000-8a88-b5877352f892"
+            "01a10ff5-8fc3-7000-9f4f-629b7a4fdcde"
           ],
           "forbiddenIds": [],
           "usedTokens": 54,
@@ -821,15 +3047,15 @@
           "id": "ci-order",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
+          "projectId": "01a10ff5-8fab-7000-ba04-e6b0c0e86f2f",
           "returnedIds": [
-            "01a10bda-379e-7000-ad43-3b6b9bce2a4b",
-            "01a10bda-37a4-7000-b8bc-c9107b72258d",
-            "01a10bda-37a9-7000-8a88-b5877352f892",
-            "01a10bda-37ac-7000-b49d-4f361dca69ee"
+            "01a10ff5-8fbd-7000-ba1b-38cc30fa1ba9",
+            "01a10ff5-8fc0-7000-8f15-1de60ae2af55",
+            "01a10ff5-8fc3-7000-9f4f-629b7a4fdcde",
+            "01a10ff5-8fc5-7000-bfae-53ff79286bf0"
           ],
           "expectedIds": [
-            "01a10bda-37a4-7000-b8bc-c9107b72258d"
+            "01a10ff5-8fc0-7000-8f15-1de60ae2af55"
           ],
           "forbiddenIds": [],
           "usedTokens": 54,
@@ -843,12 +3069,12 @@
           "id": "module-error",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
+          "projectId": "01a10ff5-8fab-7000-ba04-e6b0c0e86f2f",
           "returnedIds": [
-            "01a10bda-379e-7000-ad43-3b6b9bce2a4b"
+            "01a10ff5-8fbd-7000-ba1b-38cc30fa1ba9"
           ],
           "expectedIds": [
-            "01a10bda-379e-7000-ad43-3b6b9bce2a4b"
+            "01a10ff5-8fbd-7000-ba1b-38cc30fa1ba9"
           ],
           "forbiddenIds": [],
           "usedTokens": 18,
@@ -862,12 +3088,12 @@
           "id": "terraform-deploy",
           "kind": "retrieval",
           "projectKey": "alpha",
-          "projectId": "01a10bda-378b-7000-894e-46f5444e6a01",
+          "projectId": "01a10ff5-8fab-7000-ba04-e6b0c0e86f2f",
           "returnedIds": [
-            "01a10bda-37af-7000-bcec-66b2116b982a"
+            "01a10ff5-8fc7-7000-b465-8b98999dd5b7"
           ],
           "expectedIds": [
-            "01a10bda-37af-7000-bcec-66b2116b982a"
+            "01a10ff5-8fc7-7000-b465-8b98999dd5b7"
           ],
           "forbiddenIds": [],
           "usedTokens": 13,
@@ -932,6 +3158,208 @@
           "quality": 0,
           "fully_consolidated": 0,
           "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
         }
       },
       "warnings": []
@@ -957,21 +3385,21 @@
           "key": "node-20",
           "scenario": "outdated",
           "description": "Node 20 was the runtime version",
-          "memory_id": "01a10bda-3d20-7000-b13f-c0ad3df9df97",
+          "memory_id": "01a10ff5-951d-7000-9427-44e8b75dde4d",
           "content": "Version: Node 20"
         },
         {
           "key": "node-22",
           "scenario": "outdated",
           "description": "Node 22 replaced Node 20",
-          "memory_id": "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
+          "memory_id": "01a10ff5-9524-7000-9e14-f17969d2dd6a",
           "content": "Version: Node 22"
         },
         {
           "key": "node-24",
           "scenario": "outdated",
           "description": "Node 24 replaced Node 22 (current truth)",
-          "memory_id": "01a10bda-3d2f-7000-abd4-4040d6cdff1c",
+          "memory_id": "01a10ff5-9527-7000-a645-4fdc9f7465ea",
           "content": "Version: Node 24"
         }
       ],
@@ -980,16 +3408,16 @@
           "id": "node-current",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
+          "projectId": "01a10ff5-9513-7000-8391-a3a0efe98f50",
           "returnedIds": [
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "expectedIds": [
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "forbiddenIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d",
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -1003,16 +3431,16 @@
           "id": "node-point-in-time-20",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
+          "projectId": "01a10ff5-9513-7000-8391-a3a0efe98f50",
           "returnedIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d"
           ],
           "expectedIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d"
           ],
           "forbiddenIds": [
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a",
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -1026,16 +3454,16 @@
           "id": "node-point-in-time-22",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
+          "projectId": "01a10ff5-9513-7000-8391-a3a0efe98f50",
           "returnedIds": [
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a"
           ],
           "expectedIds": [
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a"
           ],
           "forbiddenIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d",
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -1049,16 +3477,16 @@
           "id": "node-point-in-time-24",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
+          "projectId": "01a10ff5-9513-7000-8391-a3a0efe98f50",
           "returnedIds": [
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "expectedIds": [
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "forbiddenIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d",
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a"
           ],
           "usedTokens": 4,
           "budget": 500,
@@ -1072,16 +3500,16 @@
           "id": "node-history",
           "kind": "temporal",
           "projectKey": "alpha",
-          "projectId": "01a10bda-3d19-7000-bb7a-eb7222a72101",
+          "projectId": "01a10ff5-9513-7000-8391-a3a0efe98f50",
           "returnedIds": [
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c",
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97"
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea",
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a",
+            "01a10ff5-951d-7000-9427-44e8b75dde4d"
           ],
           "expectedIds": [
-            "01a10bda-3d20-7000-b13f-c0ad3df9df97",
-            "01a10bda-3d29-7000-bd46-5c6caaedb8aa",
-            "01a10bda-3d2f-7000-abd4-4040d6cdff1c"
+            "01a10ff5-951d-7000-9427-44e8b75dde4d",
+            "01a10ff5-9524-7000-9e14-f17969d2dd6a",
+            "01a10ff5-9527-7000-a645-4fdc9f7465ea"
           ],
           "forbiddenIds": [],
           "usedTokens": 12,
@@ -1147,6 +3575,208 @@
           "quality": 0,
           "fully_consolidated": 0,
           "details": []
+        },
+        "precision_recall_by_type": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution_audit": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
+        }
+      },
+      "quality": {
+        "precision_recall": {
+          "runs": 1,
+          "k": 5,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "decision",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            },
+            {
+              "query_type": "failure",
+              "queries_per_run": 0,
+              "precision_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              },
+              "recall_at_k": {
+                "mean": 0,
+                "ci95_low": 0,
+                "ci95_high": 0,
+                "samples": 0
+              }
+            }
+          ]
+        },
+        "token_efficiency": {
+          "queries": 0,
+          "budget_compliance": 1,
+          "by_type": [
+            {
+              "query_type": "procedural",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "decision",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            },
+            {
+              "query_type": "failure",
+              "queries": 0,
+              "budget_compliance": 1,
+              "oracle_gap": 0,
+              "oracle_gap_when_satisfied": 0
+            }
+          ],
+          "oracle_gap_mean": 0,
+          "oracle_gap_max": 0,
+          "oracle_gap_mean_when_satisfied": 0
+        },
+        "pollution": {
+          "stale_cited": {
+            "window_days": 30,
+            "count": 0,
+            "memories": []
+          },
+          "duplicates": {
+            "cosine_threshold": 0.97,
+            "count": 0,
+            "pairs": []
+          },
+          "unresolved_contradictions": {
+            "count": 0,
+            "memories": []
+          }
         }
       },
       "warnings": []
@@ -1154,40 +3784,40 @@
   ],
   "metrics": {
     "retrieval": {
-      "queries": 9,
+      "queries": 24,
       "k": 5,
-      "precision_at_k": 0.7963,
+      "precision_at_k": 0.7479,
       "recall_at_k": 1,
-      "precision_full": 0.7963,
+      "precision_full": 0.7479,
       "recall_full": 1,
-      "mrr": 0.8333
+      "mrr": 0.8889
     },
     "tokens": {
-      "queries": 23,
+      "queries": 39,
       "budget_compliance": 1,
-      "mean_used": 23.13,
-      "max_used": 54,
-      "p95_used": 54,
-      "mean_tokens_per_expected": 21.2
+      "mean_used": 25.56,
+      "max_used": 68,
+      "p95_used": 61,
+      "mean_tokens_per_expected": 24.04
     },
     "pollution": {
       "cross_project_top1_rate": 0,
-      "cross_project_leakage_rate": 0.0625,
+      "cross_project_leakage_rate": 0.0308,
       "irrelevant_leakage_rate": 0.1111,
-      "returned": 32,
+      "returned": 65,
       "leaked": 2
     },
     "temporal": {
-      "probes": 5,
-      "correct": 5,
+      "probes": 6,
+      "correct": 6,
       "accuracy": 1,
       "current": {
         "probes": 1,
         "correct": 1
       },
       "point_in_time": {
-        "probes": 3,
-        "correct": 3
+        "probes": 4,
+        "correct": 4
       },
       "history": {
         "probes": 1,
@@ -1225,6 +3855,126 @@
           "compression": 0.5
         }
       ]
+    },
+    "precision_recall_by_type": {
+      "runs": 1,
+      "k": 5,
+      "by_type": [
+        {
+          "query_type": "procedural",
+          "queries_per_run": 5,
+          "precision_at_k": {
+            "mean": 0.69,
+            "ci95_low": 0.3176,
+            "ci95_high": 1,
+            "samples": 5
+          },
+          "recall_at_k": {
+            "mean": 1,
+            "ci95_low": 1,
+            "ci95_high": 1,
+            "samples": 5
+          }
+        },
+        {
+          "query_type": "decision",
+          "queries_per_run": 5,
+          "precision_at_k": {
+            "mean": 1,
+            "ci95_low": 1,
+            "ci95_high": 1,
+            "samples": 5
+          },
+          "recall_at_k": {
+            "mean": 1,
+            "ci95_low": 1,
+            "ci95_high": 1,
+            "samples": 5
+          }
+        },
+        {
+          "query_type": "failure",
+          "queries_per_run": 3,
+          "precision_at_k": {
+            "mean": 0.4444,
+            "ci95_low": 0.3356,
+            "ci95_high": 0.5533,
+            "samples": 3
+          },
+          "recall_at_k": {
+            "mean": 1,
+            "ci95_low": 1,
+            "ci95_high": 1,
+            "samples": 3
+          }
+        }
+      ]
+    },
+    "token_efficiency": {
+      "queries": 13,
+      "budget_compliance": 1,
+      "by_type": [
+        {
+          "query_type": "procedural",
+          "queries": 5,
+          "budget_compliance": 1,
+          "oracle_gap": 2.76,
+          "oracle_gap_when_satisfied": 2.76
+        },
+        {
+          "query_type": "decision",
+          "queries": 5,
+          "budget_compliance": 1,
+          "oracle_gap": 1.0267,
+          "oracle_gap_when_satisfied": 1.0267
+        },
+        {
+          "query_type": "failure",
+          "queries": 3,
+          "budget_compliance": 1,
+          "oracle_gap": 2.9698,
+          "oracle_gap_when_satisfied": 2.9698
+        }
+      ],
+      "oracle_gap_mean": 2.1418,
+      "oracle_gap_max": 6.8,
+      "oracle_gap_mean_when_satisfied": 2.1418
+    },
+    "pollution_audit": {
+      "stale_cited": {
+        "window_days": 30,
+        "count": 1,
+        "memories": [
+          {
+            "label": "Version: Node 18",
+            "status": "archived",
+            "last_accessed_at": "2026-10-03T10:00:00.000Z",
+            "access_count": 1
+          }
+        ]
+      },
+      "duplicates": {
+        "cosine_threshold": 0.97,
+        "count": 1,
+        "pairs": [
+          {
+            "a": "always run bun install before bun test in ci",
+            "b": "Always run bun install before bun test in CI.",
+            "type": "procedural",
+            "cosine": 1
+          }
+        ]
+      },
+      "unresolved_contradictions": {
+        "count": 1,
+        "memories": [
+          {
+            "label": "Decision: use PostgreSQL with pgvector as the only database dial…",
+            "status": "active",
+            "expected_mark": "superseded"
+          }
+        ]
+      }
     }
   },
   "gates": {
@@ -1237,7 +3987,20 @@
       "retrieval_recall_at_k": 0.9,
       "irrelevant_leakage_rate": 0.2,
       "contradiction_accuracy": 0.8,
-      "consolidation_quality": 0.3
+      "consolidation_quality": 0.3,
+      "retrieval_precision_procedural": 0.6,
+      "retrieval_precision_decision": 0.9,
+      "retrieval_precision_failure": 0.4,
+      "retrieval_recall_procedural": 0.9,
+      "retrieval_recall_decision": 0.9,
+      "retrieval_recall_failure": 0.9,
+      "token_budget_compliance_procedural": 1,
+      "token_budget_compliance_decision": 1,
+      "token_budget_compliance_failure": 1,
+      "token_oracle_gap_mean": 2.5,
+      "stale_cited_memories": 1,
+      "duplicate_surfaced_pairs": 1,
+      "unresolved_contradicted_memories": 1
     },
     "checks": [
       {
@@ -1249,7 +4012,7 @@
       },
       {
         "metric": "retrieval_precision_at_k",
-        "actual": 0.7963,
+        "actual": 0.7479,
         "threshold": 0.7,
         "comparison": "min",
         "passed": true
@@ -1294,6 +4057,97 @@
         "actual": 0.3333,
         "threshold": 0.3,
         "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_precision_procedural",
+        "actual": 0.69,
+        "threshold": 0.6,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_recall_procedural",
+        "actual": 1,
+        "threshold": 0.9,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_precision_decision",
+        "actual": 1,
+        "threshold": 0.9,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_recall_decision",
+        "actual": 1,
+        "threshold": 0.9,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_precision_failure",
+        "actual": 0.4444,
+        "threshold": 0.4,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "retrieval_recall_failure",
+        "actual": 1,
+        "threshold": 0.9,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "token_budget_compliance_procedural",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "token_budget_compliance_decision",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "token_budget_compliance_failure",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "min",
+        "passed": true
+      },
+      {
+        "metric": "token_oracle_gap_mean",
+        "actual": 2.1418,
+        "threshold": 2.5,
+        "comparison": "max",
+        "passed": true
+      },
+      {
+        "metric": "stale_cited_memories",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "max",
+        "passed": true
+      },
+      {
+        "metric": "duplicate_surfaced_pairs",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "max",
+        "passed": true
+      },
+      {
+        "metric": "unresolved_contradicted_memories",
+        "actual": 1,
+        "threshold": 1,
+        "comparison": "max",
         "passed": true
       }
     ]

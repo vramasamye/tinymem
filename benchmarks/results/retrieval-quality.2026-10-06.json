@@ -1,0 +1,120 @@
+{
+  "schema_version": "1",
+  "metric": "retrieval_quality",
+  "generated_at": "2026-10-06T06:45:15.277Z",
+  "engine": {
+    "profile": "embedded",
+    "embedder": "none (lexical + graph default)",
+    "extraction": "heuristic (no-LLM baseline)"
+  },
+  "runs": 1,
+  "k": 5,
+  "by_type": [
+    {
+      "query_type": "procedural",
+      "queries_per_run": 5,
+      "precision_at_k": {
+        "mean": 0.69,
+        "ci95_low": 0.3176,
+        "ci95_high": 1,
+        "samples": 5
+      },
+      "recall_at_k": {
+        "mean": 1,
+        "ci95_low": 1,
+        "ci95_high": 1,
+        "samples": 5
+      }
+    },
+    {
+      "query_type": "decision",
+      "queries_per_run": 5,
+      "precision_at_k": {
+        "mean": 1,
+        "ci95_low": 1,
+        "ci95_high": 1,
+        "samples": 5
+      },
+      "recall_at_k": {
+        "mean": 1,
+        "ci95_low": 1,
+        "ci95_high": 1,
+        "samples": 5
+      }
+    },
+    {
+      "query_type": "failure",
+      "queries_per_run": 3,
+      "precision_at_k": {
+        "mean": 0.4444,
+        "ci95_low": 0.3356,
+        "ci95_high": 0.5533,
+        "samples": 3
+      },
+      "recall_at_k": {
+        "mean": 1,
+        "ci95_low": 1,
+        "ci95_high": 1,
+        "samples": 3
+      }
+    }
+  ],
+  "gates": [
+    {
+      "metric": "retrieval_precision_at_k",
+      "actual": 0.7479,
+      "threshold": 0.7,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_recall_at_k",
+      "actual": 1,
+      "threshold": 0.9,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_precision_procedural",
+      "actual": 0.69,
+      "threshold": 0.6,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_recall_procedural",
+      "actual": 1,
+      "threshold": 0.9,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_precision_decision",
+      "actual": 1,
+      "threshold": 0.9,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_recall_decision",
+      "actual": 1,
+      "threshold": 0.9,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_precision_failure",
+      "actual": 0.4444,
+      "threshold": 0.4,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "retrieval_recall_failure",
+      "actual": 1,
+      "threshold": 0.9,
+      "comparison": "min",
+      "passed": true
+    }
+  ]
+}

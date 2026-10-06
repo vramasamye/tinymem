@@ -1,0 +1,74 @@
+{
+  "schema_version": "1",
+  "metric": "token_efficiency",
+  "generated_at": "2026-10-06T06:45:15.277Z",
+  "engine": {
+    "profile": "embedded",
+    "embedder": "none (lexical + graph default)",
+    "extraction": "heuristic (no-LLM baseline)"
+  },
+  "budget_compliance": 1,
+  "by_type": [
+    {
+      "query_type": "procedural",
+      "queries": 5,
+      "budget_compliance": 1,
+      "oracle_gap": 2.76,
+      "oracle_gap_when_satisfied": 2.76
+    },
+    {
+      "query_type": "decision",
+      "queries": 5,
+      "budget_compliance": 1,
+      "oracle_gap": 1.0267,
+      "oracle_gap_when_satisfied": 1.0267
+    },
+    {
+      "query_type": "failure",
+      "queries": 3,
+      "budget_compliance": 1,
+      "oracle_gap": 2.9698,
+      "oracle_gap_when_satisfied": 2.9698
+    }
+  ],
+  "oracle_gap_mean": 2.1418,
+  "oracle_gap_max": 6.8,
+  "oracle_gap_mean_when_satisfied": 2.1418,
+  "gates": [
+    {
+      "metric": "token_budget_compliance",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "token_budget_compliance_procedural",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "token_budget_compliance_decision",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "token_budget_compliance_failure",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "min",
+      "passed": true
+    },
+    {
+      "metric": "token_oracle_gap_mean",
+      "actual": 2.1418,
+      "threshold": 2.5,
+      "comparison": "max",
+      "passed": true
+    }
+  ]
+}

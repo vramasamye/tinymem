@@ -28,6 +28,9 @@ import type {
   TemporalMetrics,
   TokenMetrics,
 } from './metrics';
+import type { PrecisionRecallByType, QualityQueryType } from './metrics/precision-recall';
+import type { TokenEfficiencyRecord } from './metrics/token-efficiency';
+import type { PollutionAuditRecord } from './metrics/pollution';
 
 export interface AggregateMetrics {
   retrieval: RetrievalMetrics;
@@ -36,6 +39,12 @@ export interface AggregateMetrics {
   temporal: TemporalMetrics;
   contradiction: ContradictionMetrics;
   consolidation: ConsolidationMetrics;
+  /** M11b-quality: per-query-type precision/recall (procedural / decision / failure). */
+  precision_recall_by_type: PrecisionRecallByType;
+  /** M11b-quality: per-query-type budget compliance + the token-oracle gap. */
+  token_efficiency: TokenEfficiencyRecord;
+  /** M11b-quality: stale / duplicate / unresolved-contradiction counts. */
+  pollution_audit: PollutionAuditRecord;
 }
 
 export interface GateThresholds {
@@ -55,6 +64,29 @@ export interface GateThresholds {
   contradiction_accuracy: number;
   /** Minimum (post-M14 offline baseline 0.3333 — vector-gated passes skip without an embedder). */
   consolidation_quality: number;
+  /** M11b-quality — minimum per-type precision@k (lexical + graph default baseline). */
+  retrieval_precision_procedural: number;
+  retrieval_precision_decision: number;
+  retrieval_precision_failure: number;
+  /** M11b-quality — minimum per-type recall@k. */
+  retrieval_recall_procedural: number;
+  retrieval_recall_decision: number;
+  retrieval_recall_failure: number;
+  /** M11b-quality — minimum per-type `used ≤ budget` compliance (correctness invariant). */
+  token_budget_compliance_procedural: number;
+  token_budget_compliance_decision: number;
+  token_budget_compliance_failure: number;
+  /**
+   * M11b-quality — maximum mean `used / oracle_min_tokens` over recall-satisfied typed queries
+   * (the room-to-compress signal; 1.0 = exactly the golden answer at its tightest packing).
+   */
+  token_oracle_gap_mean: number;
+  /** M11b-quality — maximum archived-but-recently-cited memories (count). */
+  stale_cited_memories: number;
+  /** M11b-quality — maximum ≥0.97-cosine pairs that surfaced in retrieval (count). */
+  duplicate_surfaced_pairs: number;
+  /** M11b-quality — maximum declared-contradiction sides left neither superseded nor disputed. */
+  unresolved_contradicted_memories: number;
 }
 
 /**
@@ -79,6 +111,33 @@ export const DEFAULT_GATE_THRESHOLDS: GateThresholds = {
   contradiction_accuracy: 0.8,
   // Baseline 0.3333 (exact-dedupe ceiling offline): one step below.
   consolidation_quality: 0.3,
+  // M11b-quality thresholds are derived from the first measured baseline
+  // (`benchmarks/results/*.{date}.json`, schema + headroom in `benchmarks/results/README.md`).
+  // Per-type precision carries one honest step of headroom below the measured value
+  // (procedural 0.69, decision 1.0, failure 0.4444 — failure queries structurally co-surface
+  // sibling failures and the failing commands' recurring procedurals, which is the engine's
+  // intended known-failures surface, not a fixture defect); per-type recall is measured 1.0 and
+  // gated at 0.9 so any single query losing its expected fact fails. The three per-type budget
+  // gates are correctness invariants like the aggregate one (packer construction guarantees
+  // `used ≤ budget`, so 1.0).
+  retrieval_precision_procedural: 0.6,
+  retrieval_precision_decision: 0.9,
+  retrieval_precision_failure: 0.4,
+  retrieval_recall_procedural: 0.9,
+  retrieval_recall_decision: 0.9,
+  retrieval_recall_failure: 0.9,
+  token_budget_compliance_procedural: 1.0,
+  token_budget_compliance_decision: 1.0,
+  token_budget_compliance_failure: 1.0,
+  // Measured first-baseline mean gap over recall-satisfied typed queries (2.1418; decision
+  // queries sit near the oracle at 1.0267, procedural/failure carry the co-surfaced siblings at
+  // 2.76/2.97) + one step of headroom.
+  token_oracle_gap_mean: 2.5,
+  // Count gates: the pollution fixtures demonstrate detection, so each ceiling is the measured
+  // fixture count (a lower count is an improvement, a higher one is a regression).
+  stale_cited_memories: 1,
+  duplicate_surfaced_pairs: 1,
+  unresolved_contradicted_memories: 1,
 };
 
 export interface GateCheck {
@@ -138,6 +197,52 @@ export function evaluateGates(
       thresholds.consolidation_quality,
       'min',
     ),
+    ...perTypeChecks(metrics.precision_recall_by_type.by_type, (record) => [
+      [
+        'retrieval_precision',
+        record.precision_at_k.mean,
+        thresholds[`retrieval_precision_${record.query_type}`],
+        'min',
+      ],
+      [
+        'retrieval_recall',
+        record.recall_at_k.mean,
+        thresholds[`retrieval_recall_${record.query_type}`],
+        'min',
+      ],
+    ]),
+    ...perTypeChecks(metrics.token_efficiency.by_type, (record) => [
+      [
+        'token_budget_compliance',
+        record.budget_compliance,
+        thresholds[`token_budget_compliance_${record.query_type}`],
+        'min',
+      ],
+    ]),
+    check(
+      'token_oracle_gap_mean',
+      metrics.token_efficiency.oracle_gap_mean_when_satisfied,
+      thresholds.token_oracle_gap_mean,
+      'max',
+    ),
+    check(
+      'stale_cited_memories',
+      metrics.pollution_audit.stale_cited.count,
+      thresholds.stale_cited_memories,
+      'max',
+    ),
+    check(
+      'duplicate_surfaced_pairs',
+      metrics.pollution_audit.duplicates.count,
+      thresholds.duplicate_surfaced_pairs,
+      'max',
+    ),
+    check(
+      'unresolved_contradicted_memories',
+      metrics.pollution_audit.unresolved_contradictions.count,
+      thresholds.unresolved_contradicted_memories,
+      'max',
+    ),
   ];
 
   return {
@@ -145,6 +250,28 @@ export function evaluateGates(
     thresholds,
     checks,
   };
+}
+
+/**
+ * Expand one metric family across the three M11b query types. `entries` returns the family's
+ * (suffix, actual, threshold, comparison) tuples for one per-type record; every tuple becomes
+ * one check named `<family>_<type>`, so the gate report stays one line per threshold.
+ */
+function perTypeChecks<T extends { query_type: QualityQueryType }>(
+  byType: ReadonlyArray<T>,
+  entries: (
+    record: T,
+  ) => ReadonlyArray<[suffix: string, actual: number, threshold: number, comparison: 'min' | 'max']>,
+): GateCheck[] {
+  const checks: GateCheck[] = [];
+  for (const record of byType) {
+    for (const [suffix, actual, threshold, comparison] of entries(record)) {
+      checks.push(
+        check(`${suffix}_${record.query_type}`, actual, threshold, comparison),
+      );
+    }
+  }
+  return checks;
 }
 
 function check(metric: string, actual: number, threshold: number, comparison: 'min' | 'max'): GateCheck {
