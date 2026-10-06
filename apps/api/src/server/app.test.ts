@@ -16,6 +16,7 @@ import type {
   HealthReport,
   InspectResult,
   IngestResult,
+  MemoryPageOptions,
   ProjectListResult,
   PurgeOutcome,
   RememberOutcome,
@@ -191,6 +192,7 @@ interface Scripted {
   forgetInput?: Record<string, unknown>;
   purgeInput?: Record<string, unknown>;
   projectListResult?: ProjectListResult;
+  pageOptions?: MemoryPageOptions;
 }
 
 function fakeBackend(script: Scripted = {}): OnememoryBackend {
@@ -230,6 +232,15 @@ function fakeBackend(script: Scripted = {}): OnememoryBackend {
     context: async () => context,
     decisions: async () => searchResponse,
     failures: async () => searchResponse,
+    listMemories: async (projectId, options = {}) => {
+      script.pageOptions = options;
+      return {
+        project_id: projectId,
+        page_size: options.page_size ?? 50,
+        memories: [inspectResult.memory],
+        next_cursor: options.cursor === undefined ? 'next-page' : null,
+      };
+    },
     close: async () => {},
   };
   return backend;
@@ -459,6 +470,31 @@ describe('memories', () => {
   test('purge without the revision token is a 400 (a purge can never be accidental)', async () => {
     const response = await post(`/v1/projects/${PROJECT_ID}/memories/${MEMORY_ID}/purge`, {});
     expect(response.status).toBe(400);
+  });
+
+  test('GET memories pages with cursor + page_size and splits the comma filters', async () => {
+    const script: Scripted = {};
+    const first = await get(
+      `/v1/projects/${PROJECT_ID}/memories?page_size=2&types=decision,failure&include=archived`,
+      script,
+    );
+    expect(first.status).toBe(200);
+    expect(script.pageOptions).toEqual({ page_size: 2, types: ['decision', 'failure'], include: ['archived'] });
+    const payload = await body(first);
+    expect(payload.next_cursor).toBe('next-page');
+    expect((payload.memories as unknown[]).length).toBe(1);
+
+    const next = await get(`/v1/projects/${PROJECT_ID}/memories?cursor=next-page`, script);
+    expect(next.status).toBe(200);
+    expect(script.pageOptions).toEqual({ cursor: 'next-page' });
+    expect((await body(next)).next_cursor).toBeNull();
+  });
+
+  test('GET memories rejects an unknown type, status, or an out-of-range page_size', async () => {
+    for (const query of ['types=decision,bogus', 'include=active', 'page_size=0', 'page_size=201', 'extra=1']) {
+      const response = await get(`/v1/projects/${PROJECT_ID}/memories?${query}`);
+      expect(response.status).toBe(400);
+    }
   });
 
   test('a memory id that is not a UUID is a 400 (param validation)', async () => {

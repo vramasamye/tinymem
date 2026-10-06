@@ -22,6 +22,8 @@ import {
   RedactionSchema,
 } from '@onememory/core';
 
+import { MAX_MEMORY_PAGE_SIZE, MEMORY_PAGE_INCLUDE } from '../runtime/types';
+
 extendZodWithOpenApi(zOpenApi);
 const z = zOpenApi;
 
@@ -365,6 +367,28 @@ export const ListQuerySchema = z.strictObject({
   max_tokens: z.coerce.number().int().min(1).max(100_000).optional(),
   max_memories: z.coerce.number().int().min(1).max(1000).optional(),
 });
+
+/** `a,b,c` over a fixed vocabulary — kept a plain validated string so the OpenAPI doc stays structural. */
+function commaList(values: readonly string[]) {
+  const one = `(?:${values.join('|')})`;
+  return z.string().regex(new RegExp(`^${one}(?:,${one})*$`));
+}
+
+export const MemoryPageQuerySchema = z.strictObject({
+  cursor: z.string().min(1).max(500).optional(),
+  page_size: z.coerce.number().int().min(1).max(MAX_MEMORY_PAGE_SIZE).optional(),
+  types: commaList(DURABLE_MEMORY_TYPES).optional(),
+  include: commaList(MEMORY_PAGE_INCLUDE).optional(),
+});
+
+export const MemoryPageResponseSchema = z
+  .strictObject({
+    project_id: z.uuid(),
+    page_size: z.number().int().min(1),
+    memories: z.array(MemoryRecordSchema),
+    next_cursor: z.string().nullable(),
+  })
+  .openapi('MemoryPage');
 
 export const ContextQuerySchema = z.strictObject({
   budget: z.coerce.number().int().min(1).max(100_000).default(750),

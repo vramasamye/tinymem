@@ -15,6 +15,7 @@
 import type { MemorySearchRequest, MemorySearchResponse } from '@onememory/core';
 import type { LlmProfileSummary } from '@onememory/config';
 import type {
+  DurableMemoryType,
   EntityRecord,
   EdgeRecord,
   MemoryEventRecord,
@@ -186,6 +187,31 @@ export interface ListOptions {
   query?: string;
 }
 
+/** Non-active statuses a memory listing may opt into (active rows are always listed). */
+export const MEMORY_PAGE_INCLUDE = ['stale', 'superseded', 'disputed', 'archived'] as const;
+export type MemoryPageInclude = (typeof MEMORY_PAGE_INCLUDE)[number];
+
+export const DEFAULT_MEMORY_PAGE_SIZE = 50;
+export const MAX_MEMORY_PAGE_SIZE = 200;
+
+export interface MemoryPageOptions {
+  /** Opaque cursor from the previous page's `next_cursor`. */
+  cursor?: string;
+  page_size?: number;
+  /** Empty or absent = every durable type. */
+  types?: readonly DurableMemoryType[];
+  include?: readonly MemoryPageInclude[];
+}
+
+/** One keyset page of a project's memories, newest observation first. */
+export interface MemoryPageResult {
+  project_id: string;
+  page_size: number;
+  memories: MemoryRecord[];
+  /** Pass back as `cursor` for the next page; null on the last page. */
+  next_cursor: string | null;
+}
+
 /** Service-level failure carrying a stable code the HTTP layer maps onto a status. */
 export type BackendErrorCode = 'not_found' | 'invalid_request' | 'conflict' | 'unavailable' | 'internal';
 
@@ -229,5 +255,7 @@ export interface OnememoryBackend {
   context(projectId: string, options?: ContextOptions): Promise<SessionContext>;
   decisions(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
   failures(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
+  /** Keyset-paginated listing (no ranking, no token budget): browse, not search. */
+  listMemories(projectId: string, options?: MemoryPageOptions): Promise<MemoryPageResult>;
   close(): Promise<void>;
 }

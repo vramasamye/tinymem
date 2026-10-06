@@ -22,6 +22,7 @@ import {
   searchMemories,
   sessionContext,
   typedMemoryList,
+  listMemoryPage,
   requireProject,
 } from './memory-service';
 import { computeStats, type StatsOptions } from './stats';
@@ -158,6 +159,10 @@ export function createLocalBackend(
 
     failures(projectId, options = {}) {
       return typedMemoryList(runtime, projectId, 'failure', options);
+    },
+
+    listMemories(projectId, options = {}) {
+      return listMemoryPage(runtime, projectId, options);
     },
 
     async close() {

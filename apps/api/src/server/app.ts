@@ -16,7 +16,9 @@ import { DURABLE_MEMORY_TYPES, type MemorySearchRequest } from '@onememory/core'
 import { OpenAPIHono, createRoute, z, type Hook, type RouteConfig, type RouteHandler } from '@hono/zod-openapi';
 import type { Context, Env } from 'hono';
 
-import { BackendError, type OnememoryBackend } from '../runtime/types';
+import type { DurableMemoryType } from '@onememory/core';
+
+import { BackendError, type MemoryPageInclude, type OnememoryBackend } from '../runtime/types';
 import {
   ContextQuerySchema,
   CreateProjectRequestSchema,
@@ -30,6 +32,8 @@ import {
   IngestResponseSchema,
   InspectResponseSchema,
   ListQuerySchema,
+  MemoryPageQuerySchema,
+  MemoryPageResponseSchema,
   MemoryIdParamSchema,
   ProjectListResponseSchema,
   ProjectSchema,
@@ -378,6 +382,38 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
         RememberResponseSchema,
         await backend.remember({ ...body, project_id: c.req.valid('param').id }),
         201,
+      );
+    },
+  );
+
+  add(
+    createRoute({
+      method: 'get',
+      path: '/v1/projects/{id}/memories',
+      tags: ['memories'],
+      summary: 'Browse memories, keyset-paginated (newest observation first; cursor + page_size)',
+      request: { params: IdParamSchema, query: MemoryPageQuerySchema },
+      responses: {
+        200: { content: { 'application/json': { schema: MemoryPageResponseSchema } }, description: 'one page' },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const query = c.req.valid('query');
+      return respond(
+        c,
+        MemoryPageResponseSchema,
+        await backend.listMemories(c.req.valid('param').id, {
+          ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
+          ...(query.page_size === undefined ? {} : { page_size: query.page_size }),
+          ...(query.types === undefined
+            ? {}
+            : { types: query.types.split(',') as DurableMemoryType[] }),
+          ...(query.include === undefined
+            ? {}
+            : { include: query.include.split(',') as MemoryPageInclude[] }),
+        }),
+        200,
       );
     },
   );

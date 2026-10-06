@@ -279,6 +279,45 @@ describe('the durable write path (real storage)', () => {
     expect(stats.project_id).toBe(projectId);
     await expect(http.getProject('0195a7f0-9f5e-7a1d-bc2d-000000000009')).rejects.toBeInstanceOf(BackendError);
   });
+
+  test('listMemories walks every memory once by cursor, in-process and over HTTP alike', async () => {
+    const { createApiApp } = await import('../server/app');
+    const local = createLocalBackend(runtime, { adapter: 'test', closeRuntime: false });
+    const app = createApiApp({ backend: local, version: 'test' });
+    const http = createHttpBackend({
+      baseUrl: 'http://onememory.test',
+      fetch: ((input: string | URL | Request, init?: RequestInit) =>
+        app.request(String(input), init)) as unknown as typeof fetch,
+    });
+    for (const n of [1, 2, 3]) {
+      await local.remember({ project_id: projectId, content: `Pagination probe number ${n} for the browse list.` });
+    }
+
+    const everything = await local.listMemories(projectId, { page_size: 200 });
+    expect(everything.next_cursor).toBeNull();
+    expect(everything.memories.length).toBeGreaterThanOrEqual(3);
+
+    for (const backend of [local, http]) {
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await backend.listMemories(projectId, { page_size: 2, ...(cursor === undefined ? {} : { cursor }) });
+        expect(page.memories.length).toBeLessThanOrEqual(2);
+        seen.push(...page.memories.map((memory) => memory.id));
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor !== undefined);
+      expect(seen).toEqual(everything.memories.map((memory) => memory.id));
+    }
+
+    const decisions = await local.listMemories(projectId, { types: ['decision'] });
+    expect(decisions.memories.every((memory) => memory.type === 'decision')).toBeTrue();
+
+    await expect(local.listMemories(projectId, { cursor: 'not-a-cursor' })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(http.listMemories(projectId, { cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(BackendError);
+    await expect(
+      local.listMemories('0195a7f0-9f5e-7a1d-bc2d-000000000009'),
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
 });
 
 describe('the daemon lock', () => {

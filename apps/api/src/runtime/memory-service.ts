@@ -17,6 +17,7 @@
 
 import {
   MEMORY_STATUSES,
+  DURABLE_MEMORY_TYPES,
   eventContentHash,
   memoryContentHash,
   normalizeEntityName,
@@ -54,6 +55,10 @@ import {
   type IngestResult,
   type InspectResult,
   type ListOptions,
+  type MemoryPageOptions,
+  type MemoryPageResult,
+  DEFAULT_MEMORY_PAGE_SIZE,
+  MAX_MEMORY_PAGE_SIZE,
   type PurgeInput,
   type PurgeOutcome,
   type RememberInput,
@@ -702,6 +707,69 @@ export async function listProjectMemories(
       projectId,
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// keyset-paginated listing
+// ---------------------------------------------------------------------------
+
+/** The cursor is opaque to clients; its shape is a storage keyset position, base64url-encoded. */
+function encodeMemoryCursor(cursor: searchRepo.MemoryPageCursor): string {
+  return Buffer.from(JSON.stringify([cursor.observed_at_us, cursor.id]), 'utf-8').toString('base64url');
+}
+
+function decodeMemoryCursor(raw: string): searchRepo.MemoryPageCursor {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(raw, 'base64url').toString('utf-8'));
+    if (
+      Array.isArray(parsed) &&
+      parsed.length === 2 &&
+      typeof parsed[0] === 'string' &&
+      /^-?\d{1,19}$/.test(parsed[0]) &&
+      typeof parsed[1] === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsed[1])
+    ) {
+      return { observed_at_us: parsed[0], id: parsed[1] };
+    }
+  } catch {
+    // fall through to the typed refusal
+  }
+  throw new BackendError(
+    'invalid cursor — pass back the next_cursor of a previous page unchanged, or omit it for the first page',
+    'invalid_request',
+  );
+}
+
+export async function listMemoryPage(
+  runtime: OnememoryRuntime,
+  projectId: string,
+  options: MemoryPageOptions = {},
+): Promise<MemoryPageResult> {
+  await requireProject(runtime, projectId);
+  const pageSize = options.page_size ?? DEFAULT_MEMORY_PAGE_SIZE;
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_MEMORY_PAGE_SIZE) {
+    throw new BackendError(`page_size must be an integer in 1..${MAX_MEMORY_PAGE_SIZE}`, 'invalid_request');
+  }
+  const after = options.cursor === undefined ? undefined : decodeMemoryCursor(options.cursor);
+  const page = await searchRepo.listMemoryPage(
+    runtime.storage.client,
+    {
+      types: options.types === undefined || options.types.length === 0 ? DURABLE_MEMORY_TYPES : options.types,
+      pageSize,
+      ...(after === undefined ? {} : { after }),
+    },
+    {
+      statuses: ['active', ...(options.include ?? [])],
+      window: { kind: 'overlap', from: null, until: null },
+      projectId,
+    },
+  );
+  return {
+    project_id: projectId,
+    page_size: pageSize,
+    memories: page.memories,
+    next_cursor: page.next === null ? null : encodeMemoryCursor(page.next),
+  };
 }
 
 /** Exported for the stats module and tests (one read cap, one definition). */

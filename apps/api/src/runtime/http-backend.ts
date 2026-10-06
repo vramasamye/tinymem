@@ -20,6 +20,8 @@ import {
   type IngestResult,
   type InspectResult,
   type ListOptions,
+  type MemoryPageOptions,
+  type MemoryPageResult,
   type OnememoryBackend,
   type ProjectListResult,
   type PurgeInput,
@@ -199,10 +201,23 @@ export function createHttpBackend(options: HttpBackendOptions): OnememoryBackend
     failures: (projectId: string, options: ListOptions = {}) =>
       call<MemorySearchResponse>('GET', `/v1/projects/${encode(projectId)}/failures${listQuery(options)}`),
 
+    listMemories: (projectId: string, options: MemoryPageOptions = {}) =>
+      call<MemoryPageResult>('GET', `/v1/projects/${encode(projectId)}/memories${memoryPageQuery(options)}`),
+
     async close() {
       // The daemon owns its lifetime; the client has nothing to release.
     },
   };
+}
+
+function memoryPageQuery(options: MemoryPageOptions): string {
+  const params = new URLSearchParams();
+  if (options.cursor !== undefined) params.set('cursor', options.cursor);
+  if (options.page_size !== undefined) params.set('page_size', String(options.page_size));
+  if (options.types !== undefined && options.types.length > 0) params.set('types', options.types.join(','));
+  if (options.include !== undefined && options.include.length > 0) params.set('include', options.include.join(','));
+  const query = params.toString();
+  return query === '' ? '' : `?${query}`;
 }
 
 function listQuery(options: ListOptions): string {
