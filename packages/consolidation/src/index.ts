@@ -133,6 +133,46 @@ export {
 } from './compaction/summary';
 export { runEventsCompaction, type EventsCompactionInput } from './compaction/run';
 
+// Skill generation (M15: failure recurrence matching → SKILL.md candidates → the review flow)
+export {
+  groupFailuresBySignature,
+  observationOf,
+  primaryEntityOf,
+  solutionSimilarityOf,
+  type FailureObservation,
+  type MatchOptions,
+  type SignatureGroup,
+} from './skills/match';
+export {
+  buildSkillCandidate,
+  buildSkillDocument,
+  observationFromMemory,
+  skillDescriptionOf,
+  skillNameOf,
+  skillSlugBase,
+  unionEvidenceSpans,
+  type SkillCandidateDraft,
+} from './skills/generate';
+export {
+  renderSkillMarkdown,
+  SKILL_MD_TEMPLATE_VERSION,
+  type SkillDocument,
+} from './skills/render';
+export { loadSkillForReview, type SkillReviewBundle } from './skills/review';
+export {
+  collectSkillUsage,
+  mentionsSkill,
+  usageSnapshotOf,
+  DEFAULT_SKILL_USAGE_EVENT_LIMIT,
+  DEFAULT_SKILL_USAGE_SKILL_LIMIT,
+  SKILL_USAGE_HOOK_VERSION,
+} from './skills/usage';
+export {
+  runSkillGeneration,
+  SKILL_GENERATION_ACTOR,
+  type SkillGenerationInput,
+} from './skills/run';
+
 // Configuration + the run report
 export {
   CONSOLIDATION_HALF_LIFE_DAYS,

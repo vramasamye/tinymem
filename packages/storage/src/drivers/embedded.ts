@@ -12,6 +12,7 @@ import type { Extensions, PGliteOptions, Transaction } from '@electric-sql/pglit
 
 import { createCodeMemoryStore, createJobQueue, createStore } from '../store';
 import { createEventsCompactor } from '../retention/events-compaction';
+import { createSkillStore } from '../repositories/skills';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import type { Database, QueryResult } from './client';
@@ -161,6 +162,7 @@ export async function createEmbeddedDb(
     codeMemory: createCodeMemoryStore(client),
     vectors,
     compactor: createEventsCompactor(client),
+    skills: createSkillStore(client),
     migrate: () => migrateEmbedded(client.pglite),
     close: () => client.close(),
   };

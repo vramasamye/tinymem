@@ -74,7 +74,9 @@ const SEARCH_MEMORY_SELECT = `
   JOIN sources s ON s.id = m.source_id
 `;
 
-function planFilter(filter: CandidateFilter, startIndex: number): FilterPlan {
+/** Exported for the sibling repositories (the skills repo's recurrence read): ONE filter planner,
+ * never a re-derivation — the clauses must not drift from the retrieval policy. */
+export function planFilter(filter: CandidateFilter, startIndex: number): FilterPlan {
   if (filter.statuses.length === 0) {
     throw new TypeError('search: candidate filter requires at least one allowed status');
   }
@@ -129,8 +131,9 @@ function planFilter(filter: CandidateFilter, startIndex: number): FilterPlan {
   return { clauses, params };
 }
 
-/** Batch-load entity bindings for the fetched memories (avoids N+1; same shape as memories.ts). */
-async function entitiesForMemories(
+/** Batch-load entity bindings for the fetched memories (avoids N+1; same shape as memories.ts).
+ * Exported for the sibling repositories (the skills repo's recurrence read). */
+export async function entitiesForMemories(
   db: Database,
   memoryIds: readonly string[],
 ): Promise<Map<string, MemoryRecord['entities']>> {

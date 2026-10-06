@@ -15,6 +15,9 @@ export * from './model/index';
 // Retention / events-compaction contract (M14.6 — the EventsCompactor port + plan types)
 export * from './types/retention';
 
+// Skill-generation contract (M15 — the SkillStore port, the lifecycle machine, the report types)
+export * from './types/skills';
+
 // Shared pure defaults used across engine packages
 export * from './shared';
 
