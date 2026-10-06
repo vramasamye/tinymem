@@ -138,6 +138,11 @@ dashboard data (duplicates/stale/conflicts/unused/low-confidence) computed.
 Definition of done (Phase 6): a developer can visually verify every claim the engine makes about
 a memory (source, evidence, status, history, score). Compose profile `--profile web`.
 
+**Status (2026-10-06):** Phase 6 closed. M10 (`mission/10-web-ui`, merged to main)
+landed the `apps/web` Vite + React memory explorer (12 source files, 73 tests pass /
+0 fail). Every claim on screen flows from `apps/api` REST endpoints — no
+client-side truth. Mission report: `docs/plan/mission-reports/mission-10-web-ui.md`.
+
 ## Post-1.0 (explicitly out of scope until 1.0 ships, no open-core gating)
 
 - SaaS/multi-tenant mode: orgs migration, API keys, RLS, hosted control plane (same engine,

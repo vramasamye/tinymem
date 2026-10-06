@@ -150,6 +150,14 @@ pattern in source) — Droid-Shield unblocked.
 ## M10 — Web UI [P6] [epic] [ui]
 Branch: `mission/10-web-ui` · Deps: REST API · App: `apps/web`
 
+Status: ✅ Completed 2026-10-06 (merged to main). Mission report at
+`docs/plan/mission-reports/mission-10-web-ui.md`. New `apps/web` workspace
+package (Vite + React): memories search/filter + full-text search, timeline
+(status history), graph view (entity graph from retrieval ports), projects,
+decisions, failures, skills, sources/provenance drill-down, quality
+dashboard. 73 tests pass / 0 fail. Every UI claim is fetched from
+`apps/api` REST — no client-side truth (per AGENTS.md mission discipline).
+
 Issues: memories search/filter; timeline (status history via `memory_events`); graph view; projects;
 decisions; failures; skills; sources/provenance drill-down; quality dashboard (duplicates, stale,
 conflicts, unused, low-confidence). AC: every UI claim backed by API data, no client-side truth.
@@ -599,3 +607,24 @@ windows, not about their correctness.
    still has its full provenance. Today this is via the original event id; if a memory is
    further compacted (decay/archive decision), the link must not break. Verify at the next
    consolidation run; defer.
+
+---
+
+## Cross-mission follow-ups — raised by M10 (web UI)
+
+Merged 2026-10-06 (mission report: `docs/plan/mission-reports/mission-10-web-ui.md`). Phase 6
+DoD met: developer can visually verify every claim the engine makes about a memory.
+Honest residual items below.
+
+1. **API endpoints the UI needs but `apps/api` does not yet expose** [P2] — list them
+   concretely in the mission report and triage as coordinator follow-ups. Add one the UI
+   needs (depends on which feature surfaced the gap) at the next opportunity.
+2. **`--profile web` compose profile** [P3] — the AC explicitly mentions a `--profile web`
+   compose profile. Today, `apps/web` runs standalone against `apps/api`; the compose
+   story is not yet built. Add a `docker/web.compose.yaml` or a config profile that brings
+   web + api up together.
+3. **Quality dashboard data wiring** [P3] — the dashboard panel renders from API endpoints,
+   but some duplicate/stale/conflict counts require the upcoming M5b-quality metrics. When
+   M5b-quality lands, extend the dashboard to consume them directly.
+4. **Pagination on memories list** [P3] — current list scrolls; add keyed pagination using
+   cursor + page-size from the API once `apps/api` exposes it.
