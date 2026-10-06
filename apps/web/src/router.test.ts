@@ -22,9 +22,9 @@ const M10_SURFACES = [
 ] as const;
 
 describe('the route map', () => {
-  test('has 11 routes (10 surfaces + the root redirect)', () => {
-    expect(ROUTE_COUNT).toBe(11);
-    expect(APP_ROUTES.length).toBe(11);
+  test('has 12 routes (10 surfaces + browse + the root redirect)', () => {
+    expect(ROUTE_COUNT).toBe(12);
+    expect(APP_ROUTES.length).toBe(12);
   });
 
   test('every path is unique', () => {
@@ -56,6 +56,7 @@ describe('the route map', () => {
     expect(APP_ROUTES.map((route) => route.path)).toEqual([
       '/',
       '/memories',
+      '/browse',
       '/memories/:memoryId',
       '/memories/:memoryId/timeline',
       '/projects',

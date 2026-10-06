@@ -44,6 +44,9 @@ export function AppShell(): ReactNode {
               <NavLink to="/memories">memories</NavLink>
             </li>
             <li>
+              <NavLink to="/browse">browse</NavLink>
+            </li>
+            <li>
               <NavLink to="/graph">graph</NavLink>
             </li>
             <li>

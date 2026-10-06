@@ -15,13 +15,16 @@
 import {
   HealthResponseSchema,
   InspectResponseSchema,
+  MemoryPageResponseSchema,
   MemorySearchResponseSchema,
   ProjectListResponseSchema,
   ProjectSchema,
   SessionContextResponseSchema,
   StatsResponseSchema,
   type HealthResponse,
+  type DurableMemoryType,
   type InspectResponse,
+  type MemoryPageResponse,
   type MemorySearchRequest,
   type MemorySearchResponse,
   type Project,
@@ -92,6 +95,8 @@ export interface ApiClient {
   decisions(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
   failures(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
   inspect(projectId: string, memoryId: string): Promise<InspectResponse>;
+  /** Keyset-paginated browse (newest observation first) — no ranking, no token budget. */
+  listMemories(projectId: string, options?: MemoryPageOptions): Promise<MemoryPageResponse>;
   stats(projectId: string): Promise<StatsResponse>;
   context(projectId: string, options?: ContextOptions): Promise<SessionContextResponse>;
 }
@@ -101,6 +106,16 @@ export interface ListOptions {
   q?: string;
   max_tokens?: number;
   max_memories?: number;
+}
+
+export type BrowseIncludeStatus = 'stale' | 'superseded' | 'disputed' | 'archived';
+
+export interface MemoryPageOptions {
+  /** The previous page's `next_cursor`, passed back unchanged. */
+  cursor?: string;
+  page_size?: number;
+  types?: readonly DurableMemoryType[];
+  include?: readonly BrowseIncludeStatus[];
 }
 
 export interface ContextOptions {
@@ -259,6 +274,18 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       return get(
         `/v1/projects/${encodeURIComponent(projectId)}/memories/${encodeURIComponent(memoryId)}`,
         InspectResponseSchema,
+      );
+    },
+    async listMemories(projectId: string, options: MemoryPageOptions = {}) {
+      return get(
+        `/v1/projects/${encodeURIComponent(projectId)}/memories${queryString({
+          cursor: options.cursor,
+          page_size: options.page_size,
+          types: options.types === undefined || options.types.length === 0 ? undefined : options.types.join(','),
+          include:
+            options.include === undefined || options.include.length === 0 ? undefined : options.include.join(','),
+        })}`,
+        MemoryPageResponseSchema,
       );
     },
     async stats(projectId: string) {

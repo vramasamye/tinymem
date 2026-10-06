@@ -8,6 +8,14 @@ Zod mirrors in `src/api/schemas.ts` are `satisfies`-linked to `@onememory/core`'
 canonical types, and every response is validated at the HTTP boundary before a page
 renders it.
 
+`/browse` is the one surface that is not a ranked search: it walks *every* memory of the
+project, newest observation first, one keyset page at a time
+(`GET /v1/projects/{id}/memories`, `page_size` + the API's opaque `next_cursor`). The
+cursor lives in the URL, so a page is deep-linkable and "next page" pushes history —
+the browser's back button returns to the previous page without the client inventing a
+reverse cursor. Changing a filter restarts at the first page, because a cursor is bound
+to the filters that produced it.
+
 ## Run it
 
 ```sh

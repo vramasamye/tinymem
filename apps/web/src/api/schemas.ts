@@ -356,6 +356,15 @@ export const InspectResponseSchema = z.strictObject({
   warnings: z.array(z.string()),
 });
 
+/** `GET /v1/projects/{id}/memories` — one keyset page (1:1 with `MemoryPageResponseSchema`). */
+export const MemoryPageResponseSchema = z.strictObject({
+  project_id: uuid,
+  page_size: z.number().int().min(1),
+  memories: z.array(MemoryRecordSchema),
+  next_cursor: z.string().nullable(),
+});
+export type MemoryPageResponse = z.infer<typeof MemoryPageResponseSchema>;
+
 // ---------------------------------------------------------------------------
 // Health / doctor (1:1 with apps/api/src/server/schemas.ts)
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppShell } from './App';
+import { BrowsePage } from './features/browse/BrowsePage';
 import { DecisionsPage } from './features/decisions/DecisionsPage';
 import { FailuresPage } from './features/failures/FailuresPage';
 import { GraphPage } from './features/graph/GraphPage';
@@ -37,6 +38,11 @@ export const APP_ROUTES: readonly AppRoute[] = [
     path: '/memories',
     surface: 'memories list/filter + full-text + structured search',
     element: <MemoriesPage />,
+  },
+  {
+    path: '/browse',
+    surface: 'memories browse (keyset-paginated: cursor + page size from the API)',
+    element: <BrowsePage />,
   },
   {
     path: '/memories/:memoryId',
