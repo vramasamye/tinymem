@@ -8,7 +8,7 @@
 
 import { PGlite } from '@electric-sql/pglite';
 import { vector as pgvectorExtension } from '@electric-sql/pglite-pgvector';
-import type { Extensions, PGliteOptions } from '@electric-sql/pglite';
+import type { Extensions, PGliteOptions, Transaction } from '@electric-sql/pglite';
 
 import { createCodeMemoryStore, createJobQueue, createStore } from '../store';
 import { createEventsCompactor } from '../retention/events-compaction';
@@ -37,11 +37,57 @@ export interface EmbeddedDbOptions {
   pglite?: Omit<PGliteOptions, 'extensions'>;
 }
 
+/**
+ * The handle `work` receives inside a transaction: bound to PGlite's open transaction, with
+ * nested `transaction()` calls mapped onto SAVEPOINTs (mirrors `ServerClientDatabase`).
+ */
+class EmbeddedTransactionDatabase implements Database {
+  readonly profile = 'embedded' as const;
+  private depth = 0;
+
+  constructor(private readonly tx: Transaction) {}
+
+  async query<Row extends Record<string, unknown> = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<QueryResult<Row>> {
+    const result = await this.tx.query<Row>(text, [...(params ?? [])]);
+    return {
+      rows: result.rows as Row[],
+      rowCount: result.rowCount ?? result.affectedRows ?? null,
+    };
+  }
+
+  async transaction<T>(work: (tx: Database) => Promise<T>): Promise<T> {
+    const savepoint = `onemem_sp_${this.depth}`;
+    await this.query(`SAVEPOINT ${savepoint}`);
+    this.depth += 1;
+    try {
+      const result = await work(this);
+      this.depth -= 1;
+      await this.query(`RELEASE SAVEPOINT ${savepoint}`);
+      return result;
+    } catch (error) {
+      this.depth -= 1;
+      try {
+        await this.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+      } catch (rollbackError) {
+        // surface the original failure; the rollback error is secondary but must not be silent
+        console.error('onememory: transaction rollback failed', rollbackError);
+      }
+      throw error;
+    }
+  }
+
+  async close(): Promise<void> {
+    throw new Error('cannot close the embedded database from inside a transaction');
+  }
+}
+
 export class EmbeddedDatabase implements Database {
   readonly profile = 'embedded' as const;
   /** The raw PGlite instance (used by the migration runner). */
   readonly pglite: PGlite;
-  private depth = 0;
 
   constructor(pglite: PGlite) {
     this.pglite = pglite;
@@ -58,25 +104,14 @@ export class EmbeddedDatabase implements Database {
     };
   }
 
+  /**
+   * PGlite is one connection shared by every caller in the owner process (the daemon serves
+   * concurrent HTTP/MCP requests). A hand-rolled BEGIN/COMMIT here would let two in-flight
+   * writes interleave inside one transaction block; `pglite.transaction` holds PGlite's
+   * exclusive lock, so other queries and transactions wait until this one commits or rolls back.
+   */
   async transaction<T>(work: (tx: Database) => Promise<T>): Promise<T> {
-    const savepoint = `onemem_sp_${this.depth}`;
-    await this.query(this.depth === 0 ? 'BEGIN' : `SAVEPOINT ${savepoint}`);
-    this.depth += 1;
-    try {
-      const result = await work(this);
-      this.depth -= 1;
-      await this.query(this.depth === 0 ? 'COMMIT' : `RELEASE SAVEPOINT ${savepoint}`);
-      return result;
-    } catch (error) {
-      this.depth -= 1;
-      try {
-        await this.query(this.depth === 0 ? 'ROLLBACK' : `ROLLBACK TO SAVEPOINT ${savepoint}`);
-      } catch (rollbackError) {
-        // surface the original failure; the rollback error is secondary but must not be silent
-        console.error('onememory: transaction rollback failed', rollbackError);
-      }
-      throw error;
-    }
+    return this.pglite.transaction((tx) => work(new EmbeddedTransactionDatabase(tx)));
   }
 
   async close(): Promise<void> {

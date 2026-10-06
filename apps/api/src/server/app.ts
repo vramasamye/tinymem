@@ -55,6 +55,12 @@ export interface ApiDeps {
    * SDK types, just a fetch-shaped handler.
    */
   mcpHandler?: { fetch(request: Request): Response | Promise<Response> };
+  /**
+   * M5b — the OAuth well-known document handler (`--mcp-auth`): answers ONLY
+   * `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
+   * `undefined` on any other path. Structural for the same reason as `mcpHandler`.
+   */
+  mcpAuthDocuments?: { fetch(request: Request): Response | undefined };
 }
 
 type ErrorCode = 'not_found' | 'invalid_request' | 'conflict' | 'unavailable' | 'internal';
@@ -546,6 +552,24 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
   if (deps.mcpHandler !== undefined) {
     const mcpHandler = deps.mcpHandler;
     app.all('/mcp', (c) => mcpHandler.fetch(c.req.raw));
+  }
+
+  // -------------------------------------------------- oauth well-known (daemon)
+  // M5b: with `--mcp-auth`, the RFC 9728 Protected Resource Metadata document (and the RFC 8414
+  // AS metadata, passed through verbatim) is served UNAUTHENTICATED — that is how a client
+  // without a token discovers where to authorize. The handler is structural on purpose (the app
+  // layer stays SDK-type-free); it answers only the two well-known routes, `undefined` on any
+  // other path (fall through to normal routing).
+  if (deps.mcpAuthDocuments !== undefined) {
+    const mcpAuthDocuments = deps.mcpAuthDocuments;
+    app.all('/.well-known/oauth-protected-resource', (c) => {
+      const response = mcpAuthDocuments.fetch(c.req.raw);
+      return response ?? c.notFound();
+    });
+    app.all('/.well-known/oauth-authorization-server', (c) => {
+      const response = mcpAuthDocuments.fetch(c.req.raw);
+      return response ?? c.notFound();
+    });
   }
 
   app.get('/v1', (c) => jsonBody(c, { name: 'onememory', version: deps.version, docs: '/openapi.json' }, 200));

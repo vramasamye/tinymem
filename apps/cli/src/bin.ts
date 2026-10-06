@@ -16,6 +16,7 @@ import { BackendError, ONEMEMORY_VERSION } from '@onememory/api/runtime';
 
 import { createIo, type Io } from './io';
 import { createClackPrompt, createNonInteractivePrompt, PromptRequiredError, type Prompt } from './prompt';
+import { runAuth } from './commands/auth';
 import { runDoctor } from './commands/doctor';
 import { runInit } from './commands/init';
 import { runSearch } from './commands/search';
@@ -210,6 +211,11 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
     .option('--host <host>', 'bind host (default: daemon.host, 127.0.0.1)')
     .option('--port <port>', 'bind port (default: daemon.port)', positivePort)
     .option('--listen-public', 'required to bind a non-loopback host (Phase 1 has no authentication)')
+    .option('--mcp-auth <issuer>', 'require OAuth 2.1 bearer tokens on the daemon /mcp endpoint (server mode)')
+    .option(
+      '--mcp-scopes <scopes>',
+      'space-separated scopes the daemon requires (default: "onememory:read onememory:write")',
+    )
     .action(async (options) => {
       const io = ioFor(options);
       await execute(io, () =>
@@ -221,6 +227,35 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.host === undefined ? {} : { host: String(options.host) }),
             ...(options.port === undefined ? {} : { port: Number(options.port) }),
             listenPublic: options.listenPublic === true,
+            ...(options.mcpAuth === undefined ? {} : { mcpAuthIssuer: String(options.mcpAuth) }),
+            ...(options.mcpScopes === undefined ? {} : { mcpAuthScopes: String(options.mcpScopes).split(/\s+/).filter(Boolean) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(program.command('auth'))
+    .description('OAuth 2.1 loopback flow (server mode): authorize against the deployment authorization server, store the token securely')
+    .option('--server-url <url>', 'the onememory MCP server URL (RFC 9728 discovery finds the authorization server)')
+    .option('--issuer <url>', 'the authorization server issuer, when known directly')
+    .option('--scope <scopes>', 'space-separated scopes to request (default: "onememory:read onememory:write")')
+    .option('--port <port>', 'fixed loopback redirect port (default: ephemeral)', positivePort)
+    .option('--status', 'print the stored credential status (default when no target is given)')
+    .option('--logout', 'remove the stored credential')
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runAuth(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.serverUrl === undefined ? {} : { serverUrl: String(options.serverUrl) }),
+            ...(options.issuer === undefined ? {} : { issuer: String(options.issuer) }),
+            ...(options.scope === undefined ? {} : { scope: String(options.scope) }),
+            ...(options.port === undefined ? {} : { port: Number(options.port) }),
+            status: options.status === true,
+            logout: options.logout === true,
           },
           io,
         ),

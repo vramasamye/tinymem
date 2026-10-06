@@ -1,8 +1,11 @@
 /**
  * `@onememory/mcp` — the model-facing protocol surface (ADR-0010): the MCP server that exposes
- * onememory to AI coding agents. stdio primary; optional stateless Streamable HTTP for shared
- * mode; NO SSE. 8-tool default profile with progressive disclosure (search → ID-index, get →
- * full records), never-silent write outcomes, revision-checked updates, forget ≠ delete.
+ * onememory to AI coding agents. stdio primary; optional Streamable HTTP in BOTH forms —
+ * stateless shared-server mode (`http.ts`, the daemon's `/mcp` mount) and the sessionful
+ * server-mode transport (`streamable-http/`, `Mcp-Session-Id` + SSE + resumability); optional
+ * OAuth 2.1 resource-server gating + client loopback flow (`oauth/`) for server mode /
+ * hosted deployments. 8-tool default profile with progressive disclosure (search → ID-index,
+ * get → full records), never-silent write outcomes, revision-checked updates, forget ≠ delete.
  *
  * Depends on: core (schemas, model, ports), storage (drivers + repositories), retrieval (the
  * Searcher port), security (redaction). Never the reverse — adapters (M6/M7) depend on THIS.
@@ -137,3 +140,53 @@ export {
   createOnememoryHttpServer,
   type CreateStreamableHttpOptions,
 } from './http';
+
+// Sessionful Streamable HTTP (server mode — backlog M5.2 / M5b): sessions + resumability.
+export {
+  InMemoryResumabilityStore,
+  DEFAULT_MAX_EVENTS_PER_STREAM,
+  createStreamableHttpSessionManager,
+  DEFAULT_MAX_SESSIONS,
+  DEFAULT_KEEP_ALIVE_MS,
+  createBearerGate,
+  createOnememoryStreamableHttpServer,
+  type InMemoryResumabilityStoreOptions,
+  type OnememorySessionManager,
+  type CreateSessionManagerOptions,
+  type SessionInfo,
+  type McpAuthGateOptions,
+  type BearerGate,
+  type ServeStreamableHttpOptions,
+  type StreamableHttpAuthOptions,
+  type OnememoryStreamableHttpHandle,
+} from './streamable-http';
+
+// OAuth 2.1 (server mode / hosted deployments — backlog M5.5 / M5b)
+export {
+  OAuthCredentialStore,
+  OAUTH_STORE_FILE_NAME,
+  StoredClientSchema,
+  StoredTokensSchema,
+  runLoopbackOAuthFlow,
+  refreshStoredOAuth,
+  oauthStatus,
+  DEFAULT_OAUTH_SCOPE,
+  createJwtTokenVerifier,
+  createStaticTokenVerifier,
+  buildOnememoryProtectedResourceMetadata,
+  onememoryOauthMetadataResponse,
+  loadAuthorizationServerMetadata,
+  type StoredClient,
+  type StoredTokensFile,
+  type OAuthCredentialStoreOptions,
+  type StoredOAuthCredential,
+  type SaveCredentialInput,
+  type RunLoopbackOAuthOptions,
+  type LoopbackOAuthResult,
+  type OAuthStatus,
+  type JwtTokenVerifierOptions,
+  type StaticTokenEntry,
+  type StaticTokenVerifierOptions,
+  type OnememoryProtectedResourceOptions,
+  type OAuthMetadata,
+} from './oauth';

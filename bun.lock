@@ -54,6 +54,7 @@
         "@onememory/config": "workspace:*",
         "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
+        "@onememory/mcp": "workspace:*",
         "commander": "^15.0.0",
         "yaml": "^2.9.1",
         "zod": "^4.6.5",
@@ -290,6 +291,7 @@
         "@onememory/retrieval": "workspace:*",
         "@onememory/security": "workspace:*",
         "@onememory/storage": "workspace:*",
+        "jose": "^6.1.3",
         "zod": "^4.6.5",
       },
       "devDependencies": {
