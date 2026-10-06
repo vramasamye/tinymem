@@ -11,6 +11,10 @@
  *      router; templated offline merge otherwise — zero network by default)
  *   4. decay / archive — prominence below threshold → audited `archived` (archive, never delete)
  *
+ * Plus the project digest rollup (backlog M14.5): one token-bounded `project_context` digest
+ * memory per project, summarizing the top decisions / failures / procedures and feeding the
+ * `memory_project_context` tool surface through `projects.digest` (retrieval.md §2).
+ *
  * `runConsolidation` is the callable entry over the existing `Store` port; the `onemem
  * consolidate` CLI command and the (future) daemon-side scheduler both call it. All mutations
  * go through audited store paths with provenance (AGENTS.md rule 8).
@@ -80,6 +84,34 @@ export {
   shouldArchive,
   type DecayPassResult,
 } from './decay';
+
+// Project digest rollup (M14.5 — one token-bounded `project_context` digest per project,
+// feeding the `memory_project_context` tool surface through `projects.digest`)
+export {
+  clampAtWordBoundary,
+  buildProjectDigest,
+  decisionLineOf,
+  digestMemoryOf,
+  failureLineOf,
+  procedureLineOf,
+  PROJECT_DIGEST_PROMPT_VERSION,
+  type DigestDecisionInput,
+  type DigestFailureInput,
+  type DigestProcedureInput,
+  type ProjectDigestBuildInput,
+} from './digest/rollup';
+export {
+  DEFAULT_PROJECT_DIGEST_COUNTS,
+  isCurrentProjectDigest,
+  PROJECT_DIGEST_ACTOR,
+  PROJECT_DIGEST_SUPERSEDE_REASON,
+  runDigest,
+  runProjectDigest,
+  type ProjectDigestInput,
+  type ProjectDigestPassInput,
+  type ProjectDigestPassResult,
+  type ProjectDigestLikeMemory,
+} from './digest/run';
 
 // Configuration + the run report
 export {

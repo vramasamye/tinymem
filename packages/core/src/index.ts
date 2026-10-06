@@ -15,5 +15,9 @@ export * from './model/index';
 // Shared pure defaults used across engine packages
 export * from './shared';
 
+// Cross-package type contracts (M14.5: the project digest rollup candidate + the
+// projects.digest renderable record — shared by consolidation, storage, and the CLI)
+export * from './types/digest';
+
 // Ports (repository-structure.md): the contract every other package codes against
 export * from './ports/index';
