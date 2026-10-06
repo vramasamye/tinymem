@@ -195,10 +195,11 @@
         "@onememory/core": "workspace:*",
         "@onememory/extraction": "workspace:*",
         "@onememory/llm": "workspace:*",
+        "@onememory/storage": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/storage": "workspace:*",
+        "@onememory/mcp": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
@@ -265,6 +266,7 @@
       },
       "dependencies": {
         "@modelcontextprotocol/server": "2.3.0",
+        "@onememory/config": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/retrieval": "workspace:*",
         "@onememory/security": "workspace:*",
