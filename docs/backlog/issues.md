@@ -390,9 +390,17 @@ Merged 2026-10-05 as `bc8bf24` (mission report:
 3. **`MemoryQuery` null-scope probe** [P3] — user-scope-only passes need a null-`project_id`
    query; today's query shape requires a project.
 4. **Paginated pool enumeration** [P3] — `runConsolidation` processes ≤1000-memory windows.
-5. **LLM conflict detector** [P3] — cross-phrasing contradictions (attribute-template heuristic
-   only today). M11b measures the current miss: PostgreSQL/pgvector vs MySQL remains unresolved,
-   leaving `contradiction_accuracy` at 5/6 (0.8333).
+5. ~~**LLM conflict detector** [P3]~~ ✅ Closed (cross-phrasing follow-up): the opt-in LLM
+   conflict tier adjudicates the pairs the attribute-template heuristic cannot form a candidate
+   for. `packages/consolidation/src/conflict.ts` (`createLlmConflictDetector` +
+   `createConflictDetector`) uses the router's `conflict` operation; semantic proximity through
+   the vector channel supplies cross-phrasing candidates for the durable claim types; every
+   resolution record carries `tier: 'template' | 'llm'`. Fail-closed (provider failure or invalid
+   verdict clears the pair and records a warning) and local-first (no `conflict` route →
+   byte-identical to the template heuristic; a router configured without the route records an
+   explicit degradation warning). The offline benchmark baseline is unchanged — the gate still
+   tolerates the measured offline miss (0.8333); the tier is measured only when a `conflict`
+   route is wired.
 6. **Config wiring** [P3] — consolidation thresholds/decay settings via `onememory.config.yaml`
    (M16 profile defaults).
 7. **M14.5/M14.6 remain** — project digest rollup feeding `memory_project_context` and events

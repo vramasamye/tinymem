@@ -213,6 +213,17 @@ be queryable, a later migration adds the column; no query consumer exists today.
   confidence. The winner closes the loser through audited supersession: `valid_until` = the
   winner's observation time when inside the loser's window, else the loser's own `valid_from`
   (zero-width — never valid); the chosen rule is recorded on the audit row.
+- **Conflict detection tiers** (as-built, cross-phrasing follow-up): the deterministic
+  attribute-template heuristic (same scope, same template, differing scalars, overlapping
+  validity) is the offline default and needs no model. When the router has a `conflict` route, an
+  opt-in LLM tier adjudicates the pairs the heuristic cannot even form a candidate for — two
+  statements answering the same question in different words ("PostgreSQL with pgvector" vs
+  "MySQL"). Semantic proximity through the vector channel supplies those candidates for the
+  durable claim types (decision / semantic / preference); the model adjudicates them. The tier is
+  fail-closed: no route, a provider failure, or an invalid verdict clears the pair (never a
+  contradiction without evidence) and is recorded in the run warnings; the local-first default
+  (no `conflict` route) is byte-identical to the template heuristic. Every resolution record
+  carries `tier: 'template' | 'llm'` naming which tier decided it.
 - **Pass order and merge semantics** (as-built, mission 14): the pass runs contradiction →
   derivation → merge → decay (arbitration before absorption; the merge pass also refuses
   contradictory clusters as defense in depth). Near-duplicate merge is keeper-gated: only

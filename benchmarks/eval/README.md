@@ -61,7 +61,12 @@ are set from the measured post-M14 offline baseline, and both baselines are hone
 - **contradiction accuracy** 0.8333 (5/6 groups): the attribute-template heuristic cannot detect
   cross-phrasing contradictions (the dataset carries one deliberately), so the gate tolerates
   exactly the measured miss (threshold 0.8). Raising the metric needs the M14 follow-up LLM
-  conflict detector — the gate then rises with a fresh baseline.
+  conflict detector — the gate then rises with a fresh baseline. That detector now ships
+  (`packages/consolidation/src/conflict.ts`): when the router has a `conflict` route, semantic
+  proximity supplies cross-phrasing candidates and the model adjudicates them, so the
+  PostgreSQL/pgvector-vs-MySQL miss resolves. The gate is unchanged because the benchmark runs
+  the offline default (no `conflict` route) and stays byte-identical; the tier is measured only
+  when a `conflict` route is wired.
 - **consolidation quality** 0.3333: the offline default wires no embedder, so the vector-gated
   passes (episodic→semantic derivation, near-duplicate merge) skip with recorded warnings and
   only ingest-time exact dedupe collapses repeats (threshold 0.3). The paraphrase pair in
