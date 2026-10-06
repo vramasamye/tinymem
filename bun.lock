@@ -320,6 +320,7 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
+        "@onememory/mcp": "workspace:*",
         "@onememory/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
