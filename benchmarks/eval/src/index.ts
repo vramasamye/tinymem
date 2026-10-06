@@ -71,3 +71,23 @@ export {
 } from './gates';
 
 export { renderMarkdown } from './report';
+
+// Skill generation quality (M15: golden failure→fix dataset graded against the canonical
+// SKILL.md contract — every gate a deterministic 1.0 correctness invariant)
+export {
+  SKILLS_GOLDEN_DATASET,
+  SKILL_MD_CHAR_BOUND,
+  type SkillsContentProbe,
+  type SkillsExpectedBlocked,
+  type SkillsExpectedCandidate,
+  type SkillsFixtureCase,
+  type SkillsFixtureFailure,
+  type SkillsGoldenDataset,
+} from './skills/fixtures';
+export {
+  evaluateSkillGates,
+  evaluateSkills,
+  renderSkillsReport,
+  type SkillsGateEvaluation,
+  type SkillsMetrics,
+} from './skills/evaluate';
