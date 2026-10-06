@@ -892,6 +892,31 @@ describe('curated list tools (full11 profile)', () => {
                'sig-oom', $2::timestamptz, $2::timestamptz, 3)`,
       [failureId, '2026-02-10T00:00:00.000Z'],
     );
+
+    // M15: the skills table rows the memory_skills tool serves. Inserted through the storage
+    // port's own audited path (a candidate a review flow would promote), never raw SQL — the
+    // `skills` lifecycle is the SkillStore port's contract.
+    await world.storage.skills.insertSkill(
+      {
+        project_id: world.ids.projectId,
+        name: 'cloud-run-deploy-oom-fix',
+        description: 'Fix Cloud Run deploys failing with OOM by raising memory limits',
+        source: { failure_ids: [failureId] },
+        verification: {
+          evidence: [
+            {
+              source_id: world.ids.sourceId,
+              kind: 'message',
+              locator: 'fixture:1',
+              excerpt: 'Cloud Run deploy failed with OOM.',
+            },
+          ],
+          verified_at: '2026-02-11T00:00:00.000Z',
+        },
+        path: 'skills/cloud-run-deploy-oom-fix/SKILL.md',
+      },
+      { actor: 'job:skillify', at: '2026-02-11T00:00:00.000Z' },
+    );
   });
 
   test('memory_decisions lists accepted decisions with decided_at + rationale', async () => {
@@ -915,11 +940,64 @@ describe('curated list tools (full11 profile)', () => {
     expect(results[0]!.occurrence_count).toBe(3);
   });
 
-  test('memory_skills lists procedural know-how (promoted procedures)', async () => {
+  test('memory_skills serves verified skills-table rows (M15), budgeted at 500 by default', async () => {
+    // Candidates await human review — the runtime list stays empty until the promotion flip.
+    const before = expectOk(await call('memory_skills', {}));
+    expect(before.results as unknown[]).toHaveLength(0);
+    expect((before.tokens as { budget: number }).budget).toBe(500);
+
+    // The review flow's flip: candidate → verified, audited through the same memory_events path.
+    const rows = await world.storage.skills.listSkills({ scope: { project_id: world.ids.projectId } });
+    expect(rows).toHaveLength(1);
+    await world.storage.skills.updateSkillStatus(rows[0]!.id, 'verified', { actor: 'user:fixture' });
+
     const structured = expectOk(await call('memory_skills', {}));
-    const results = structured.results as Array<{ type: string }>;
-    expect(results.length).toBeGreaterThanOrEqual(1);
-    for (const entry of results) expect(entry.type).toBe('procedural');
+    const results = structured.results as Array<{
+      id: string;
+      type: string;
+      name?: string;
+      summary: string;
+      status?: string;
+      version?: string;
+      path?: string;
+      token_estimate: number;
+    }>;
+    expect(results).toHaveLength(1);
+    expect(results[0]!.type).toBe('procedural');
+    expect(results[0]!.name).toBe('cloud-run-deploy-oom-fix');
+    expect(results[0]!.summary).toContain('OOM');
+    expect(results[0]!.status).toBe('verified');
+    expect(results[0]!.version).toBe('1.0.0');
+    expect(results[0]!.path).toBe('skills/cloud-run-deploy-oom-fix/SKILL.md');
+    expect(structured.token_estimate as number).toBe((structured.tokens as { used: number }).used);
+    expect((structured.tokens as { used: number; budget: number }).used)
+      .toBeLessThanOrEqual((structured.tokens as { budget: number }).budget);
+    expect((structured.tokens as { packing: string }).packing).toBe('summary');
+    expect(structured.warnings as string[]).toEqual([]);
+  });
+
+  test('memory_skills honors max_tokens: the budget binds, entries degrade, drops are warned', async () => {
+    const rows = await world.storage.skills.listSkills({ scope: { project_id: world.ids.projectId } });
+    await world.storage.skills.updateSkillStatus(rows[0]!.id, 'verified', { actor: 'user:fixture' });
+
+    // A budget below even one summary: the single entry degrades to name-only if it fits…
+    const tight = expectOk(await call('memory_skills', { max_tokens: 20 }));
+    expect((tight.tokens as { packing: string }).packing).toBe('title-only');
+    expect((tight.tokens as { used: number }).used).toBeLessThanOrEqual(20);
+    expect((tight.warnings as string[]).join(' ')).toContain('name only');
+
+    // …and a budget below even the name drops the entry with an exact warning — never silent.
+    const impossible = expectOk(await call('memory_skills', { max_tokens: 4 }));
+    expect(impossible.results as unknown[]).toHaveLength(0);
+    expect((impossible.warnings as string[]).join(' ')).toContain('dropped');
+  });
+
+  test('memory_skills serves candidates on explicit request (the review queue is reachable, opt-in)', async () => {
+    const structured = expectOk(await call('memory_skills', { statuses: ['candidate'] }));
+    const results = structured.results as Array<{ name?: string; status?: string }>;
+    expect(results).toHaveLength(1);
+    expect(results[0]!.name).toBe('cloud-run-deploy-oom-fix');
+    expect(results[0]!.status).toBe('candidate');
   });
 
   test('all three lists are project views: project_required when unscoped', async () => {

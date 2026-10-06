@@ -34,6 +34,7 @@ import { searchRepo } from '@onememory/storage';
 
 import type { OnememoryMcpContext } from './context';
 import { ToolError } from './errors';
+import { serveProjectSkills } from './tools/skills';
 import { MCP_STORE_PROMPT_VERSION, MCP_UPDATE_PROMPT_VERSION } from './version';
 import {
   typesForKind,
@@ -926,30 +927,15 @@ export async function handleMemorySkills(
   input: MemorySkillsInput,
 ): Promise<MemorySkillsOutput> {
   const projectId = await requireProject(ctx, input);
-  // Skills are promoted procedural memories (memory-model.md §2/§9); the standalone skills
-  // payload table fills in when the skillify stage (M7) lands.
-  const records = await searchRepo.listCurrentMemories(
-    ctx.storage.client,
-    { types: ['procedural'], order: 'importance', limit: input.limit ?? 10 },
-    currentFilter(ctx, projectId),
-  );
-
-  const results = records.map((memory) => ({
-    id: memory.id,
-    type: memory.type,
-    ...(memory.subtype !== undefined ? { name: memory.subtype } : {}),
-    ...(memory.title !== undefined ? { title: memory.title } : {}),
-    summary: summaryOf(memory),
-    relevance: 1,
-    status: memory.status,
-    token_estimate: estimateTokens(`${memory.id} ${summaryOf(memory)}`),
-  }));
-
-  return {
-    results,
-    warnings: [],
-    token_estimate: results.reduce((sum, entry) => sum + entry.token_estimate, 0),
-  };
+  // M15: the skillify stage landed — the tool serves the `skills` table's consumable rows
+  // (verified/promoted by default), token-budgeted at 500. Candidates stay in the review queue
+  // (`onemem skills list`), never in the runtime's list. See ./tools/skills.
+  return serveProjectSkills(ctx.storage, {
+    projectId,
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
+    ...(input.max_tokens === undefined ? {} : { maxTokens: input.max_tokens }),
+    ...(input.statuses === undefined ? {} : { statuses: input.statuses }),
+  });
 }
 
 // ---------------------------------------------------------------------------

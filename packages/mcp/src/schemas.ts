@@ -20,6 +20,7 @@ import {
   ENTITY_KINDS,
   EVIDENCE_SPAN_KINDS,
   MemoryRecordSchema,
+  SKILL_STATUSES,
 } from '@onememory/core';
 
 // ---------------------------------------------------------------------------
@@ -440,16 +441,33 @@ export type MemoryFailuresOutput = z.infer<typeof MemoryFailuresOutputSchema>;
 export const MemorySkillsInputSchema = z.looseObject({
   project_id: optionalUuid,
   limit: z.number().int().min(1).max(50).optional(),
+  /** Hard ceiling for the packed list (default 500 — the skills serving budget). */
+  max_tokens: z.number().int().min(1).max(4000).optional(),
+  /**
+   * Which skill statuses to serve (default: promoted + verified — the consumable list the
+   * runtimes pick up; candidates await the `onemem skills review` flow, ADR-0009 rule 2).
+   */
+  statuses: z.array(z.enum(SKILL_STATUSES)).max(4).optional(),
 });
 export type MemorySkillsInput = z.infer<typeof MemorySkillsInputSchema>;
 
 export const MemorySkillsOutputSchema = z.looseObject({
   results: z.array(
     MemoryIndexEntrySchema.extend({
-      /** kebab-case skill name when the memory carries one (title otherwise). */
+      /** kebab-case skill name (the directory name and the loader key). */
       name: z.string().optional(),
+      /** Semver of the served SKILL.md. */
+      version: z.string().optional(),
+      /** Project-relative artifact path, `skills/<name>/SKILL.md` (promote writes it). */
+      path: z.string().optional(),
     }),
   ),
+  /** The budget accounting (progressive disclosure, ADR-0010 §3). */
+  tokens: z.looseObject({
+    budget: TokenTotal,
+    used: TokenTotal,
+    packing: z.enum(['summary', 'title-only']),
+  }),
   warnings: z.array(z.string()),
   token_estimate: TokenTotal,
 });

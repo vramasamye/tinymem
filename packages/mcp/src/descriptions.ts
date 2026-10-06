@@ -122,11 +122,11 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     '(default 10).',
 
   memory_skills:
-    'List this project\'s skills: promoted procedural know-how (how to deploy, test, migrate, ' +
-    'recurring fixes) — name/description, step content summary, status and usage stats. ' +
-    'Same data as memory_search kind="skill". Skills originate from verified procedures and ' +
-    'solved failures; generated SKILL.md artifacts are the skillify stage\'s job. ' +
-    'limit caps entries (default 10).',
+    'List this project\'s skills — recurring solved failures distilled into reusable know-how ' +
+    '(name, one-line description, version, status). Serves the verified/promoted SKILL.md set by ' +
+    'default (candidates await human review via onemem skills); the files live at ' +
+    'skills/<name>/SKILL.md for native skill loaders. max_tokens bounds the packed list ' +
+    '(default 500; over-budget entries degrade to name-only), limit caps entries (default 10).',
 };
 
 /** Tool annotations (MCP advisory metadata; ADR-0010 §5 mandates the destructive hints). */
