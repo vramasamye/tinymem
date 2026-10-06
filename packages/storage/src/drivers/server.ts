@@ -7,6 +7,7 @@
 import pg from 'pg';
 
 import { createCodeMemoryStore, createJobQueue, createStore } from '../store';
+import { createEventsCompactor } from '../retention/events-compaction';
 import { createEmbeddingIndex } from '../vectors/embedding-index';
 
 import type { Database, QueryResult } from './client';
@@ -135,6 +136,7 @@ export async function createServerDb(
     jobs: createJobQueue(client),
     codeMemory: createCodeMemoryStore(client),
     vectors,
+    compactor: createEventsCompactor(client),
     migrate: () => migrateServer(client.pool),
     close: () => client.close(),
   };

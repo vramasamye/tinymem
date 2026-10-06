@@ -2,7 +2,7 @@
  * The storage object both drivers return — one repository API over both deployment profiles.
  */
 
-import type { CodeMemoryStore, EmbeddingIndex, JobQueue, Store } from '@onememory/core';
+import type { CodeMemoryStore, EmbeddingIndex, EventsCompactor, JobQueue, Store } from '@onememory/core';
 
 import type { Database } from './client';
 
@@ -18,6 +18,8 @@ export interface OnememoryStorage {
   readonly codeMemory: CodeMemoryStore;
   /** The core `EmbeddingIndex` port implementation (pgvector or the GATE-1 float8 fallback). */
   readonly vectors: EmbeddingIndex;
+  /** The core `EventsCompactor` port implementation (M14.6 events compaction). */
+  readonly compactor: EventsCompactor;
   /** Apply committed migrations (idempotent; advisory-locked on the server profile). */
   migrate(): Promise<void>;
   close(): Promise<void>;

@@ -77,3 +77,8 @@ export * as jobsRepo from './repositories/jobs';
 export { ValidationError, NotFoundError } from './repositories/util';
 // The code-ref hydration read model (M4g2) — consumed type-only by the retrieval engine.
 export type { HydratedCodeRef } from './repositories/code-memory';
+
+// Retention / events compaction (M14.6): the EventsCompactor port implementation + digest table
+export { createEventsCompactor } from './retention/events-compaction';
+export * as retentionRepo from './retention/events-compaction';
+export { memoryEventsDigest } from './retention/tables';
