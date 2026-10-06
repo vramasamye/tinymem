@@ -28,6 +28,10 @@ import { runServe } from './commands/serve';
 import { runConsolidate } from './commands/consolidate';
 import { runDigest } from './commands/digest';
 import { runCompact, parseWindowDays } from './commands/compact';
+import { runSkillsGenerate } from './commands/skills-generate';
+import { runSkillsList } from './commands/skills-list';
+import { runSkillsReview } from './commands/skills-review';
+import { runSkillsPromote } from './commands/skills-promote';
 
 export interface MainDeps {
   /** Injected stdout (tests capture it; `--json` still routes through it). */
@@ -480,6 +484,109 @@ common(program.command('digest'))
             dryRun: options.dryRun === true,
             ...(options.retentionWindow === undefined ? {} : { retentionWindowDays: options.retentionWindow }),
             ...(options.summaryWindow === undefined ? {} : { summaryWindowDays: options.summaryWindow }),
+          },
+          io,
+        ),
+      );
+    });
+
+  // NOTE: the `skills` PARENT carries no options on purpose — Commander 15's default parsing
+  // lets a middle command consume flags that appear after the subcommand name (verified by
+  // probe), which would steal the leaf commands' --cwd/--config/--project/--json. Each leaf
+  // registers them through common(); `onemem skills --help` still lists the group.
+  const skills = program
+    .command('skills')
+    .description(
+      'skill generation: recurring solved failures → SKILL.md candidates → review → promotion ' +
+        '(skills/<name>/SKILL.md lands where Claude Code / OpenCode can load it)',
+    );
+
+  common(skills.command('generate'))
+    .description(
+      'run the skillify pass: group recurring failure signatures, gate on equivalent solutions ' +
+        '+ verification evidence, write reviewable candidates (never promotes)',
+    )
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runSkillsGenerate(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+          },
+          io,
+        ),
+      );
+    });
+
+  common(skills.command('list'))
+    .description('the review queue: every skill with its status (candidate|verified|promoted|deprecated)')
+    .option('--status <status>', 'one lifecycle stage: candidate | verified | promoted | deprecated')
+    .option('--usage', 'fold the read-only usage hook: captured-session mentions per skill')
+    .action(async (options) => {
+      const io = ioFor(options);
+      const status =
+        options.status === undefined
+          ? undefined
+          : ['candidate', 'verified', 'promoted', 'deprecated'].includes(String(options.status))
+            ? (String(options.status) as 'candidate' | 'verified' | 'promoted' | 'deprecated')
+            : undefined;
+      if (options.status !== undefined && status === undefined) {
+        io.err(`onemem: --status must be candidate, verified, promoted or deprecated (got '${String(options.status)}')`);
+        exitCode = 1;
+        return;
+      }
+      await execute(io, () =>
+        runSkillsList(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            ...(status === undefined ? {} : { status }),
+            ...(options.usage === true ? { usage: true } : {}),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(skills.command('review <id>'))
+    .description('inspect a candidate read-only: the record, the SKILL.md exactly as promote would write it, the audit trail')
+    .action(async (id: string, options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runSkillsReview(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            skillId: id,
+          },
+          io,
+        ),
+      );
+    });
+
+  common(skills.command('promote <id>'))
+    .description('flip candidate → verified (audited) and write skills/<name>/SKILL.md — the human confirmation of the review flow')
+    .option('--dir <dir>', 'skills directory to write into (default: <project root>/skills; Claude Code reads .claude/skills)')
+    .option('--note <reason>', 'why (recorded in the audit trail)')
+    .action(async (id: string, options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runSkillsPromote(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            skillId: id,
+            ...(options.dir === undefined ? {} : { dir: String(options.dir) }),
+            ...(options.note === undefined ? {} : { note: String(options.note) }),
           },
           io,
         ),
