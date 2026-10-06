@@ -192,6 +192,21 @@ for correctness**: extraction may be LLM or heuristic; every async stage has a f
 Backpressure: one internal `jobs` table (Postgres) drives stages 3–9 and 12–14; the API/CLI never
 awaits them. Job scheduling is round-based with per-stage concurrency limits.
 
+As-built (M14 follow-up 1): stages 12–14 now run through the `jobs` table as declared. The
+`consolidate` kind runs all four passes (contradiction → derivation → merge → decay) and the
+`decay` kind runs only the terminal archive pass; both drive the same idempotent
+`runConsolidation` entry the CLI uses, so a daemon pass and a direct-mode pass agree. The daemon
+arms a periodic scheduler (`daemon.consolidate_interval_ms`, default 1h, `0` disables) that
+enqueues a `consolidate` job for the registered project, and `POST /v1/projects/{id}/consolidate`
+enqueues one on demand (202 + job id — the worker runs it, the store is the record). In daemon
+mode `onemem consolidate` calls that route instead of refusing; in direct mode it runs the pass
+inline (no worker exists to drain a queued job).
+
+Queue convention: `enqueue` writes its `(kind, payload.key)` idempotency key *inside* the payload
+JSON (`jobs_singleton_idx` reads `payload->>'key'`), so a stored payload is `{...fields, key}`. A
+job handler validates `jobPayloadFields(job.payload)` (which drops that key) and stays strict about
+every real field.
+
 As-built (M3): the NORMALIZE output is not persisted in an `events.normalized` column — the
 structured batch is carried in the enqueued `extract` job's payload and recomputed at EXTRACT
 (`normalizeEvent` is pure, so this is idempotent and auditable). If normalized forms ever need to

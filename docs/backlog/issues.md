@@ -382,9 +382,16 @@ Merged 2026-10-05 as `bc8bf24` (mission report:
 `onemem consolidate` CLI; pass order contradiction → derivation → merge → decay; no migration
 (the schema already carried every status, edge relation, and audit action).
 
-1. **Daemon scheduling + REST route** [P1] — job kinds `consolidate`/`decay` exist with no
-   handler; `onemem consolidate` runs direct-mode only (and refuses while a daemon owns the data
-   dir). Wire the job handlers, a `/v1/.../consolidate` route, and daemon-mode invocation.
+1. ~~**Daemon scheduling + REST route** [P1]~~ ✅ Closed: the `consolidate`/`decay` job kinds now
+   have handlers (`apps/api/src/runtime/consolidation.ts`), a periodic scheduler
+   (`daemon.consolidate_interval_ms`, default 1h, `0` disables), and `POST
+   /v1/projects/{id}/consolidate` (async enqueue → 202 + job id). In daemon mode `onemem
+   consolidate` calls the route; in direct mode it runs the pass inline (no worker exists to drain
+   a queued job). Fixing this uncovered a latent bug: `enqueue` stores its `(kind, payload.key)`
+   idempotency key *inside* the payload JSON, and the strict `drift_scan`/`reindex` payload
+   schemas rejected it — so every scheduled code-memory job dead-lettered with
+   `unrecognized_keys: ["key"]` (no test ran those kinds through the worker). `jobPayloadFields`
+   in `@onememory/core` strips the queue key before validation; strictness is preserved.
 2. **Evidence-append Store primitive** [P2] — near-dup merge records the evidence union on the
    `merged` audit event because the port cannot append evidence to an existing memory row.
 3. **`MemoryQuery` null-scope probe** [P3] — user-scope-only passes need a null-`project_id`
