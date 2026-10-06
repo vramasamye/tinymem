@@ -56,11 +56,13 @@ async function seedEvent(
   daysAgo: number,
   index: number,
 ): Promise<{ id: string; kind: string; content_hash: string; occurred_at: string; ingested_at: string; project_id: string }> {
+  // `as const` keeps `kind`/`role` as literals: the event payload is a discriminated union, so
+  // an inferred `string` here is not assignable to the `conversation.message` member.
   const payload = {
     kind: 'conversation.message',
     role: 'user',
     content: `retention fixture ${uniqueId()}`,
-  };
+  } as const;
   const event = makeEvent({
     kind: 'conversation.message',
     payload,
