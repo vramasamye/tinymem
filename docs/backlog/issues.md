@@ -676,11 +676,19 @@ Merged 2026-10-06 (mission report: `docs/plan/mission-reports/mission-15-skills.
 Signature recurrence matching → SKILL.md candidates → review/promote flow → MCP
 `memory_skills` + filesystem serving all live. Honest residual items below.
 
-1. **Skill promotion-gating in CI** [P3] — the local flow (`onemem skills review` →
-   `promote`) audits the flip via `memory_events`. The CI gating story (reviewer role,
-   audit-trace verification in CI, no auto-promotion from a fresh install) is currently
-   not codified. Add a tool-call fixture that asserts the audit row exists when a skill
-   goes `candidate → verified`.
+1. ~~**Skill promotion-gating in CI**~~ ✅ Closed (2026-10-06): the promotion gate's invariants
+   are now pinned where they are enforced — `packages/storage/src/repositories/skills.test.ts`
+   (the repository is the only package with SQL). It asserts (a) a fresh install never
+   auto-promotes: `insertSkill` defaults to `candidate` and refuses an explicit later stage, with
+   the `created` audit row recording that status; (b) promotion appends exactly ONE
+   `status_changed` row attributed to the reviewer, carrying `from`/`to`/`note` and the caller's
+   details, readable through the shared `listMemoryEvents` path; (c) illegal edges are refused by
+   the transition machine before any SQL and write nothing; (d) the candidate edges are exactly
+   `verified | deprecated`, and `deprecated` is terminal. Runs on both profiles (PGlite always,
+   Postgres when `ONEMEMORY_PG_URL` is set). Verified non-vacuous by mutation: removing the
+   non-candidate guard fails scenario (a), and mislabelling the audit action fails scenario (b).
+   The end-to-end CLI leg (generate → review → promote → audit) was already covered in
+   `apps/cli/src/skills-command.test.ts`.
 2. **Skill freshness over time** [P3] — `signature recurrence matcher` will recompute
    candidates based on new failures; an existing verified skill becomes stale when its
    underlying signature no longer matches recent failures. Add a "skill validity / decay"
