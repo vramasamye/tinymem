@@ -69,6 +69,7 @@ export * as edgesRepo from './repositories/edges';
 export * as searchRepo from './repositories/search';
 export * as eventsRepo from './repositories/events';
 export * as sourcesRepo from './repositories/projects';
+export * as digestRepo from './repositories/digest';
 export * as workingMemoryRepo from './repositories/working-memory';
 export * as memoryEventsRepo from './repositories/memory-events';
 export * as codeMemoryRepo from './repositories/code-memory';
