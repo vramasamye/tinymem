@@ -74,7 +74,7 @@ available without external calls.
 |---|---|
 | `docs/research/` | Landscape research (Supermemory, Mem0, Zep, Letta, MCP memory servers) with primary-source citations |
 | `docs/adr/` | Architecture decision records |
-| `docs/architecture/` | Memory model, lifecycle, event/memory schemas, database schema, retrieval design, code memory |
+| `docs/architecture/` | Memory model, lifecycle, event/memory schemas, database schema, retrieval design, code memory, security & deployment |
 | `docs/plan/` | Phased implementation plan |
 | `docs/backlog/` | Issue backlog per mission (mirrored to GitHub once the repo is published) |
 | `docs/risks.md` | Risks and unresolved architectural decisions |

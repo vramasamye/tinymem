@@ -687,10 +687,17 @@ network-guard assertion. Honest residual items below.
    authorization server (discovery → DCR → PKCE → redirect → exchange), 0600 persistence,
    `status`, idempotent `logout`, and fail-closed `login` with no target. This also closes
    the M5b report's "`onemem auth` has no test file" gap.
-4. **MCP proxy / aggregate-server** [P3] — for hosted deployments, the canonical pattern is
-   to gate the MCP server behind a reverse proxy. Reference deployment config is in
-   `benchmarks/eval/src/mcp-conformance/` for tests; production deploy guidance belongs in
-   `docs/architecture/security.md`.
+4. ~~**MCP proxy / aggregate-server** [P3]~~ ✅ Closed (2026-10-06): production deploy guidance
+   now lives in `docs/architecture/security.md` — the new operator reference for running onememory
+   beyond a single trusted machine. It covers the trust boundaries (`/v1/*` has no authentication;
+   only `/mcp` can be gated), the three deployment modes, the reverse-proxy pattern in detail (TLS
+   + OIDC termination, forwarding vs. minting the bearer, path-based aggregation of several MCP
+   servers, SSE/buffering and log-hygiene requirements, nginx/Caddy-style recipes), the network
+   guard's interaction with hosted modes, a pre-exposure hardening checklist, and an explicit
+   "honest gaps" section (no `/v1` auth, no per-memory ACLs, no network-guard host allowlist, the
+   ADR-0012 env-var vs. shipped-flag drift, no cross-runtime OAuth fixture, no in-process rate
+   limiting). The wire-surface reference it points at remains
+   `benchmarks/eval/src/mcp-conformance/streamable-http.test.ts`.
 
 ---
 
