@@ -18,6 +18,9 @@ export * from './types/retention';
 // Skill-generation contract (M15 — the SkillStore port, the lifecycle machine, the report types)
 export * from './types/skills';
 
+// Runtime skill discovery (M15 follow-up 3 — where each runtime loads SKILL.md from)
+export * from './types/runtime-skills';
+
 // Shared pure defaults used across engine packages
 export * from './shared';
 
