@@ -41,9 +41,22 @@ import {
   type ConsolidationReport,
 } from './types';
 
+/**
+ * The four lifecycle passes, in run order. A caller may restrict the run to a subset — the
+ * `decay` job kind (memory-model.md §8 stage 13) drives only the terminal decay/archive pass,
+ * while the `consolidate` kind runs all four.
+ */
+export const CONSOLIDATION_STAGES = ['contradiction', 'derivation', 'merge', 'decay'] as const;
+export type ConsolidationStage = (typeof CONSOLIDATION_STAGES)[number];
+
 /** What `runConsolidation` needs. Everything except the Store is optional (local-first). */
 export interface ConsolidationInput {
   store: Store;
+  /**
+   * Restrict the run to a subset of passes (default: all four, in order). A skipped pass reports
+   * its zeroed section; the ordering invariant between the remaining passes is preserved.
+   */
+  stages?: readonly ConsolidationStage[];
   /** Near-duplicate and derivation candidate lookup run through the existing vector channel. */
   vectors?: EmbeddingIndex;
   /** Embeds the pool's contents to drive the vector channel. Absent → vector passes skip. */
@@ -77,6 +90,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
   const now = input.now ?? (() => new Date());
   const actor = input.actor ?? DEFAULT_CONSOLIDATION_ACTOR;
   const warnings: string[] = [];
+  const stages = new Set<ConsolidationStage>(input.stages ?? CONSOLIDATION_STAGES);
 
   // --- pool -----------------------------------------------------------------
   const considered = await input.store.queryCurrent({
@@ -158,31 +172,33 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
     records: [],
     skipped: [],
   };
-  try {
-    const resolved = await runContradictionPass(input.store, pool, {
-      actor,
-      ...(detector === undefined ? {} : { detector }),
-      ...(crossPhrasing === undefined ? {} : { crossPhrasing }),
-    });
-    const supersededRecords = resolved.records.filter((record) => record.outcome === 'superseded');
-    const disputedRecords = resolved.records.filter((record) => record.outcome === 'disputed');
-    contradictions = {
-      pairs: resolved.records.length,
-      resolved: supersededRecords.length,
-      disputed_pairs: disputedRecords.length,
-      records: resolved.records,
-      skipped: resolved.skipped,
-    };
-    warnings.push(...resolved.warnings);
-    const outOfPool = [
-      ...supersededRecords.flatMap((record) =>
-        record.winner_id === undefined ? [] : [record.a_id === record.winner_id ? record.b_id : record.a_id],
-      ),
-      ...disputedRecords.flatMap((record) => [record.a_id, record.b_id]),
-    ];
-    pool = exclude(pool, outOfPool);
-  } catch (error) {
-    warnings.push(`contradiction pass failed: ${errorMessage(error)}`);
+  if (stages.has('contradiction')) {
+    try {
+      const resolved = await runContradictionPass(input.store, pool, {
+        actor,
+        ...(detector === undefined ? {} : { detector }),
+        ...(crossPhrasing === undefined ? {} : { crossPhrasing }),
+      });
+      const supersededRecords = resolved.records.filter((record) => record.outcome === 'superseded');
+      const disputedRecords = resolved.records.filter((record) => record.outcome === 'disputed');
+      contradictions = {
+        pairs: resolved.records.length,
+        resolved: supersededRecords.length,
+        disputed_pairs: disputedRecords.length,
+        records: resolved.records,
+        skipped: resolved.skipped,
+      };
+      warnings.push(...resolved.warnings);
+      const outOfPool = [
+        ...supersededRecords.flatMap((record) =>
+          record.winner_id === undefined ? [] : [record.a_id === record.winner_id ? record.b_id : record.a_id],
+        ),
+        ...disputedRecords.flatMap((record) => [record.a_id, record.b_id]),
+      ];
+      pool = exclude(pool, outOfPool);
+    } catch (error) {
+      warnings.push(`contradiction pass failed: ${errorMessage(error)}`);
+    }
   }
 
   // --- pass 2: episodic → semantic derivation ----------------------------------
@@ -190,7 +206,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
   // semantic memory first (`derived_from` edges to every source), then the merge collapses
   // the duplicates (the keeper stays active; the absorbed rows stay in history).
   let derivations: ConsolidationReport['derivations'] = { derived: 0, records: [], skipped: [] };
-  if (vectors !== undefined && embeddings !== undefined) {
+  if (stages.has('derivation') && vectors !== undefined && embeddings !== undefined) {
     try {
       const derived = await runDerivationPass(
         input.store,
@@ -218,7 +234,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
   // conflicts are arbitrated and the corroboration is recorded. The pass itself also refuses
   // a cluster that still contains a flagged pair (defense in depth for a skipped resolution).
   let mergeReport: ConsolidationReport['merge'] = { clusters: 0, sources_closed: 0, records: [] };
-  if (vectors !== undefined && embeddings !== undefined) {
+  if (stages.has('merge') && vectors !== undefined && embeddings !== undefined) {
     try {
       const merged = await runMergePass(input.store, pool, vectors, embeddings, {
         actor,
@@ -241,24 +257,27 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
 
   // --- pass 4: decay / archive ---------------------------------------------------
   let decay: ConsolidationReport['decay'] = { archived: 0, kept: 0, records: [] };
-  try {
-    const decayed = await runDecayPass(input.store, pool, {
-      actor,
-      now: now(),
-      archiveThreshold: config.decay.archiveThreshold,
-      resistantImportanceFloor: config.decay.resistantImportanceFloor,
-      halfLifeDays: config.halfLifeDays,
-    });
-    decay = { archived: decayed.records.length, kept: decayed.kept, records: decayed.records };
-    warnings.push(...decayed.warnings);
-  } catch (error) {
-    warnings.push(`decay pass failed: ${errorMessage(error)}`);
+  if (stages.has('decay')) {
+    try {
+      const decayed = await runDecayPass(input.store, pool, {
+        actor,
+        now: now(),
+        archiveThreshold: config.decay.archiveThreshold,
+        resistantImportanceFloor: config.decay.resistantImportanceFloor,
+        halfLifeDays: config.halfLifeDays,
+      });
+      decay = { archived: decayed.records.length, kept: decayed.kept, records: decayed.records };
+      warnings.push(...decayed.warnings);
+    } catch (error) {
+      warnings.push(`decay pass failed: ${errorMessage(error)}`);
+    }
   }
 
   return {
     ran_at: now().toISOString(),
     actor,
-    scope: { project_id: input.scope?.project_id ?? null },    pool: { considered: considered.length, active: activeAtLoad, truncated },
+    scope: { project_id: input.scope?.project_id ?? null },
+    pool: { considered: considered.length, active: activeAtLoad, truncated },
     merge: mergeReport,
     contradictions,
     derivations,

@@ -27,7 +27,19 @@
  */
 
 // The library entry
-export { runConsolidation, type ConsolidationInput } from './run';
+export {
+  runConsolidation,
+  CONSOLIDATION_STAGES,
+  type ConsolidationInput,
+  type ConsolidationStage,
+} from './run';
+
+// The `consolidate` / `decay` job payload (the daemon's scheduled form of stages 12–14)
+export {
+  parseConsolidationJobPayload,
+  ConsolidationJobPayloadSchema,
+  type ConsolidationJobPayload,
+} from './job';
 
 // Authority resolution (pure — the ordering matrix memory-model.md §9)
 export {
