@@ -649,10 +649,15 @@ network-guard assertion. Honest residual items below.
    stdio conformance runner pinned the rule; the streamable-http conformance runner must
    too. The behavior landed today (covered by conformance); the explicit pin test is the
    remaining gap.
-3. **`onemem auth` UX** [P3] — the loopback command exists; the actual OAuth dance
-   (browser open, redirect URI, device loopback, persistence) is clearly scoped but not
-   yet finished in the operator UX. Add an `onemem auth logout` command and a `onemem auth
-   status`. The PKCE plumbing is enough; the surface is just not ergonomic yet.
+3. ~~**`onemem auth` UX**~~ ✅ Closed (2026-10-06): `onemem auth` is now the
+   `login | status | logout` group ADR-0012 documents. The parent carries no options (so
+   Commander 15 does not swallow the leaves' `--cwd`/`--config`/`--json`), and `status` is
+   the default subcommand, so bare `onemem auth` still reports the stored credential. The
+   CLI surface — dispatch, config-dir resolution, io rendering, exit codes — is pinned end
+   to end in `apps/cli/src/auth-command.test.ts`: a real loopback login against a fake
+   authorization server (discovery → DCR → PKCE → redirect → exchange), 0600 persistence,
+   `status`, idempotent `logout`, and fail-closed `login` with no target. This also closes
+   the M5b report's "`onemem auth` has no test file" gap.
 4. **MCP proxy / aggregate-server** [P3] — for hosted deployments, the canonical pattern is
    to gate the MCP server behind a reverse proxy. Reference deployment config is in
    `benchmarks/eval/src/mcp-conformance/` for tests; production deploy guidance belongs in

@@ -16,7 +16,7 @@ import { BackendError, ONEMEMORY_VERSION } from '@onememory/api/runtime';
 
 import { createIo, type Io } from './io';
 import { createClackPrompt, createNonInteractivePrompt, PromptRequiredError, type Prompt } from './prompt';
-import { runAuth } from './commands/auth';
+import { runAuthLogin, runAuthLogout, runAuthStatus } from './commands/auth';
 import { runDoctor } from './commands/doctor';
 import { runInit } from './commands/init';
 import { runSearch } from './commands/search';
@@ -239,18 +239,30 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
       );
     });
 
-  common(program.command('auth'))
-    .description('OAuth 2.1 loopback flow (server mode): authorize against the deployment authorization server, store the token securely')
+  // NOTE: like `skills` below, the `auth` PARENT carries no options on purpose — Commander 15's
+  // default parsing lets a middle command consume flags that appear after the subcommand name
+  // (verified by probe), which would steal the leaves' --cwd/--config/--json. `status` is the
+  // default subcommand, so bare `onemem auth` still reports the stored credential.
+  const auth = program
+    .command('auth')
+    .description(
+      'OAuth 2.1 operator surface (server mode): login runs the loopback PKCE flow and stores ' +
+        'the token securely, status reports it, logout removes it',
+    );
+
+  common(auth.command('login'))
+    .description(
+      'authorize against the deployment authorization server (prints the URL — no browser is ' +
+        'force-opened) and persist the token at .onememory/oauth.json, mode 0600',
+    )
     .option('--server-url <url>', 'the onememory MCP server URL (RFC 9728 discovery finds the authorization server)')
     .option('--issuer <url>', 'the authorization server issuer, when known directly')
     .option('--scope <scopes>', 'space-separated scopes to request (default: "onememory:read onememory:write")')
     .option('--port <port>', 'fixed loopback redirect port (default: ephemeral)', positivePort)
-    .option('--status', 'print the stored credential status (default when no target is given)')
-    .option('--logout', 'remove the stored credential')
     .action(async (options) => {
       const io = ioFor(options);
       await execute(io, () =>
-        runAuth(
+        runAuthLogin(
           {
             ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
             ...(options.config === undefined ? {} : { configPath: String(options.config) }),
@@ -258,8 +270,36 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.issuer === undefined ? {} : { issuer: String(options.issuer) }),
             ...(options.scope === undefined ? {} : { scope: String(options.scope) }),
             ...(options.port === undefined ? {} : { port: Number(options.port) }),
-            status: options.status === true,
-            logout: options.logout === true,
+          },
+          io,
+        ),
+      );
+    });
+
+  common(auth.command('status', { isDefault: true }))
+    .description('report the stored credential (exit 1 when none is configured; never runs a flow)')
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runAuthStatus(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(auth.command('logout'))
+    .description('remove the stored credential (idempotent)')
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runAuthLogout(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
           },
           io,
         ),

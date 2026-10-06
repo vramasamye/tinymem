@@ -146,7 +146,7 @@ export class OAuthCredentialStore {
     const previous = await this.load();
     if (previous !== undefined && previous.issuer !== input.issuer) {
       throw new Error(
-        `refusing to overwrite the OAuth credential for issuer ${previous.issuer} with one for ${input.issuer} — clear it first (onemem auth --logout)`,
+        `refusing to overwrite the OAuth credential for issuer ${previous.issuer} with one for ${input.issuer} — clear it first (onemem auth logout)`,
       );
     }
     const file: OAuthStoreFile = {

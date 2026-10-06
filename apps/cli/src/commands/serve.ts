@@ -65,7 +65,7 @@ export async function runServe(options: ServeOptions, io: Io): Promise<number> {
   if (info.mcp_auth?.credential_present === true) {
     io.out(`  note:   a local client credential for issuer ${info.mcp_auth.issuer} is stored (${info.mcp_auth.credential_path})`);
   } else if (options.mcpAuthIssuer !== undefined) {
-    io.out('  note:   no local client credential stored — agents authorize with: onemem auth --server-url <daemon-url>');
+    io.out('  note:   no local client credential stored — agents authorize with: onemem auth login --server-url <daemon-url>');
   }
   for (const warning of info.warnings) io.out(`  note:   ${warning}`);
   io.out('stop with Ctrl-C (SIGINT) — in-flight jobs finish, then the lock file is removed.');
