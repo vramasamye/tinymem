@@ -32,7 +32,14 @@ import { join } from 'node:path';
 import { DEFAULT_TOOLS } from '@onememory/mcp';
 
 import { runAllPipelines, type PipelineResult } from '../adapter-conformance/pipeline';
-import { RUNTIMES, SCENARIO, type RuntimeName, type ScenarioContext } from '../adapter-conformance/scenario';
+import {
+  RUNTIMES,
+  SCENARIO,
+  nativePayloads,
+  translateScenario,
+  type RuntimeName,
+  type ScenarioContext,
+} from '../adapter-conformance/scenario';
 import { runAllStreamablePipelines, type StreamablePipelineResult } from './pipeline';
 
 const PROJECT_ID = '01900000-0000-7000-8000-0000000000f2';
@@ -223,5 +230,40 @@ describe('streamable-http conformance — the results are the expected ones', ()
     expect(semanticContent('pi')).toBe(SCENARIO.rememberedClause);
     expect(semanticContent('opencode')).toBe(SCENARIO.rememberedClause);
     expect(semanticContent('codex')).toBe(`${SCENARIO.rememberedClause}.`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. The session boundary, pinned in THIS form too (M5b follow-up 2)
+// ---------------------------------------------------------------------------
+
+describe('streamable-http conformance — the session boundary is pinned in this form', () => {
+  /**
+   * The stdio form pins OpenCode's `session.idle → session.end` translation
+   * (`../adapter-conformance/opencode.test.ts`). The same rule must hold in this form: a
+   * runtime whose session never closes leaves the wire run's working-memory sweep open, so
+   * the boundary is pinned per canonical fact AND through the wire run's own event lane.
+   */
+  test('every runtime closes the session, and the boundary is the last event in the lane', () => {
+    eachRuntime((runtime) => {
+      const boundary = translateScenario(runtime, ctx).events.filter(({ fact }) => fact === 'session-end');
+      expect(boundary).toHaveLength(1);
+      expect(boundary[0]!.event.kind).toBe('session.end');
+      // …and it survives into the wire run's event lane (the pipeline throws if a translated
+      // event fails to store, so presence here means the boundary reached storage).
+      expect(wire[runtime].eventKinds.at(-1)).toBe('session.end');
+    });
+  });
+
+  test("OpenCode's session-end signal is the session.idle quiescence event, not a quit hook", () => {
+    // OpenCode's plugin API has no quit/close event; `session.idle` (its docs' "session
+    // completed" notification) is the lifecycle boundary, and the adapter maps it explicitly.
+    const boundary = nativePayloads('opencode', ctx).filter(({ fact }) => fact === 'session-end');
+    expect(boundary).toHaveLength(1);
+    expect(boundary[0]!.channel).toBe('event');
+    expect(boundary[0]!.payload).toEqual({
+      type: 'session.idle',
+      properties: { sessionID: SCENARIO.sessionId },
+    });
   });
 });

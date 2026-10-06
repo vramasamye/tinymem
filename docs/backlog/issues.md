@@ -645,10 +645,15 @@ network-guard assertion. Honest residual items below.
    SaaS proxy), the network-guard allowlist is config-driven, the conformance
    unit test against a fake OIDC server pins the contract, and the SaaS proxy
    pattern delegates OAuth rather than double-running it.
-2. **`session.idle → session.end` mapping for OpenCode in Streamable-HTTP form** [P3] — the
-   stdio conformance runner pinned the rule; the streamable-http conformance runner must
-   too. The behavior landed today (covered by conformance); the explicit pin test is the
-   remaining gap.
+2. ~~**`session.idle → session.end` mapping for OpenCode in Streamable-HTTP form**~~ ✅ Closed
+   (2026-10-06): the streamable-http conformance runner now pins the rule explicitly
+   (`benchmarks/eval/src/mcp-conformance/streamable-http.test.ts` §4) — every runtime closes the
+   session with `session.end` as the last event in the lane, OpenCode's native session-end signal
+   is asserted to be the `session.idle` event (not a quit hook), and the boundary is asserted to
+   survive into the wire run's own event lane. Verified non-vacuous by mutation: flipping the
+   adapter's `session.end` to `session.start` fails the pin while the other 13 conformance tests
+   still pass (they compare stdio against wire, so a change to both forms stays equal — which is
+   exactly the gap the pin closes).
 3. ~~**`onemem auth` UX**~~ ✅ Closed (2026-10-06): `onemem auth` is now the
    `login | status | logout` group ADR-0012 documents. The parent carries no options (so
    Commander 15 does not swallow the leaves' `--cwd`/`--config`/`--json`), and `status` is
