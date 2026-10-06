@@ -548,6 +548,69 @@ export async function listCurrentMemories(
   return mapRows(db, result.rows);
 }
 
+/** Keyset position: the last row of the previous page, `observed_at` as exact epoch microseconds. */
+export interface MemoryPageCursor {
+  observed_at_us: string;
+  id: string;
+}
+
+export interface MemoryPageOptions {
+  types: readonly DurableMemoryType[];
+  pageSize: number;
+  after?: MemoryPageCursor;
+}
+
+export interface MemoryPage {
+  memories: MemoryRecord[];
+  /** Position of the last returned row when more rows follow, else null. */
+  next: MemoryPageCursor | null;
+}
+
+/**
+ * One keyset page of a filtered memory listing, newest observation first, ties broken by id.
+ * The cursor carries `observed_at` as integer epoch microseconds rather than an ISO string:
+ * timestamptz stores microseconds and a millisecond ISO round-trip could skip or repeat rows
+ * that share a millisecond.
+ */
+export async function listMemoryPage(
+  db: Database,
+  opts: MemoryPageOptions,
+  filter: CandidateFilter,
+): Promise<MemoryPage> {
+  if (opts.types.length === 0) return { memories: [], next: null };
+  const plan = planFilter({ ...filter, types: opts.types }, 1);
+  const clauses = [...plan.clauses];
+  const params = [...plan.params];
+  if (opts.after !== undefined) {
+    const at = params.length + 1;
+    clauses.push(
+      `(m.observed_at, m.id) < (timestamptz 'epoch' + $${at}::bigint * interval '1 microsecond', $${at + 1}::uuid)`,
+    );
+    params.push(opts.after.observed_at_us, opts.after.id);
+  }
+  params.push(opts.pageSize + 1);
+  const result = await db.query<MemoryJoinRow & { observed_at_us: string }>(
+    `${SEARCH_MEMORY_SELECT.replace(
+      'SELECT m.id,',
+      "SELECT (extract(epoch FROM m.observed_at) * 1000000)::bigint::text AS observed_at_us, m.id,",
+    )}
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY m.observed_at DESC, m.id DESC
+      LIMIT $${params.length}`,
+    params,
+  );
+  const rows = result.rows.slice(0, opts.pageSize);
+  const memories = await mapRows(db, rows);
+  const last = rows.at(-1);
+  return {
+    memories,
+    next:
+      result.rows.length > opts.pageSize && last !== undefined
+        ? { observed_at_us: String(last.observed_at_us), id: String(last.id) }
+        : null,
+  };
+}
+
 /** The project entity registry (project scope + global entities) for the in-memory match index. */
 export async function listScopeEntities(
   db: Database,
