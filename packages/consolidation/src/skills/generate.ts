@@ -19,6 +19,7 @@ import {
 
 import { MAX_DERIVATION_EVIDENCE } from '../derive';
 import { clampAtWordBoundary } from '../digest/rollup';
+import { scopeKeyOf } from '../cluster';
 import { observationOf, type FailureObservation, type SignatureGroup } from './match';
 import { renderSkillMarkdown, type SkillDocument } from './render';
 
@@ -75,6 +76,16 @@ function stripCommandDecoration(text: string): string {
   return text.trim().replace(/^\$\s+/, '').replace(/^`+|`+$/g, '').trim();
 }
 
+/**
+ * The command PORTION of a shell-looking LINE: everything up to the first sentence terminator
+ * — the rest of the line is prose explaining the command, never part of it. Backtick SPANS are
+ * explicit command text and are kept verbatim (their authors quoted exactly what to run).
+ */
+function commandPortion(text: string): string {
+  const cut = text.search(/[.;!?]/);
+  return (cut === -1 ? text : text.slice(0, cut)).trim();
+}
+
 function isCommandLine(text: string): boolean {
   const stripped = stripCommandDecoration(text);
   if (stripped.length === 0) return false;
@@ -98,7 +109,7 @@ function commandsOf(solutions: readonly (string | null)[], cap = 6): string[] {
   for (const solution of solutions) {
     if (solution === null || solution === '') continue;
     for (const rawLine of solution.split(/\n+/)) {
-      if (isCommandLine(rawLine)) add(stripCommandDecoration(rawLine));
+      if (isCommandLine(rawLine)) add(commandPortion(stripCommandDecoration(rawLine)));
     }
     for (const match of solution.matchAll(/`([^`\n]+)`/g)) add(match[1]!.trim());
     if (commands.length >= cap) break;
@@ -127,13 +138,17 @@ export function skillSlugBase(problem: string): string {
 }
 
 /**
- * The candidate name: the slug base, discriminated by the signature's first 8 hex chars when a
- * DIFFERENT problem already claimed the base (deterministic, collision-free, re-runs stable).
+ * The candidate name: the slug base, discriminated by the signature's first 8 significant
+ * characters when a DIFFERENT problem already claimed the base (deterministic, collision-free,
+ * re-runs stable). Signature hashes are prefixed (`sha256:…`, `sig-…`) — the discriminator
+ * strips a `prefix:` so it never reads the scheme out of the hash.
  */
 export function skillNameOf(problem: string, signatureHash: string, taken: ReadonlySet<string>): string {
   const base = skillSlugBase(problem);
   if (!taken.has(base)) return base;
-  return `${base}-${signatureHash.slice(0, 8)}`;
+  const hash = signatureHash.includes(':') ? signatureHash.slice(signatureHash.indexOf(':') + 1) : signatureHash;
+  const tag = hash.slice(0, 8).replace(/[^a-z0-9]+$/, '');
+  return tag.length > 0 ? `${base}-${tag}` : `${base}-skill`;
 }
 
 /** `Fix: <problem>` clamped to the description budget at a word boundary. */
@@ -200,8 +215,14 @@ export function buildSkillDocument(input: {
   const whenToUse: string[] = [];
   if (representative !== undefined) {
     whenToUse.push(`The same failure recurs: ${distinctProse(problems, 1)[0] ?? representative.problem}`);
+    // The recurrence window spans the WHOLE group: earliest first_seen to latest last_seen
+    // (the representative's own first_seen is just its row's, not the recurrence's).
+    const firstSeen = failures.reduce(
+      (earliest, failure) => (failure.first_seen_at < earliest ? failure.first_seen_at : earliest),
+      failures[0]!.first_seen_at,
+    );
     whenToUse.push(
-      `Seen ${failures.length} times — first ${representative.first_seen_at.slice(0, 10)}, ` +
+      `Seen ${failures.length} times — first ${firstSeen.slice(0, 10)}, ` +
         `last ${representative.last_seen_at.slice(0, 10)} (signature ${representative.signature_hash})`,
     );
   }
@@ -229,10 +250,16 @@ export function buildSkillCandidate(input: {
   takenNames: ReadonlySet<string>;
   /** Cap on `source.failure_ids` (newest kept). */
   maxEvidenceFailures: number;
+  /**
+   * Explicit name for an existing skill being re-processed (the identity-matched recurrence —
+   * the run finds a skill by its source failures before deriving any name); default: derive
+   * deterministically from the problem, discriminated by signature on collision.
+   */
+  name?: string;
 }): SkillCandidateDraft {
   const { group } = input;
   const representative = group.solved[group.solved.length - 1]!;
-  const name = skillNameOf(representative.problem, group.signature_hash, input.takenNames);
+  const name = input.name ?? skillNameOf(representative.problem, group.signature_hash, input.takenNames);
   const description = skillDescriptionOf(representative.problem);
   const evidenceFailures = [...group.solved]
     .sort(
@@ -279,7 +306,7 @@ export function observationFromMemory(record: MemoryRecord): FailureObservation 
   if (failure.signature_hash === undefined) return null;
   return {
     memory_id: record.id,
-    scope_key: `${record.project_id ?? '∅'}|${record.user_id ?? '∅'}`,
+    scope_key: scopeKeyOf(record),
     project_id: record.project_id ?? null,
     observed_at: record.observed_at,
     problem: failure.problem,

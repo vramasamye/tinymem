@@ -200,15 +200,25 @@ async function processQualifiedGroup(
   options: { actor: string; at: string; maxEvidenceFailures: number },
 ): Promise<SkillCandidateRecord> {
   const scopeKey = `${group.scope.project_id ?? '∅'}`;
-  const takenNames = new Set(
-    [...byScopeName.keys()]
-      .filter((key) => key.startsWith(`${scopeKey}|`))
-      .map((key) => key.slice(scopeKey.length + 1)),
+  const scopeSkills = [...byScopeName.entries()]
+    .filter(([key]) => key.startsWith(`${scopeKey}|`))
+    .map(([, skill]) => skill);
+  const takenNames = new Set(scopeSkills.map((skill) => skill.name));
+
+  // The SAME recurrence, found by identity — not by slug: an existing skill that cites ANY of
+  // this group's failures belongs to this group (a failure id is unique to one signature ×
+  // scope × entity). A verified/promoted skill's recurrence therefore maps to THAT skill
+  // (unchanged — its SKILL.md is the frozen artifact), never to a duplicate candidate under a
+  // discriminated slug.
+  const groupFailureIds = new Set(group.failures.map((failure) => failure.memory_id));
+  const existing = scopeSkills.find((skill) =>
+    skill.source.failure_ids.some((id) => groupFailureIds.has(id)),
   );
   const draft = buildSkillCandidate({
     group,
     takenNames,
     maxEvidenceFailures: options.maxEvidenceFailures,
+    ...(existing === undefined ? {} : { name: existing.name }),
   });
   const record = (
     outcome: SkillCandidateRecord['outcome'],
@@ -224,7 +234,6 @@ async function processQualifiedGroup(
     markdown: draft.markdown,
   });
 
-  const existing = byScopeName.get(`${scopeKey}|${draft.name}`);
   if (existing === undefined) {
     const skill = await skills.insertSkill(
       {
@@ -242,8 +251,8 @@ async function processQualifiedGroup(
     return record('created', skill.id);
   }
 
-  // A promoted/verified/deprecated skill with this name is already served (or retired): its
-  // SKILL.md is the frozen artifact — never touched by the generator.
+  // A promoted/verified/deprecated skill citing this group is already served (or retired): the
+  // generator never touches it — deprecation is explicit, refresh is a candidate-stage operation.
   if (existing.status !== 'candidate') {
     return record('unchanged', existing.id);
   }

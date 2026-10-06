@@ -320,7 +320,7 @@ export async function updateSkillStatus(
           to,
           path: existing.path,
           ...(options.note === undefined ? {} : { note: options.note }),
-          ...(options.details === undefined ? {} : { extra: options.details }),
+          ...options.details,
         },
       },
       at,
