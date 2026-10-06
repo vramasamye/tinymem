@@ -87,6 +87,7 @@
       "name": "@onememory/benchmarks",
       "version": "0.1.0",
       "dependencies": {
+        "@modelcontextprotocol/client": "2.3.0",
         "@onememory/adapter-claude": "workspace:*",
         "@onememory/adapter-codex": "workspace:*",
         "@onememory/adapter-cursor": "workspace:*",
@@ -95,6 +96,7 @@
         "@onememory/consolidation": "workspace:*",
         "@onememory/core": "workspace:*",
         "@onememory/extraction": "workspace:*",
+        "@onememory/mcp": "workspace:*",
         "@onememory/retrieval": "workspace:*",
         "@onememory/security": "workspace:*",
         "@onememory/storage": "workspace:*",

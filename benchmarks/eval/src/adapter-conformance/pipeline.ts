@@ -89,7 +89,7 @@ function factOfEventId(id: string, eventIdToFact: ReadonlyMap<string, string>): 
 }
 
 /** `event:<uuid>` locators become `event:<canonical fact>`; other locators pass through. */
-function normalizeEvidence(evidence: readonly EvidenceSpan[], eventIdToFact: ReadonlyMap<string, string>): string[] {
+export function normalizeEvidence(evidence: readonly EvidenceSpan[], eventIdToFact: ReadonlyMap<string, string>): string[] {
   return evidence
     .map((span) => {
       if (span.kind === 'event' && span.locator.startsWith('event:')) {
@@ -100,7 +100,13 @@ function normalizeEvidence(evidence: readonly EvidenceSpan[], eventIdToFact: Rea
     .sort();
 }
 
-function normalizeMemory(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string, string>): NormalizedMemory {
+/**
+ * Normalization is shared with the streamable-http conformance form
+ * (`../mcp-conformance/pipeline.ts`, M5b): the two forms must compare byte for byte, so they
+ * MUST normalize through one implementation — a second copy could drift into its own notion
+ * of "equal" and make the cross-form assertion vacuous.
+ */
+export function normalizeMemory(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string, string>): NormalizedMemory {
   return {
     type: memory.type,
     subtype: memory.subtype ?? null,
@@ -109,7 +115,7 @@ function normalizeMemory(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string
   };
 }
 
-function normalizeGet(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string, string>): NormalizedGet {
+export function normalizeGet(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string, string>): NormalizedGet {
   return {
     type: memory.type,
     subtype: memory.subtype ?? null,
@@ -120,6 +126,20 @@ function normalizeGet(memory: MemoryRecord, eventIdToFact: ReadonlyMap<string, s
     evidence: normalizeEvidence(memory.provenance.evidence, eventIdToFact),
     entities: memory.entities.map((entity) => entity.name).sort(),
   };
+}
+
+/** Working-memory rows, normalized + deterministically sorted (shared by both forms). */
+export function normalizeWorking(
+  rows: ReadonlyArray<{ kind: string; content: string; evidence: readonly EvidenceSpan[] }>,
+  eventIdToFact: ReadonlyMap<string, string>,
+): NormalizedWorking[] {
+  return rows
+    .map((row) => ({
+      kind: row.kind,
+      content: row.content,
+      evidence: normalizeEvidence(row.evidence, eventIdToFact),
+    }))
+    .sort((a, b) => (a.kind === b.kind ? a.content.localeCompare(b.content) : a.kind.localeCompare(b.kind)));
 }
 
 /** Run one runtime's canonical session through the real pipeline. */
@@ -153,13 +173,7 @@ export async function runPipeline(runtime: RuntimeName, ctx: ScenarioContext): P
     const memories = current.map((memory) => normalizeMemory(memory, eventIdToFact)).sort(compareMemories);
 
     const workingRows = await storage.store.listWorking(SCENARIO.sessionId);
-    const working = workingRows
-      .map((row) => ({
-        kind: row.kind,
-        content: row.content,
-        evidence: normalizeEvidence(row.evidence, eventIdToFact),
-      }))
-      .sort((a, b) => (a.kind === b.kind ? a.content.localeCompare(b.content) : a.kind.localeCompare(b.kind)));
+    const working = normalizeWorking(workingRows, eventIdToFact);
 
     const engine = createRetrievalEngine(storage, { now: () => new Date(ENGINE_NOW) });
     const response = await engine.search({ query: CONFORMANCE_QUERY, project_id: project.id });
@@ -202,7 +216,8 @@ export async function runAllPipelines(ctx: ScenarioContext): Promise<Record<Runt
   return Object.fromEntries(entries) as Record<RuntimeName, PipelineResult>;
 }
 
-function compareMemories(a: NormalizedMemory, b: NormalizedMemory): number {
+/** Sort order shared by both conformance forms (memories compare by type, subtype, content). */
+export function compareMemories(a: NormalizedMemory, b: NormalizedMemory): number {
   if (a.type !== b.type) return a.type.localeCompare(b.type);
   const subtypeA = a.subtype ?? '';
   const subtypeB = b.subtype ?? '';
