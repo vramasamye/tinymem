@@ -25,6 +25,7 @@ import { runInspect } from './commands/inspect';
 import { runStats } from './commands/stats';
 import { runServe } from './commands/serve';
 import { runConsolidate } from './commands/consolidate';
+import { runDigest } from './commands/digest';
 
 export interface MainDeps {
   /** Injected stdout (tests capture it; `--json` still routes through it). */
@@ -383,6 +384,28 @@ export function buildProgram(deps: MainDeps = {}): ProgramHandle {
             ...(options.config === undefined ? {} : { configPath: String(options.config) }),
             ...(options.project === undefined ? {} : { projectId: String(options.project) }),
             env,
+          },
+          io,
+        ),
+      );
+    });
+
+  common(program.command('digest'))
+    .description(
+      'build the project digest rollup: one token-bounded project_context memory summarizing the ' +
+        "top decisions, known failures and current procedures — it feeds the memory_project_context tool",
+    )
+    .option('--budget <tokens>', 'digest token budget (default 750, the memory_project_context budget)', int)
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runDigest(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            ...(options.budget === undefined ? {} : { budget: Number(options.budget) }),
           },
           io,
         ),
