@@ -72,6 +72,30 @@ export function renderMarkdown(report: BenchmarkReport): string {
     `- consolidation: quality ${pct(metrics.consolidation.quality)}, ` +
       `fully consolidated ${metrics.consolidation.fully_consolidated}/${metrics.consolidation.groups}`,
   );
+  // M11b-quality (Phase 5): per-type precision/recall with confidence intervals.
+  for (const record of metrics.precision_recall_by_type.by_type) {
+    lines.push(
+      `- ${record.query_type}: precision@${metrics.precision_recall_by_type.k} ` +
+        `${record.precision_at_k.mean} [${record.precision_at_k.ci95_low}, ${record.precision_at_k.ci95_high}] ` +
+        `(${record.precision_at_k.samples} samples), ` +
+        `recall@${metrics.precision_recall_by_type.k} ${record.recall_at_k.mean} ` +
+        `[${record.recall_at_k.ci95_low}, ${record.recall_at_k.ci95_high}] ` +
+        `over ${record.queries_per_run} queries/run × ${metrics.precision_recall_by_type.runs} run(s)`,
+    );
+  }
+  lines.push(
+    `- token efficiency: typed budget compliance ${pct(metrics.token_efficiency.budget_compliance)}, ` +
+      `oracle gap mean ${metrics.token_efficiency.oracle_gap_mean} ` +
+      `(satisfied-only ${metrics.token_efficiency.oracle_gap_mean_when_satisfied}, ` +
+      `max ${metrics.token_efficiency.oracle_gap_max}) over ${metrics.token_efficiency.queries} typed queries`,
+  );
+  lines.push(
+    `- pollution audit: stale-cited ${metrics.pollution_audit.stale_cited.count} ` +
+      `(window ${metrics.pollution_audit.stale_cited.window_days}d), ` +
+      `duplicate pairs ${metrics.pollution_audit.duplicates.count} ` +
+      `(cosine ≥ ${metrics.pollution_audit.duplicates.cosine_threshold}), ` +
+      `unresolved contradicted ${metrics.pollution_audit.unresolved_contradictions.count}`,
+  );
   lines.push('');
 
   lines.push('## Datasets');

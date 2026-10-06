@@ -54,6 +54,28 @@ export interface CorpusMemory {
   content: string;
   project_id: string | null;
   observed_at: string;
+  /**
+   * Stored title (null when extraction set none) — M11b-quality token-oracle input: the packer's
+   * titles-only representation derives its label from it. Optional so pre-M11b corpus literals
+   * (unit tests) stay valid.
+   */
+  title?: string | null;
+}
+
+/**
+ * One memory's state AFTER every probe fired and every fire-and-forget reinforce settled —
+ * what the M11b-quality pollution audit reads. `status`/`access_count`/`last_accessed_at` are
+ * post-consolidation, post-citation truth; content/scope are the immutable corpus fields.
+ */
+export interface FinalMemoryView {
+  id: string;
+  type: string;
+  content: string;
+  project_id: string | null;
+  status: string;
+  access_count: number;
+  last_accessed_at: string | null;
+  observed_at: string;
 }
 
 export interface ResolvedFact {
@@ -107,6 +129,12 @@ export interface BenchRuntime {
   network_attempts: number | null;
   warnings: readonly string[];
   close(): Promise<void>;
+  /**
+   * The corpus read back AFTER all fire-and-forget reinforces settled: every memory's live
+   * status, access count and last citation time (M11b-quality pollution audit input). Reads
+   * `getMemory` per corpus row, so it reflects every consolidation-pass mutation too.
+   */
+  finalMemories(): Promise<readonly FinalMemoryView[]>;
 }
 
 function summarizeConsolidation(report: ConsolidationReport): ConsolidationPassSummary {
@@ -195,6 +223,7 @@ function toCorpusMemory(record: MemoryRecord): CorpusMemory {
     content: record.content,
     project_id: record.project_id ?? null,
     observed_at: record.observed_at,
+    title: record.title ?? null,
   };
 }
 
@@ -400,6 +429,29 @@ export async function openBenchRuntime(
         await storage.close();
         networkGuard?.restore();
         await rm(dataDir, { recursive: true, force: true });
+      },
+      async finalMemories(): Promise<readonly FinalMemoryView[]> {
+        // Drain the tracked writes first: the engine's REINFORCE stage is fire-and-forget, and a
+        // citation still in flight would read as "never cited" — the exact state the audit hunts.
+        await Promise.allSettled([...inflight]);
+        const records = await Promise.all(
+          corpus.map(async (memory) => storage.store.getMemory(memory.id)),
+        );
+        return records.map((record, index) => {
+          if (record === null) {
+            throw new Error(`benchmark corpus memory '${corpus[index]!.id}' disappeared mid-run`);
+          }
+          return {
+            id: record.id,
+            type: record.type,
+            content: record.content,
+            project_id: record.project_id ?? null,
+            status: record.status,
+            access_count: record.access_count,
+            last_accessed_at: record.last_accessed_at ?? null,
+            observed_at: record.observed_at,
+          };
+        });
       },
     };
   } catch (error) {

@@ -31,9 +31,11 @@ describe('benchmark harness gate', () => {
     async () => {
       const report = await runBenchmark({ datasetsDir: GOLDEN_DATASETS_DIR });
 
-      // Gated metrics (all eight, including the two flipped on post-M14).
+      // Gated metrics (all eight originals + the thirteen M11b-quality gates: per-type
+      // precision/recall, per-type budget compliance, the token-oracle gap, and the three
+      // pollution counts).
       expect(report.gates.passed).toBe(true);
-      expect(report.gates.checks).toHaveLength(8);
+      expect(report.gates.checks).toHaveLength(21);
       expect(report.gates.checks.every((check) => check.passed)).toBe(true);
       expect(report.metrics.temporal.accuracy).toBe(1);
       expect(report.metrics.tokens.budget_compliance).toBe(1);
@@ -82,11 +84,14 @@ describe('benchmark harness gate', () => {
       expect(tieProbe?.forbiddenIds.length).toBe(2);
       expect(tieProbe?.returnedIds.some((id) => tieProbe.forbiddenIds.includes(id))).toBe(false);
 
-      // The decay pass archived nothing: fixtures are minutes old, so prominence sits far above
-      // the archive threshold and no dataset intends archival (fixed-clock safety check).
+      // The decay pass archived nothing UNLESS the dataset intends archival: fixtures are
+      // minutes old, so prominence sits far above the archive threshold (fixed-clock safety
+      // check). The one deliberate exception is the M11b-quality pollution fixture, whose
+      // 60-day-old low-prominence version fact is archived by design (archived-but-cited is
+      // the stale state the pollution audit detects).
       for (const dataset of report.datasets) {
         if (dataset.consolidation !== null) {
-          expect(dataset.consolidation.archived).toBe(0);
+          expect(dataset.consolidation.archived).toBe(dataset.id === 'pollution-quality' ? 1 : 0);
           // Offline honesty: the vector-gated passes (derivation, merge) skipped with a recorded
           // warning, never silently (memory-model.md §1.6).
           expect(

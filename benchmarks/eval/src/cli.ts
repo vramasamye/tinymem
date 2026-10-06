@@ -15,6 +15,75 @@ import { dirname, join, resolve } from 'node:path';
 import { runBenchmark, type BenchmarkReport } from './harness';
 import { renderMarkdown } from './report';
 
+/** The `<metric>.<iso-date>.json` per-metric result files (M11b-quality AC: published results). */
+function metricResultFiles(report: BenchmarkReport): Array<{ name: string; payload: object }> {
+  const date = report.generated_at.slice(0, 10);
+  const { metrics } = report;
+  return [
+    {
+      name: `retrieval-quality.${date}.json`,
+      payload: {
+        schema_version: '1',
+        metric: 'retrieval_quality',
+        generated_at: report.generated_at,
+        engine: {
+          profile: report.engine.profile,
+          embedder: report.engine.embedder,
+          extraction: report.engine.extraction,
+        },
+        runs: metrics.precision_recall_by_type.runs,
+        k: metrics.precision_recall_by_type.k,
+        by_type: metrics.precision_recall_by_type.by_type,
+        gates: report.gates.checks.filter((check) => check.metric.startsWith('retrieval_')),
+      },
+    },
+    {
+      name: `token-efficiency.${date}.json`,
+      payload: {
+        schema_version: '1',
+        metric: 'token_efficiency',
+        generated_at: report.generated_at,
+        engine: {
+          profile: report.engine.profile,
+          embedder: report.engine.embedder,
+          extraction: report.engine.extraction,
+        },
+        budget_compliance: metrics.token_efficiency.budget_compliance,
+        by_type: metrics.token_efficiency.by_type,
+        oracle_gap_mean: metrics.token_efficiency.oracle_gap_mean,
+        oracle_gap_max: metrics.token_efficiency.oracle_gap_max,
+        oracle_gap_mean_when_satisfied: metrics.token_efficiency.oracle_gap_mean_when_satisfied,
+        gates: report.gates.checks.filter(
+          (check) =>
+            check.metric.startsWith('token_budget_compliance') || check.metric === 'token_oracle_gap_mean',
+        ),
+      },
+    },
+    {
+      name: `memory-pollution.${date}.json`,
+      payload: {
+        schema_version: '1',
+        metric: 'memory_pollution',
+        generated_at: report.generated_at,
+        engine: {
+          profile: report.engine.profile,
+          embedder: report.engine.embedder,
+          extraction: report.engine.extraction,
+        },
+        stale_cited: metrics.pollution_audit.stale_cited,
+        duplicates: metrics.pollution_audit.duplicates,
+        unresolved_contradictions: metrics.pollution_audit.unresolved_contradictions,
+        gates: report.gates.checks.filter(
+          (check) =>
+            check.metric === 'stale_cited_memories' ||
+            check.metric === 'duplicate_surfaced_pairs' ||
+            check.metric === 'unresolved_contradicted_memories',
+        ),
+      },
+    },
+  ];
+}
+
 const PACKAGE_DIR = resolve(import.meta.dir, '..');
 const DEFAULT_DATASETS = resolve(PACKAGE_DIR, '..', 'datasets', 'golden');
 const DEFAULT_RESULTS = resolve(PACKAGE_DIR, '..', 'results');
@@ -94,9 +163,15 @@ async function main(): Promise<void> {
   if (!options.jsonOnly) {
     await writeFile(join(options.resultsDir, 'baseline.md'), markdown, 'utf8');
   }
+  for (const result of metricResultFiles(report)) {
+    await writeFile(join(options.resultsDir, result.name), `${JSON.stringify(result.payload, null, 2)}\n`, 'utf8');
+  }
 
   console.log(summarize(report));
   console.log(`wrote ${jsonPath}${options.jsonOnly ? '' : ` and ${dirname(jsonPath)}/baseline.md`}`);
+  for (const result of metricResultFiles(report)) {
+    console.log(`wrote ${join(options.resultsDir, result.name)}`);
+  }
 
   if (!report.gates.passed) {
     console.error('benchmark gates failed');

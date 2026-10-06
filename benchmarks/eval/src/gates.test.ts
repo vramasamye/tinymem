@@ -7,6 +7,52 @@
 import { describe, expect, test } from 'bun:test';
 
 import { DEFAULT_GATE_THRESHOLDS, evaluateGates, type AggregateMetrics } from './gates';
+import type { PrecisionRecallByType } from './metrics/precision-recall';
+import type { TokenEfficiencyRecord } from './metrics/token-efficiency';
+import type { PollutionAuditRecord } from './metrics/pollution';
+
+function precisionRecallByType(
+  overrides: Partial<PrecisionRecallByType> = {},
+): PrecisionRecallByType {
+  return {
+    runs: 1,
+    k: 5,
+    by_type: (['procedural', 'decision', 'failure'] as const).map((query_type) => ({
+      query_type,
+      queries_per_run: 5,
+      precision_at_k: { mean: 0.9, ci95_low: 0.7, ci95_high: 1, samples: 5 },
+      recall_at_k: { mean: 1, ci95_low: 1, ci95_high: 1, samples: 5 },
+    })),
+    ...overrides,
+  };
+}
+
+function tokenEfficiency(overrides: Partial<TokenEfficiencyRecord> = {}): TokenEfficiencyRecord {
+  return {
+    queries: 13,
+    budget_compliance: 1,
+    by_type: (['procedural', 'decision', 'failure'] as const).map((query_type) => ({
+      query_type,
+      queries: 5,
+      budget_compliance: 1,
+      oracle_gap: 2,
+      oracle_gap_when_satisfied: 2,
+    })),
+    oracle_gap_mean: 2,
+    oracle_gap_max: 3,
+    oracle_gap_mean_when_satisfied: 2,
+    ...overrides,
+  };
+}
+
+function pollutionAudit(overrides: Partial<PollutionAuditRecord> = {}): PollutionAuditRecord {
+  return {
+    stale_cited: { window_days: 30, count: 1, memories: [] },
+    duplicates: { cosine_threshold: 0.97, count: 1, pairs: [] },
+    unresolved_contradictions: { count: 1, memories: [] },
+    ...overrides,
+  };
+}
 
 function metrics(overrides: Partial<AggregateMetrics> = {}): AggregateMetrics {
   return {
@@ -57,6 +103,11 @@ function metrics(overrides: Partial<AggregateMetrics> = {}): AggregateMetrics {
       fully_consolidated: 2,
       details: [],
     },
+    // M11b-quality first-baseline shape: per-type precision/recall at the measured values, the
+    // oracle gap at its measured ceiling, and the three pollution counts at their fixture values.
+    precision_recall_by_type: precisionRecallByType(),
+    token_efficiency: tokenEfficiency(),
+    pollution_audit: pollutionAudit(),
     ...overrides,
   };
 }
@@ -66,7 +117,9 @@ describe('evaluateGates', () => {
     const evaluation = evaluateGates(metrics());
     expect(evaluation.passed).toBe(true);
     expect(evaluation.checks.every((check) => check.passed)).toBe(true);
-    expect(evaluation.checks).toHaveLength(8);
+    // 8 original gates + 13 M11b-quality gates (6 per-type precision/recall, 3 per-type budget
+    // compliance, 1 oracle gap, 3 pollution counts).
+    expect(evaluation.checks).toHaveLength(21);
   });
 
   test('fails when temporal accuracy drops below its threshold', () => {
@@ -130,5 +183,89 @@ describe('evaluateGates', () => {
 
   test('exposes the thresholds it enforced', () => {
     expect(evaluateGates(metrics()).thresholds).toEqual(DEFAULT_GATE_THRESHOLDS);
+  });
+
+  test('fails when one query type drops below its per-type precision threshold', () => {
+    const byType = precisionRecallByType().by_type.map((record) =>
+      record.query_type === 'failure'
+        ? { ...record, precision_at_k: { ...record.precision_at_k, mean: 0.2 } }
+        : record,
+    );
+    const evaluation = evaluateGates(
+      metrics({ precision_recall_by_type: { ...precisionRecallByType(), by_type: byType } }),
+    );
+    expect(evaluation.passed).toBe(false);
+    const failed = evaluation.checks.find((check) => check.metric === 'retrieval_precision_failure');
+    expect(failed?.passed).toBe(false);
+    // The other types still pass — the gate is per-type, so a single regression is attributable.
+    expect(evaluation.checks.find((check) => check.metric === 'retrieval_precision_decision')?.passed).toBe(
+      true,
+    );
+  });
+
+  test('fails when one query type drops below its per-type recall threshold', () => {
+    const byType = precisionRecallByType().by_type.map((record) =>
+      record.query_type === 'procedural'
+        ? { ...record, recall_at_k: { ...record.recall_at_k, mean: 0.6 } }
+        : record,
+    );
+    const evaluation = evaluateGates(
+      metrics({ precision_recall_by_type: { ...precisionRecallByType(), by_type: byType } }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.checks.find((check) => check.metric === 'retrieval_recall_procedural')?.passed).toBe(
+      false,
+    );
+  });
+
+  test('fails when a typed query exceeds its token budget', () => {
+    const byType = tokenEfficiency().by_type.map((record) =>
+      record.query_type === 'decision' ? { ...record, budget_compliance: 0.5 } : record,
+    );
+    const evaluation = evaluateGates(
+      metrics({ token_efficiency: { ...tokenEfficiency(), by_type: byType } }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(
+      evaluation.checks.find((check) => check.metric === 'token_budget_compliance_decision')?.passed,
+    ).toBe(false);
+  });
+
+  test('fails when the oracle gap grows past the room-to-compress ceiling', () => {
+    const evaluation = evaluateGates(
+      metrics({
+        token_efficiency: tokenEfficiency({ oracle_gap_mean_when_satisfied: 6, oracle_gap_mean: 6 }),
+      }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.checks.find((check) => check.metric === 'token_oracle_gap_mean')?.passed).toBe(false);
+  });
+
+  test('fails when the stale-cited pollution count exceeds the ceiling', () => {
+    const evaluation = evaluateGates(
+      metrics({ pollution_audit: pollutionAudit({ stale_cited: { window_days: 30, count: 2, memories: [] } }) }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.checks.find((check) => check.metric === 'stale_cited_memories')?.passed).toBe(false);
+  });
+
+  test('fails when a new duplicate pair surfaces in retrieval', () => {
+    const evaluation = evaluateGates(
+      metrics({ pollution_audit: pollutionAudit({ duplicates: { cosine_threshold: 0.97, count: 2, pairs: [] } }) }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(evaluation.checks.find((check) => check.metric === 'duplicate_surfaced_pairs')?.passed).toBe(false);
+  });
+
+  test('fails when another declared contradiction stays unresolved', () => {
+    const evaluation = evaluateGates(
+      metrics({
+        pollution_audit: pollutionAudit({ unresolved_contradictions: { count: 2, memories: [] } }),
+      }),
+    );
+    expect(evaluation.passed).toBe(false);
+    expect(
+      evaluation.checks.find((check) => check.metric === 'unresolved_contradicted_memories')?.passed,
+    ).toBe(false);
   });
 });

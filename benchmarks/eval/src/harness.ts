@@ -9,6 +9,7 @@
 
 import type { MemorySearchRequest } from '@onememory/core';
 import type { ExtractHandlerResult } from '@onememory/extraction';
+import { deriveLabel, estimateTokens } from '@onememory/retrieval';
 
 import { GLOBAL_PROJECT_KEY, loadDatasets, type GoldenDataset } from './dataset';
 import { evaluateGates, type AggregateMetrics, type GateEvaluation } from './gates';
@@ -23,11 +24,36 @@ import {
   type QueryOutcome,
 } from './metrics';
 import {
+  computePrecisionRecallByType,
+  QUALITY_QUERY_TYPES,
+  type PrecisionRecallByType,
+  type QualityQueryType,
+  type TypedRetrievalOutcome,
+} from './metrics/precision-recall';
+import {
+  computeTokenEfficiency,
+  type TokenEfficiencyQueryView,
+  type TokenEfficiencyRecord,
+} from './metrics/token-efficiency';
+import {
+  computePollutionAudit,
+  type DeclaredContradictionView,
+  type PollutionAuditRecord,
+} from './metrics/pollution';
+import {
   openBenchRuntime,
   type BenchRuntime,
   type ConsolidationPassSummary,
   type CorpusMemory,
+  type FinalMemoryView,
 } from './runtime';
+
+/** The M11b-quality records for one dataset run (per-dataset view of the three new metrics). */
+export interface DatasetQualityMetrics {
+  precision_recall: PrecisionRecallByType;
+  token_efficiency: TokenEfficiencyRecord;
+  pollution: PollutionAuditRecord;
+}
 
 export interface DatasetRunReport {
   id: string;
@@ -41,6 +67,8 @@ export interface DatasetRunReport {
   facts: Array<{ key: string; scenario: string; description: string; memory_id: string; content: string }>;
   queries: QueryOutcome[];
   metrics: AggregateMetrics;
+  /** M11b-quality: this dataset's typed retrieval, token-efficiency and pollution records. */
+  quality: DatasetQualityMetrics;
   warnings: string[];
 }
 
@@ -167,7 +195,15 @@ async function runProbe(
 export async function runDataset(
   dataset: GoldenDataset,
   options: { enforceNetworkGuard?: boolean } = {},
-): Promise<{ report: DatasetRunReport; outcomes: QueryOutcome[]; corpusById: Map<string, CorpusMemory>; consolidation: Array<{ id: string; observations: number; distinct: number }>; networkAttempts: number | null }> {
+): Promise<{
+  report: DatasetRunReport;
+  outcomes: QueryOutcome[];
+  corpusById: Map<string, CorpusMemory>;
+  consolidation: Array<{ id: string; observations: number; distinct: number }>;
+  /** M11b-quality: raw per-query views (pooled by `runBenchmark`). */
+  qualityViews: QualityViews;
+  networkAttempts: number | null;
+}> {
   const runtime = await openBenchRuntime(dataset, {
     ...(options.enforceNetworkGuard === undefined
       ? {}
@@ -214,7 +250,14 @@ export async function runDataset(
     });
 
     const corpusById = new Map(runtime.corpus.map((memory) => [memory.id, memory]));
-    const metrics = aggregateMetrics(outcomes, corpusById, consolidation);
+    const qualityViews = await collectQualityViews(dataset, runtime, outcomes);
+    const quality = qualityMetricsOf(qualityViews);
+    const metrics: AggregateMetrics = {
+      ...aggregateMetrics(outcomes, corpusById, consolidation),
+      precision_recall_by_type: quality.precision_recall,
+      token_efficiency: quality.token_efficiency,
+      pollution_audit: quality.pollution,
+    };
 
     const report: DatasetRunReport = {
       id: dataset.id,
@@ -236,10 +279,18 @@ export async function runDataset(
       }),
       queries: outcomes,
       metrics,
+      quality,
       warnings: [...runtime.warnings],
     };
 
-    return { report, outcomes, corpusById, consolidation, networkAttempts: runtime.network_attempts };
+    return {
+      report,
+      outcomes,
+      corpusById,
+      consolidation,
+      qualityViews,
+      networkAttempts: runtime.network_attempts,
+    };
   } finally {
     await runtime.close();
   }
@@ -249,7 +300,7 @@ function aggregateMetrics(
   outcomes: readonly QueryOutcome[],
   corpusById: ReadonlyMap<string, CorpusMemory>,
   consolidation: ReadonlyArray<{ id: string; observations: number; distinct: number }>,
-): AggregateMetrics {
+): Omit<AggregateMetrics, 'precision_recall_by_type' | 'token_efficiency' | 'pollution_audit'> {
   return {
     retrieval: computeRetrievalMetrics(outcomes, RETRIEVAL_K),
     tokens: computeTokenMetrics(outcomes),
@@ -257,6 +308,122 @@ function aggregateMetrics(
     temporal: computeTemporalMetrics(outcomes),
     contradiction: computeContradictionMetrics(outcomes),
     consolidation: computeConsolidationMetrics(consolidation),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// M11b-quality: the three Phase 5 metrics (per-type precision/recall, token efficiency,
+// pollution audit). The views are raw per-query records so the benchmark level can pool across
+// datasets without re-deriving anything from averaged numbers.
+// ---------------------------------------------------------------------------
+
+/** Raw, per-dataset inputs the benchmark level pools across dataset runs. */
+interface QualityViews {
+  typedOutcomes: TypedRetrievalOutcome[];
+  tokenViews: TokenEfficiencyQueryView[];
+  pollutionAudit: PollutionAuditRecord;
+}
+
+/**
+ * Collect one dataset's quality views after every probe fired: typed outcomes by query id,
+ * token-efficiency views with the oracle recomputed from the golden facts (the committed
+ * `oracle_min_tokens` annotation must match or the fixture has drifted), and the pollution audit
+ * over the settled post-run corpus.
+ */
+async function collectQualityViews(
+  dataset: GoldenDataset,
+  runtime: BenchRuntime,
+  outcomes: readonly QueryOutcome[],
+): Promise<QualityViews> {
+  const outcomesById = new Map(outcomes.map((outcome) => [outcome.id, outcome]));
+  const typedOutcomes: TypedRetrievalOutcome[] = [];
+  const tokenViews: TokenEfficiencyQueryView[] = [];
+
+  for (const query of dataset.queries) {
+    if (query.query_type === undefined) continue;
+    const outcome = outcomesById.get(query.id);
+    if (outcome === undefined) {
+      throw new Error(`dataset '${dataset.id}': typed query '${query.id}' produced no outcome`);
+    }
+    typedOutcomes.push({
+      id: query.id,
+      query_type: query.query_type,
+      returnedIds: outcome.returnedIds,
+      expectedIds: outcome.expectedIds,
+    });
+
+    // The oracle: the packer's titles-only representation of exactly the golden answer set,
+    // recomputed with the engine's own estimator + label derivation (never trusted from the
+    // annotation — the annotation is the committed record, this is the check).
+    const oracle = query.expected.reduce((sum, key) => {
+      const fact = runtime.facts.get(key);
+      if (fact === undefined) {
+        throw new Error(`dataset '${dataset.id}': oracle fact '${key}' was never resolved`);
+      }
+      return sum + estimateTokens(deriveLabel(fact.memory.title ?? undefined, fact.memory.content));
+    }, 0);
+    if (oracle <= 0) {
+      throw new Error(`dataset '${dataset.id}': query '${query.id}' has a non-positive token oracle`);
+    }
+    if (query.oracle_min_tokens !== undefined && query.oracle_min_tokens !== oracle) {
+      throw new Error(
+        `dataset '${dataset.id}': query '${query.id}' oracle annotation ${query.oracle_min_tokens} ` +
+          `drifted from the computed ${oracle} — refresh the annotation`,
+      );
+    }
+    tokenViews.push({
+      id: query.id,
+      query_type: query.query_type,
+      usedTokens: outcome.usedTokens,
+      budget: outcome.budget,
+      oracleMinTokens: oracle,
+      allExpectedReturned: outcome.expectedIds.every((id) => outcome.returnedIds.includes(id)),
+    });
+  }
+
+  const finalMemories: readonly FinalMemoryView[] = await runtime.finalMemories();
+  const surfacedIds = new Set(outcomes.flatMap((outcome) => [...outcome.returnedIds]));
+  const contradictionGroups: DeclaredContradictionView[] = dataset.contradictions.map((group) => ({
+    authority_id: group.authority === undefined ? null : factId(dataset, runtime, group.authority),
+    contradicted_ids: group.contradicted.map((key) => factId(dataset, runtime, key)),
+    outcome: group.outcome,
+  }));
+  const pollutionAudit = computePollutionAudit({
+    now: dataset.now,
+    memories: finalMemories,
+    surfacedIds,
+    contradictionGroups,
+  });
+
+  return { typedOutcomes, tokenViews, pollutionAudit };
+}
+
+/** One dataset's M11b-quality records from its raw views (single run). */
+function qualityMetricsOf(views: QualityViews): DatasetQualityMetrics {
+  return {
+    precision_recall: computePrecisionRecallByType([views.typedOutcomes]),
+    token_efficiency: computeTokenEfficiency(views.tokenViews, QUALITY_QUERY_TYPES),
+    pollution: views.pollutionAudit,
+  };
+}
+
+/** Sum the per-dataset pollution audits into the benchmark-level record (counts add, findings concatenate). */
+function mergePollutionAudits(audits: readonly PollutionAuditRecord[]): PollutionAuditRecord {
+  return {
+    stale_cited: {
+      window_days: audits[0]?.stale_cited.window_days ?? 30,
+      count: audits.reduce((sum, audit) => sum + audit.stale_cited.count, 0),
+      memories: audits.flatMap((audit) => audit.stale_cited.memories),
+    },
+    duplicates: {
+      cosine_threshold: audits[0]?.duplicates.cosine_threshold ?? 0.97,
+      count: audits.reduce((sum, audit) => sum + audit.duplicates.count, 0),
+      pairs: audits.flatMap((audit) => audit.duplicates.pairs),
+    },
+    unresolved_contradictions: {
+      count: audits.reduce((sum, audit) => sum + audit.unresolved_contradictions.count, 0),
+      memories: audits.flatMap((audit) => audit.unresolved_contradictions.memories),
+    },
   };
 }
 
@@ -271,6 +438,9 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<Benchm
   const allOutcomes: QueryOutcome[] = [];
   const corpusById = new Map<string, CorpusMemory>();
   const consolidation: Array<{ id: string; observations: number; distinct: number }> = [];
+  const typedOutcomes: TypedRetrievalOutcome[] = [];
+  const tokenViews: TokenEfficiencyQueryView[] = [];
+  const pollutionAudits: PollutionAuditRecord[] = [];
   let networkAttempts: number | null = null;
   const clocks: string[] = [];
 
@@ -284,13 +454,23 @@ export async function runBenchmark(options: RunBenchmarkOptions): Promise<Benchm
     allOutcomes.push(...run.outcomes);
     for (const [id, memory] of run.corpusById) corpusById.set(id, memory);
     consolidation.push(...run.consolidation);
+    typedOutcomes.push(...run.qualityViews.typedOutcomes);
+    tokenViews.push(...run.qualityViews.tokenViews);
+    pollutionAudits.push(run.qualityViews.pollutionAudit);
     clocks.push(dataset.now);
     if (run.networkAttempts !== null) {
       networkAttempts = (networkAttempts ?? 0) + run.networkAttempts;
     }
   }
 
-  const metrics = aggregateMetrics(allOutcomes, corpusById, consolidation);
+  // The M11b-quality records pool the RAW per-query views across every dataset, so the
+  // benchmark-level estimates are computed from individual observations, not averages of averages.
+  const metrics: AggregateMetrics = {
+    ...aggregateMetrics(allOutcomes, corpusById, consolidation),
+    precision_recall_by_type: computePrecisionRecallByType([typedOutcomes]),
+    token_efficiency: computeTokenEfficiency(tokenViews, QUALITY_QUERY_TYPES),
+    pollution_audit: mergePollutionAudits(pollutionAudits),
+  };
 
   return {
     schema_version: '1',
