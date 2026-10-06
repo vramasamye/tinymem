@@ -85,7 +85,7 @@ export async function runMergePass(
       // The arbitration guard: a merge must never absorb a conflicting claim. Any flagged
       // pair disqualifies the WHOLE cluster — pruning only the flagged members would resolve
       // the conflict implicitly (the model's rule: never resolve by dropping members).
-      const flagged = firstContradiction(component, detector);
+      const flagged = await firstContradiction(component, detector);
       if (flagged !== null) {
         warnings.push(
           `skipped near-duplicate cluster of ${component.length}: contradiction between ` +
@@ -111,13 +111,13 @@ export async function runMergePass(
 }
 
 /** The first detector-flagged pair in a cluster, or null when the cluster is conflict-free. */
-function firstContradiction(
+async function firstContradiction(
   component: readonly MemoryRecord[],
   detector: ContradictionDetector,
-): { aId: string; bId: string } | null {
+): Promise<{ aId: string; bId: string } | null> {
   for (let i = 0; i < component.length; i += 1) {
     for (let j = i + 1; j < component.length; j += 1) {
-      if (detector(component[i]!, component[j]!)) return { aId: component[i]!.id, bId: component[j]!.id };
+      if (await detector(component[i]!, component[j]!)) return { aId: component[i]!.id, bId: component[j]!.id };
     }
   }
   return null;

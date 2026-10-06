@@ -24,10 +24,10 @@
  * choice left is WHERE the loser's window closes ({@link supersessionValidUntil}).
  */
 
-import type { MemoryRecord, Store } from '@onememory/core';
+import type { EmbeddingIndex, MemoryRecord, MemoryType, Store } from '@onememory/core';
 
 import { winnerOf, authorityViewOf } from './authority';
-import { scopeKeyOf } from './cluster';
+import { pairKey, scopeKeyOf } from './cluster';
 import type { ContradictionRecord, ContradictionSkip } from './types';
 import { errorMessage } from './util';
 
@@ -45,7 +45,7 @@ export function numericValues(content: string): string[] {
   return content.match(/\d+(?:\.\d+)*/g) ?? [];
 }
 
-function sameScope(a: MemoryRecord, b: MemoryRecord): boolean {
+export function sameScope(a: MemoryRecord, b: MemoryRecord): boolean {
   return (a.project_id ?? null) === (b.project_id ?? null) && (a.user_id ?? null) === (b.user_id ?? null);
 }
 
@@ -75,10 +75,15 @@ export function contradictsHeuristically(a: MemoryRecord, b: MemoryRecord): bool
 }
 
 /**
- * The detector seam: pair → verdict. The default is {@link contradictsHeuristically}; a later
- * LLM-backed detector (router operation `conflict`) can replace it without touching the passes.
+ * The detector seam: pair → verdict. The default is {@link contradictsHeuristically}; the
+ * router-backed tier (`./conflict`) implements the same seam and adds one model call per
+ * cross-phrasing pair, so the verdict is allowed to be async. Call sites always `await` it, which
+ * is a no-op for the synchronous default.
  */
-export type ContradictionDetector = (a: MemoryRecord, b: MemoryRecord) => boolean;
+export type ContradictionDetector = (a: MemoryRecord, b: MemoryRecord) => boolean | Promise<boolean>;
+
+/** Which tier decided a pair — the deterministic template heuristic, or the router's `conflict` op. */
+export type ContradictionTier = 'template' | 'llm';
 
 /**
  * WHERE a resolved loser's validity window closes — the only temporal choice the pass makes
@@ -119,6 +124,20 @@ export async function runContradictionPass(
   options: {
     actor: string;
     detector?: ContradictionDetector;
+    /**
+     * Cross-phrasing candidate generation through the vector channel (opt-in). Statements that
+     * answer the same question in different words share no attribute template, so the template
+     * groups below can never form them; semantic proximity is the only deterministic signal left.
+     * Absent → candidates are template groups only (the offline default, unchanged).
+     */
+    crossPhrasing?: {
+      vectors: EmbeddingIndex;
+      embeddings: ReadonlyMap<string, readonly number[]>;
+      cosine: number;
+      neighbors: number;
+      /** Memory types eligible for cross-phrasing candidacy (durable claim types). */
+      types: readonly MemoryType[];
+    };
   },
 ): Promise<ContradictionPassResult> {
   const detector = options.detector ?? contradictsHeuristically;
@@ -138,17 +157,57 @@ export async function runContradictionPass(
     a: MemoryRecord;
     b: MemoryRecord;
     template: string;
+    tier: ContradictionTier;
   }
   const pairs: Pair[] = [];
+  const seen = new Set<string>();
+  const addPair = (a: MemoryRecord, b: MemoryRecord, template: string, tier: ContradictionTier): void => {
+    const key = pairKey(a.id, b.id);
+    if (seen.has(key)) return;
+    seen.add(key);
+    pairs.push({ a, b, template, tier });
+  };
   for (const [template, group] of groups) {
     for (let i = 0; i < group.length; i += 1) {
       for (let j = i + 1; j < group.length; j += 1) {
-        if (detector(group[i]!, group[j]!)) pairs.push({ a: group[i]!, b: group[j]!, template });
+        addPair(group[i]!, group[j]!, template, 'template');
       }
     }
   }
+
+  // 1b. Cross-phrasing candidates (opt-in): semantic neighbours that share no template. The
+  //     arbiter decides them; proximity alone is candidacy, never a verdict.
+  const crossPhrasing = options.crossPhrasing;
+  if (crossPhrasing !== undefined) {
+    const inPool = new Map(pool.map((memory) => [memory.id, memory]));
+    const allowed = new Set<string>(crossPhrasing.types);
+    for (const memory of pool) {
+      if (!allowed.has(memory.type)) continue;
+      const vector = crossPhrasing.embeddings.get(memory.id);
+      if (vector === undefined) continue;
+      const matches = await crossPhrasing.vectors.search([...vector], crossPhrasing.neighbors, {
+        minCosine: crossPhrasing.cosine,
+      });
+      for (const match of matches) {
+        const other = inPool.get(match.memory_id);
+        if (other === undefined || other.id === memory.id) continue;
+        if (!allowed.has(other.type)) continue;
+        if (!sameScope(memory, other) || !temporalOverlap(memory, other)) continue;
+        if (contradictionTemplate(memory.content) === contradictionTemplate(other.content)) continue;
+        addPair(memory, other, contradictionTemplate(memory.content), 'llm');
+      }
+    }
+  }
+
+  // 1c. Detector filter — one definition of "conflict" for every candidate, template or semantic.
+  const flagged: Pair[] = [];
+  for (const pair of pairs) {
+    if (await detector(pair.a, pair.b)) flagged.push(pair);
+  }
+  const pairsResolved = flagged;
+
   // Oldest-first pair order (by the older member, then the newer): the chain builds linearly.
-  pairs.sort((x, y) => {
+  pairsResolved.sort((x, y) => {
     const olderX = x.a.observed_at <= x.b.observed_at ? x.a : x.b;
     const olderY = y.a.observed_at <= y.b.observed_at ? y.a : y.b;
     const byOlder = olderX.observed_at.localeCompare(olderY.observed_at);
@@ -158,7 +217,7 @@ export async function runContradictionPass(
 
   // 2. Resolve each pair; the live set keeps mutations visible to later pairs.
   const active = new Map(pool.map((memory) => [memory.id, memory]));
-  for (const pair of pairs) {
+  for (const pair of pairsResolved) {
     const a = active.get(pair.a.id);
     const b = active.get(pair.b.id);
     if (a === undefined || b === undefined) continue; // an earlier pair closed or disputed one
@@ -182,7 +241,7 @@ export async function runContradictionPass(
           relation: 'contradicts',
           project_id: a.project_id ?? undefined,
         });
-        records.push({ a_id: a.id, b_id: b.id, template: pair.template, outcome: 'disputed', rule: 'tie' });
+        records.push({ a_id: a.id, b_id: b.id, template: pair.template, tier: pair.tier, outcome: 'disputed', rule: 'tie' });
         active.delete(a.id);
         active.delete(b.id);
       } catch (error) {
@@ -220,6 +279,7 @@ export async function runContradictionPass(
         a_id: a.id,
         b_id: b.id,
         template: pair.template,
+        tier: pair.tier,
         outcome: 'superseded',
         winner_id: winnerRecord.id,
         rule,

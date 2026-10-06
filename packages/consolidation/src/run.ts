@@ -29,6 +29,7 @@ import type { Embedder, EmbeddingIndex, MemoryRecord, Store } from '@onememory/c
 import type { ModelRouter } from '@onememory/llm';
 
 import { runContradictionPass, type ContradictionDetector } from './contradiction';
+import { createConflictDetector, CROSS_PHRASING_TYPES } from './conflict';
 import { runDecayPass } from './decay';
 import { runDerivationPass } from './derive';
 import { runMergePass } from './merge';
@@ -50,7 +51,8 @@ export interface ConsolidationInput {
   /** Optional LLM merge tier for semantic derivation (router operation `consolidate`). */
   router?: ModelRouter;
   /**
-   * Contradiction detector override (default: the heuristic). ONE detector is shared by the
+   * Contradiction detector override (default: the template heuristic; the router-backed
+   * cross-phrasing tier when the router has a `conflict` route). ONE detector is shared by the
    * contradiction pass, the merge pass's refusal guard, and the derivation cluster check —
    * they must agree on what a conflict is, or a merge could absorb what a pass never saw.
    */
@@ -111,6 +113,44 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
   // FIRST: a merge must never absorb a conflicting claim, and a derived cluster must be
   // contradiction-free. Every detected pair is arbitrated (supersede by rule, or both disputed
   // on a tie) — never skipped for a temporal shape.
+  //
+  // The conflict tier (opt-in, fail-closed): when the router has a `conflict` route, the detector
+  // becomes template-heuristic + LLM adjudication for cross-phrasing pairs, and semantic
+  // proximity supplies the candidates the template groups can never form. With no such route the
+  // detector is the bare template heuristic — the offline default, unchanged (AGENTS.md rule 4).
+  const detectorWarnings: string[] = [];
+  const conflictRouteConfigured = input.router !== undefined && input.router.isConfigured('conflict');
+  const crossPhrasingEnabled = input.detector === undefined && conflictRouteConfigured;
+  // Explicit degradation, never silent (memory-model.md §1.6): a router set up for other
+  // operations but with no `conflict` route leaves cross-phrasing pairs undetected. Pure offline
+  // (no router) stays byte-identical — the local-first default is a complete mode, not a
+  // degradation, so it warns nothing here.
+  if (
+    input.detector === undefined &&
+    input.router !== undefined &&
+    !conflictRouteConfigured &&
+    input.router.configuredOperations().length > 0
+  ) {
+    warnings.push(
+      'no `conflict` route configured: cross-phrasing contradictions are not detected (attribute-template heuristic only) — route the `conflict` operation to enable LLM adjudication',
+    );
+  }
+  const detector: ContradictionDetector | undefined =
+    input.detector ??
+    (crossPhrasingEnabled && input.router !== undefined
+      ? createConflictDetector(input.router, { warnings: detectorWarnings })
+      : undefined);
+  const crossPhrasing =
+    crossPhrasingEnabled && vectors !== undefined && embeddings !== undefined
+      ? {
+          vectors,
+          embeddings,
+          cosine: config.conflict.crossPhrasingCosine,
+          neighbors: config.conflict.neighbors,
+          types: CROSS_PHRASING_TYPES,
+        }
+      : undefined;
+
   let contradictions: ConsolidationReport['contradictions'] = {
     pairs: 0,
     resolved: 0,
@@ -121,7 +161,8 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
   try {
     const resolved = await runContradictionPass(input.store, pool, {
       actor,
-      ...(input.detector === undefined ? {} : { detector: input.detector }),
+      ...(detector === undefined ? {} : { detector }),
+      ...(crossPhrasing === undefined ? {} : { crossPhrasing }),
     });
     const supersededRecords = resolved.records.filter((record) => record.outcome === 'superseded');
     const disputedRecords = resolved.records.filter((record) => record.outcome === 'disputed');
@@ -159,7 +200,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
         {
           actor,
           ...(input.router === undefined ? {} : { router: input.router }),
-          ...(input.detector === undefined ? {} : { detector: input.detector }),
+          ...(detector === undefined ? {} : { detector }),
           minClusterSize: config.derivation.minClusterSize,
           minClusterCosine: config.derivation.minClusterCosine,
           maxClusterSize: config.derivation.maxClusterSize,
@@ -184,7 +225,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
         now: now(),
         cosineThreshold: config.nearDuplicate.cosineThreshold,
         neighbors: config.nearDuplicate.neighbors,
-        ...(input.detector === undefined ? {} : { detector: input.detector }),
+        ...(detector === undefined ? {} : { detector }),
       });
       mergeReport = {
         clusters: merged.records.length,
@@ -222,7 +263,7 @@ export async function runConsolidation(input: ConsolidationInput): Promise<Conso
     contradictions,
     derivations,
     decay,
-    warnings,
+    warnings: [...warnings, ...detectorWarnings],
   };
 }
 

@@ -373,7 +373,7 @@ export async function runDerivationPass(
       let contradiction: { aId: string; bId: string } | null = null;
       outer: for (let i = 0; i < component.length; i += 1) {
         for (let j = i + 1; j < component.length; j += 1) {
-          if (detector(component[i]!, component[j]!)) {
+          if (await detector(component[i]!, component[j]!)) {
             contradiction = { aId: component[i]!.id, bId: component[j]!.id };
             break outer;
           }

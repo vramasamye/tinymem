@@ -11,6 +11,8 @@ import { z } from 'zod';
 
 import { DEFAULT_HALF_LIFE_DAYS, type MemoryStatus } from '@onememory/core';
 
+import type { ContradictionTier } from './contradiction';
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -84,6 +86,17 @@ export const ConsolidationConfigSchema = z.looseObject({
       resistantImportanceFloor: z.number().min(0).max(1).optional(),
     })
     .optional(),
+  conflict: z
+    .looseObject({
+      /**
+       * Semantic-proximity floor at which two claim memories become cross-phrasing CANDIDATES
+       * for the LLM conflict tier. Candidacy only — the model still decides (fail-closed).
+       */
+      crossPhrasingCosine: z.number().min(0).max(1).optional(),
+      /** KNN fan-out per memory when probing the vector channel for cross-phrasing candidates. */
+      neighbors: z.number().int().min(1).max(64).optional(),
+    })
+    .optional(),
   /** Per-type half-life overrides (days), merged over the shared default table. */
   halfLifeDays: z.record(z.string(), z.number().positive()).optional(),
   /** Active memories considered per run (queryCurrent is capped at 1000 by the Store port). */
@@ -95,6 +108,7 @@ export interface ConsolidationConfig {
   nearDuplicate: { cosineThreshold: number; neighbors: number };
   derivation: { minClusterSize: number; minClusterCosine: number; maxClusterSize: number };
   decay: { archiveThreshold: number; resistantImportanceFloor: number };
+  conflict: { crossPhrasingCosine: number; neighbors: number };
   halfLifeDays: Record<string, number>;
   poolLimit: number;
 }
@@ -103,6 +117,7 @@ export const DEFAULT_CONSOLIDATION_CONFIG: ConsolidationConfig = {
   nearDuplicate: { cosineThreshold: 0.97, neighbors: 10 },
   derivation: { minClusterSize: 3, minClusterCosine: 0.75, maxClusterSize: 12 },
   decay: { archiveThreshold: 0.05, resistantImportanceFloor: 0.6 },
+  conflict: { crossPhrasingCosine: 0.75, neighbors: 10 },
   halfLifeDays: { ...CONSOLIDATION_HALF_LIFE_DAYS },
   poolLimit: 200,
 };
@@ -114,6 +129,7 @@ export function resolveConsolidationConfig(input?: ConsolidationConfigInput): Co
     nearDuplicate: { ...DEFAULT_CONSOLIDATION_CONFIG.nearDuplicate, ...parsed.nearDuplicate },
     derivation: { ...DEFAULT_CONSOLIDATION_CONFIG.derivation, ...parsed.derivation },
     decay: { ...DEFAULT_CONSOLIDATION_CONFIG.decay, ...parsed.decay },
+    conflict: { ...DEFAULT_CONSOLIDATION_CONFIG.conflict, ...parsed.conflict },
     halfLifeDays: { ...CONSOLIDATION_HALF_LIFE_DAYS, ...parsed.halfLifeDays },
     poolLimit: parsed.poolLimit ?? DEFAULT_CONSOLIDATION_CONFIG.poolLimit,
   };
@@ -145,6 +161,8 @@ export interface ContradictionRecord {
   b_id: string;
   /** The shared attribute template both statements instantiate ("version: node <#>"). */
   template: string;
+  /** Which tier decided the pair: the deterministic template heuristic, or the router's `conflict` op. */
+  tier: ContradictionTier;
   outcome: 'superseded' | 'disputed';
   /** Set when `outcome` is `superseded`: the memory the loser now points at. */
   winner_id?: string;

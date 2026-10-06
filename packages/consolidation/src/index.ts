@@ -5,7 +5,9 @@
  *   1. near-duplicate merge — same scope + type, cosine ≥ 0.97 → one survivor, `merged` audit
  *   2. contradiction detection + authority resolution — explicit > decision > newer >
  *      confidence; a tie marks both `disputed` (never a silent pick); the winner supersedes the
- *      loser through the audited supersession fields
+ *      loser through the audited supersession fields. Detection is two-tier: the deterministic
+ *      attribute-template heuristic (offline default), plus an opt-in LLM tier (`conflict` router
+ *      operation) that adjudicates cross-phrasing pairs the heuristic cannot form a candidate for.
  *   3. episodic → semantic derivation — ≥ 3 corroborated episodes of one entity → one semantic
  *      memory with `derived_from` edges to every source (LLM merge optional via the model
  *      router; templated offline merge otherwise — zero network by default)
@@ -47,7 +49,22 @@ export {
   temporalOverlap,
   type ContradictionDetector,
   type ContradictionPassResult,
+  type ContradictionTier,
 } from './contradiction';
+
+// The LLM conflict tier (opt-in cross-phrasing adjudication; router operation `conflict`)
+export {
+  buildConflictPrompt,
+  createConflictDetector,
+  createLlmConflictDetector,
+  CONFLICT_LLM_PROMPT_VERSION,
+  CONFLICT_SYSTEM_PROMPT,
+  CROSS_PHRASING_TYPES,
+  LlmConflictVerdictSchema,
+  type ConflictArbiter,
+  type LlmConflictDetectorOptions,
+  type LlmConflictVerdict,
+} from './conflict';
 
 // The shared clustering primitives (pair keys, scope keys, connected components)
 export { pairKey } from './cluster';

@@ -110,6 +110,11 @@ export interface FakeRouterOptions {
   configured?: readonly ModelOperation[];
   /** Result returned for a successful `consolidate` generation. */
   outputs?: Partial<Record<ModelOperation, unknown>>;
+  /**
+   * Per-request output, for cases where the fixture depends on what was asked (e.g. a conflict
+   * verdict that differs per pair). Takes precedence over `outputs`.
+   */
+  respond?: (request: GenerateStructuredRequest<never>) => unknown;
   /** When true, every generation fails (the offline fallback path). */
   failAll?: boolean;
 }
@@ -159,7 +164,10 @@ export class FakeRouter implements ModelRouter {
         },
       };
     }
-    const output = this.options.outputs?.[request.operation];
+    const output =
+      this.options.respond === undefined
+        ? this.options.outputs?.[request.operation]
+        : this.options.respond(request as GenerateStructuredRequest<never>);
     if (output === undefined) {
       return {
         ok: false,
