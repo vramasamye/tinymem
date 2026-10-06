@@ -637,11 +637,11 @@ Merged 2026-10-06 (mission report: `docs/plan/mission-reports/mission-5b-mcp-har
 Streamable-HTTP transport + OAuth 2.1 PKCE + 5-runtime conformance extension + zero-outbound
 network-guard assertion. Honest residual items below.
 
-1. **OAuth deployment story** [P3, coordinator ADR] — the OAuth 2.1 PKCE **client** lives in
-   `packages/mcp/src/oauth/` and exercises against a fake OIDC server in tests. The
-   production deployment posture (loopback for local, hosted-OIDC with redirect-URI
-   whitelisting for SaaS, sits-out-the-broker story) is honest but undocumented. Add an
-   ADR amendment; document the per-deployment-mode posture in `docs/architecture/security.md`.
+1. ~~**OAuth deployment story**~~ ✅ Closed by ADR-0012 (2026-10-06, `docs/adr/0012-oauth-deployment-posture.md`):
+   the per-deployment-mode posture is codified (local loopback / hosted OIDC /
+   SaaS proxy), the network-guard allowlist is config-driven, the conformance
+   unit test against a fake OIDC server pins the contract, and the SaaS proxy
+   pattern delegates OAuth rather than double-running it.
 2. **`session.idle → session.end` mapping for OpenCode in Streamable-HTTP form** [P3] — the
    stdio conformance runner pinned the rule; the streamable-http conformance runner must
    too. The behavior landed today (covered by conformance); the explicit pin test is the

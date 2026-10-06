@@ -17,6 +17,7 @@ a decision, write a new ADR that supersedes the old one — never edit history s
 | 0009 | [Skill generation from verified failure/solution patterns](0009-skill-generation.md) | Accepted |
 | 0010 | [MCP-first protocol surface + universal adapters](0010-mcp-protocol-adapters.md) | Accepted |
 | 0011 | [SaaS path without open-core rot](0011-saas-path.md) | Accepted |
+| 0012 | [OAuth 2.1 deployment posture: local loopback, hosted OIDC, proxy for SaaS](0012-oauth-deployment-posture.md) | Accepted |
 
 ADR-0010 is grounded in `docs/research/mcp-memory-implementations.md` (MCP 2026-07-28 facts,
 per-runtime integration matrix, memory-server survey).
