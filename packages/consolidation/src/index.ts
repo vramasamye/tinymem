@@ -11,9 +11,13 @@
  *      router; templated offline merge otherwise — zero network by default)
  *   4. decay / archive — prominence below threshold → audited `archived` (archive, never delete)
  *
- * Plus the project digest rollup (backlog M14.5): one token-bounded `project_context` digest
+* Plus the project digest rollup (backlog M14.5): one token-bounded `project_context` digest
  * memory per project, summarizing the top decisions / failures / procedures and feeding the
  * `memory_project_context` tool surface through `projects.digest` (retrieval.md §2).
+ *
+ * Plus the retention pass (M14.6): `runEventsCompaction` summarizes the raw `events` log into
+ * `memory_events_digest` and purges raw rows past the retention window — bounded, idempotent,
+ * safe to schedule. The `memory_events` audit trail stays append-only; `sources` never move.
  *
  * `runConsolidation` is the callable entry over the existing `Store` port; the `onemem
  * consolidate` CLI command and the (future) daemon-side scheduler both call it. All mutations
@@ -112,6 +116,22 @@ export {
   type ProjectDigestPassResult,
   type ProjectDigestLikeMemory,
 } from './digest/run';
+
+// Events compaction (M14.6: summarize → purge the raw event log after the retention window)
+export {
+  classifyEvent,
+  compactionCutoffs,
+  planBatch,
+  type BatchPlan,
+  type CompactionCutoffs,
+} from './compaction/plan';
+export {
+  buildEventDigest,
+  digestSummaryLine,
+  payloadByteSize,
+  DIGEST_SUMMARY_MAX_CHARS,
+} from './compaction/summary';
+export { runEventsCompaction, type EventsCompactionInput } from './compaction/run';
 
 // Configuration + the run report
 export {
