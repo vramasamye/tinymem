@@ -234,6 +234,28 @@ export const PurgeResponseSchema = z
   })
   .openapi('PurgeResponse');
 
+export const ConsolidateRequestSchema = z
+  .strictObject({
+    /** `consolidate` (default) runs all four passes; `decay` runs only the terminal archive pass. */
+    kind: z.enum(['consolidate', 'decay']).optional(),
+    /** Audit actor recorded on the queued job (the calling surface). */
+    actor: z.string().min(1).max(120).optional(),
+  })
+  .openapi('ConsolidateRequest');
+
+export const ConsolidateResponseSchema = z
+  .strictObject({
+    project_id: z.uuid(),
+    kind: z.enum(['consolidate', 'decay']),
+    /** The queued job id — poll nothing; the daemon worker runs the pass and the store is the record. */
+    job_id: z.string().min(1),
+    /** `enqueued` when this call created the job; `existing` when one was already pending/running. */
+    outcome: z.enum(['enqueued', 'existing']),
+    status: z.string(),
+    note: z.string(),
+  })
+  .openapi('ConsolidateResponse');
+
 export const MemoryEventRecordSchema = z
   .looseObject({
     id: z.uuid(),

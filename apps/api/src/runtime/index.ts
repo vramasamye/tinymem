@@ -12,6 +12,7 @@ export {
   createRuntimeHandlers,
   DEFAULT_DRIFT_SCAN_INTERVAL_MS,
   type CodeMemoryRuntimeInfo,
+  type ConsolidationRuntimeInfo,
   type OnememoryRuntime,
   type OpenRuntimeOptions,
   type RuntimeDegradation,
@@ -20,6 +21,17 @@ export {
 } from './composition';
 
 export { createEmbedder, type EmbedderFactoryOptions } from './embedder';
+
+export {
+  createConsolidationOrchestration,
+  createConsolidationScheduler,
+  DECAY_STAGES,
+  DEFAULT_CONSOLIDATE_INTERVAL_MS,
+  type ConsolidationOrchestration,
+  type ConsolidationOrchestrationOptions,
+  type ConsolidationRunInput,
+  type ConsolidationStatus,
+} from './consolidation';
 
 export {
   codeMemoryCheck,
@@ -84,6 +96,9 @@ export { startDaemon, type DaemonHandle, type ServeInfo, type ServeOptions } fro
 export {
   BackendError,
   type BackendErrorCode,
+  type ConsolidateInput,
+  type ConsolidateKind,
+  type ConsolidateOutcome,
   type ContextOptions,
   type CreateProjectInput,
   type ForgetInput,

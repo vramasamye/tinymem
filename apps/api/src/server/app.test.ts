@@ -193,6 +193,7 @@ interface Scripted {
   purgeInput?: Record<string, unknown>;
   projectListResult?: ProjectListResult;
   pageOptions?: MemoryPageOptions;
+  consolidateInput?: Record<string, unknown>;
 }
 
 function fakeBackend(script: Scripted = {}): OnememoryBackend {
@@ -239,6 +240,17 @@ function fakeBackend(script: Scripted = {}): OnememoryBackend {
         page_size: options.page_size ?? 50,
         memories: [inspectResult.memory],
         next_cursor: options.cursor === undefined ? 'next-page' : null,
+      };
+    },
+    consolidate: async (input) => {
+      script.consolidateInput = { ...input };
+      return {
+        project_id: input.project_id,
+        kind: input.kind ?? 'consolidate',
+        job_id: 'job-1',
+        outcome: 'enqueued',
+        status: 'pending',
+        note: 'queued',
       };
     },
     close: async () => {},
@@ -302,6 +314,7 @@ describe('system endpoints', () => {
       '/v1/projects/{id}/memories/{memoryId}/restore',
       '/v1/projects/{id}/memories/{memoryId}/purge',
       '/v1/projects/{id}/stats',
+      '/v1/projects/{id}/consolidate',
     ]) {
       expect(document.paths[path]).toBeDefined();
     }
@@ -541,6 +554,45 @@ describe('the response contract is enforced', () => {
     });
     expect(response.status).toBe(409);
     expect(((await response.json()) as Record<string, unknown>).error).toBeDefined();
+  });
+});
+
+describe('consolidation', () => {
+  test('POST /v1/projects/{id}/consolidate queues the pass and answers 202 with the job id', async () => {
+    const script: Scripted = {};
+    const response = await post(`/v1/projects/${PROJECT_ID}/consolidate`, {}, script);
+    expect(response.status).toBe(202);
+    const payload = await body(response);
+    expect(payload.job_id).toBe('job-1');
+    expect(payload.outcome).toBe('enqueued');
+    expect(payload.project_id).toBe(PROJECT_ID);
+    // The body is optional: an empty object defaults the kind to the full pass.
+    expect(script.consolidateInput).toEqual({ project_id: PROJECT_ID });
+  });
+
+  test('the body selects the decay kind and forwards the actor', async () => {
+    const script: Scripted = {};
+    const response = await post(
+      `/v1/projects/${PROJECT_ID}/consolidate`,
+      { kind: 'decay', actor: 'cli:consolidate' },
+      script,
+    );
+    expect(response.status).toBe(202);
+    expect(script.consolidateInput).toEqual({
+      project_id: PROJECT_ID,
+      kind: 'decay',
+      actor: 'cli:consolidate',
+    });
+  });
+
+  test('an unknown kind is a 400 (the enum is enforced at the boundary)', async () => {
+    const response = await post(`/v1/projects/${PROJECT_ID}/consolidate`, { kind: 'compact' });
+    expect(response.status).toBe(400);
+  });
+
+  test('an unknown key in the body is rejected (strict requests)', async () => {
+    const response = await post(`/v1/projects/${PROJECT_ID}/consolidate`, { force: true });
+    expect(response.status).toBe(400);
   });
 });
 

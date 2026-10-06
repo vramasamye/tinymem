@@ -13,6 +13,8 @@ import {
   BackendError,
   type BackendErrorCode,
   type ContextOptions,
+  type ConsolidateInput,
+  type ConsolidateOutcome,
   type CreateProjectInput,
   type ForgetInput,
   type ForgetOutcome,
@@ -203,6 +205,14 @@ export function createHttpBackend(options: HttpBackendOptions): OnememoryBackend
 
     listMemories: (projectId: string, options: MemoryPageOptions = {}) =>
       call<MemoryPageResult>('GET', `/v1/projects/${encode(projectId)}/memories${memoryPageQuery(options)}`),
+
+    consolidate: (input: ConsolidateInput) =>
+      call<ConsolidateOutcome>('POST', `/v1/projects/${encode(input.project_id)}/consolidate`, {
+        body: {
+          ...(input.kind === undefined ? {} : { kind: input.kind }),
+          ...(input.actor === undefined ? {} : { actor: input.actor }),
+        },
+      }),
 
     async close() {
       // The daemon owns its lifetime; the client has nothing to release.

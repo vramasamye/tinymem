@@ -226,6 +226,27 @@ export class BackendError extends Error {
   }
 }
 
+/** The two daemon consolidation job kinds (memory-model.md §8 stages 12–14). */
+export type ConsolidateKind = 'consolidate' | 'decay';
+
+export interface ConsolidateInput {
+  project_id: string;
+  /** `consolidate` runs all four passes; `decay` runs only the terminal decay/archive pass. */
+  kind?: ConsolidateKind;
+  /** Audit actor recorded on the resulting job (the calling surface). */
+  actor?: string;
+}
+
+export interface ConsolidateOutcome {
+  project_id: string;
+  kind: ConsolidateKind;
+  job_id: string;
+  /** `enqueued` when this call created the job; `existing` when one was already pending. */
+  outcome: 'enqueued' | 'existing';
+  status: string;
+  note: string;
+}
+
 /**
  * Everything the CLI (and later adapters through the REST API) can ask onememory to do.
  */
@@ -257,5 +278,11 @@ export interface OnememoryBackend {
   failures(projectId: string, options?: ListOptions): Promise<MemorySearchResponse>;
   /** Keyset-paginated listing (no ranking, no token budget): browse, not search. */
   listMemories(projectId: string, options?: MemoryPageOptions): Promise<MemoryPageResult>;
+  /**
+   * Queue a consolidation pass (memory-model.md §8 stages 12–14). Asynchronous by design: the
+   * route enqueues a `consolidate`/`decay` job and returns its id, and the daemon worker runs it —
+   * the API/CLI never awaits a pass.
+   */
+  consolidate(input: ConsolidateInput): Promise<ConsolidateOutcome>;
   close(): Promise<void>;
 }

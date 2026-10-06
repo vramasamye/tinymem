@@ -20,6 +20,8 @@ import type { DurableMemoryType } from '@onememory/core';
 
 import { BackendError, type MemoryPageInclude, type OnememoryBackend } from '../runtime/types';
 import {
+  ConsolidateRequestSchema,
+  ConsolidateResponseSchema,
   ContextQuerySchema,
   CreateProjectRequestSchema,
   DoctorReportSchema,
@@ -109,7 +111,7 @@ const JSON_HEADERS = { 'content-type': 'application/json; charset=UTF-8' } as co
 function jsonBody(
   c: Context,
   payload: unknown,
-  status: 200 | 201 | 400 | 404 | 409 | 500 | 503,
+  status: 200 | 201 | 202 | 400 | 404 | 409 | 500 | 503,
 ): Response {
   return c.body(JSON.stringify(payload), status, JSON_HEADERS);
 }
@@ -121,7 +123,7 @@ function jsonBody(
  * return type matches the route's declared response schema — they are different schema instances);
  * a mismatch is a 500 produced by the process that would have sent the wrong shape.
  */
-function respond<S extends z.ZodType>(c: Context, schema: S, value: unknown, status: 200 | 201): Response {
+function respond<S extends z.ZodType>(c: Context, schema: S, value: unknown, status: 200 | 201 | 202): Response {
   const parsed = schema.safeParse(value);
   if (!parsed.success) {
     const detail = parsed.error.issues
@@ -552,6 +554,42 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
           ...(query.session === undefined ? {} : { session_id: query.session }),
         }),
         200,
+      );
+    },
+  );
+
+  // ---------------------------------------------------------------- consolidation
+  // The daemon-side consolidation trigger (M14 follow-up 1). Asynchronous by design
+  // (memory-model.md §8): the route enqueues a `consolidate`/`decay` job and returns its id with
+  // 202; the daemon worker runs the pass, so a request never blocks on a full pool sweep. The
+  // periodic scheduler enqueues the same job on its own cadence.
+  add(
+    createRoute({
+      method: 'post',
+      path: '/v1/projects/{id}/consolidate',
+      tags: ['system'],
+      summary: 'Queue a consolidation pass (contradictions, derivation, merges, decay)',
+      request: {
+        params: IdParamSchema,
+        body: { content: { 'application/json': { schema: ConsolidateRequestSchema } } },
+      },
+      responses: {
+        202: { content: { 'application/json': { schema: ConsolidateResponseSchema } }, description: 'queued' },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const body = c.req.valid('json');
+      return respond(
+        c,
+        ConsolidateResponseSchema,
+        await backend.consolidate({
+          project_id: id,
+          ...(body.kind === undefined ? {} : { kind: body.kind }),
+          ...(body.actor === undefined ? {} : { actor: body.actor }),
+        }),
+        202,
       );
     },
   );

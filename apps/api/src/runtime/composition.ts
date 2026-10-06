@@ -39,6 +39,10 @@ import {
   type ReindexResult,
 } from '@onememory/codememory';
 import type { Extractor, JobKind } from '@onememory/core';
+import {
+  parseConsolidationJobPayload,
+  type ConsolidationReport,
+} from '@onememory/consolidation';
 import { createReEmbedJobHandler, type EmbedderHandle } from '@onememory/embeddings';
 import {
   createExtractHandler,
@@ -72,6 +76,13 @@ import {
 } from '@onememory/storage';
 
 import { createEmbedder, type EmbedderFactoryOptions } from './embedder';
+import {
+  createConsolidationOrchestration,
+  createConsolidationScheduler,
+  DECAY_STAGES,
+  type ConsolidationRunInput,
+  type ConsolidationStatus,
+} from './consolidation';
 
 /** Non-fatal degradation recorded while wiring (surfaced by doctor/stats, never silent). */
 export interface RuntimeDegradation {
@@ -98,6 +109,18 @@ export interface CodeMemoryRuntimeInfo {
   runReindex(input: ReindexInput): Promise<ReindexResult>;
 }
 
+/** How daemon-side consolidation is wired into this runtime (doctor + CLI/MCP exposure). */
+export interface ConsolidationRuntimeInfo {
+  /** True while the periodic consolidation scheduler is armed (interval > 0 and started). */
+  readonly scheduler_running: boolean;
+  /** The configured consolidation interval in milliseconds (0 disables the schedule). */
+  readonly scheduler_interval_ms: number;
+  /** Last-pass timestamps and resolved/archived counts (live). */
+  status(): ConsolidationStatus;
+  /** Run one consolidation pass now (the `consolidate`/`decay` handlers' body). */
+  run(input: ConsolidationRunInput): Promise<ConsolidationReport>;
+}
+
 export interface OnememoryRuntime {
   readonly config: OnememoryConfig;
   readonly loaded: LoadedConfig;
@@ -117,6 +140,8 @@ export interface OnememoryRuntime {
   readonly degradation: RuntimeDegradation;
   /** Code-memory orchestration handle (always present; the scheduler only runs with the worker). */
   readonly code_memory: CodeMemoryRuntimeInfo;
+  /** Consolidation orchestration handle (always present; the scheduler only runs with the worker). */
+  readonly consolidation: ConsolidationRuntimeInfo;
   readonly warnings: string[];
   readonly started_at: number;
   readonly worker_running: boolean;
@@ -126,7 +151,6 @@ export interface OnememoryRuntime {
 
 /** Default drift-scan interval: frequent enough to notice edits, cheap enough to run all day. */
 export const DEFAULT_DRIFT_SCAN_INTERVAL_MS = 300_000;
-
 export interface OpenRuntimeOptions {
   cwd?: string;
   configPath?: string | null;
@@ -141,6 +165,8 @@ export interface OpenRuntimeOptions {
   codeMemoryScheduler?: boolean;
   /** Drift-scan interval in milliseconds (default {@link DEFAULT_DRIFT_SCAN_INTERVAL_MS}). */
   driftScanIntervalMs?: number;
+  /** Consolidation interval in milliseconds (default `daemon.consolidate_interval_ms`; 0 disables). */
+  consolidateIntervalMs?: number;
   /** Install the M12 network guard when the config plan says so (default true). */
   installNetworkGuard?: boolean;
   /** Injectable clock for deterministic retrieval behaviour. */
@@ -396,6 +422,36 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
   runtimeHandlers.handlers.reindex = async ({ job }) => {
     await orchestration.runReindex(parseReindexJobPayload(job.payload));
   };
+
+  // 5c. Consolidation orchestration (M14 follow-up 1): the `consolidate` / `decay` job kinds and
+  //     the periodic scheduler that enqueues them. Both kinds drive the same idempotent
+  //     `runConsolidation` entry the CLI uses; `decay` restricts it to the terminal pass. The
+  //     vector channel and router are wired exactly as the CLI command wires them, so a daemon
+  //     pass and a direct-mode pass agree (the LLM conflict tier only runs when the router has a
+  //     `conflict` route — the offline default is unchanged).
+  const consolidation = createConsolidationOrchestration({
+    store: storage.store,
+    vectors: storage.vectors,
+    embedder,
+    router,
+    now: options.now,
+    invalidateCache: (projectId) => engine.invalidateCache(projectId),
+  });
+  runtimeHandlers.handlers.consolidate = async ({ job }) => {
+    const payload = parseConsolidationJobPayload(job.payload);
+    await consolidation.run({
+      project_id: payload.project_id,
+      ...(payload.actor === undefined ? {} : { actor: payload.actor }),
+    });
+  };
+  runtimeHandlers.handlers.decay = async ({ job }) => {
+    const payload = parseConsolidationJobPayload(job.payload);
+    await consolidation.run({
+      project_id: payload.project_id,
+      stages: DECAY_STAGES,
+      ...(payload.actor === undefined ? {} : { actor: payload.actor }),
+    });
+  };
   runtimeHandlers.registered_kinds = Object.keys(runtimeHandlers.handlers);
 
   const driftScanIntervalMs = Math.max(
@@ -408,6 +464,24 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
       await orchestration.tick();
     },
     onError: (error) => onWarning(`code-memory schedule pass failed: ${errorMessage(error)}`),
+  });
+
+  // The consolidation schedule: enqueue a `consolidate` job for the registered project on each
+  // tick (0 disables). The worker claims and runs it, so the daemon stays the single writer and
+  // the pass never blocks a request.
+  const consolidateIntervalMs = options.consolidateIntervalMs ?? loaded.config.daemon.consolidate_interval_ms;
+  const registeredProjectId = loaded.project_state?.project_id ?? null;
+  const consolidationScheduler = createConsolidationScheduler({
+    intervalMs: consolidateIntervalMs,
+    tick: async () => {
+      if (registeredProjectId === null) return; // no project registered: nothing to consolidate
+      await storage.jobs.enqueue({
+        kind: 'consolidate',
+        key: `consolidate:${registeredProjectId}`,
+        payload: { project_id: registeredProjectId },
+      });
+    },
+    onError: (error) => onWarning(`consolidation schedule pass failed: ${errorMessage(error)}`),
   });
 
   const registry = createHandlerRegistry(runtimeHandlers.handlers);
@@ -423,6 +497,7 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
   });
   let workerRunning = false;
   let schedulerRunning = false;
+  let consolidationSchedulerRunning = false;
   if (options.startWorker === true) {
     worker.start();
     workerRunning = true;
@@ -430,10 +505,19 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
       scheduler.start();
       schedulerRunning = true;
     }
+    // Arm the consolidation schedule unless explicitly disabled (interval 0). Independent of the
+    // drift-scan toggle: consolidation runs on its own cadence.
+    consolidationScheduler.start();
+    consolidationSchedulerRunning = consolidationScheduler.isRunning();
   }
 
   async function stopWorker(): Promise<void> {
-    // Stop the scheduler first: no new drift_scan jobs may be enqueued while the worker drains.
+    // Stop the schedulers first: no new drift_scan/consolidate jobs may be enqueued while the
+    // worker drains.
+    if (consolidationSchedulerRunning) {
+      await consolidationScheduler.stop();
+      consolidationSchedulerRunning = false;
+    }
     if (schedulerRunning) {
       await scheduler.stop();
       schedulerRunning = false;
@@ -478,6 +562,14 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
       status: () => orchestration.status(),
       runDriftScan: (input) => orchestration.runDriftScan(input),
       runReindex: (input) => orchestration.runReindex(input),
+    },
+    consolidation: {
+      scheduler_interval_ms: consolidateIntervalMs,
+      get scheduler_running(): boolean {
+        return consolidationSchedulerRunning;
+      },
+      status: () => consolidation.status(),
+      run: (input) => consolidation.run(input),
     },
     warnings,
     started_at: Date.now(),

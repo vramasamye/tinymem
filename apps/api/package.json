@@ -25,6 +25,7 @@
     "@onememory/adapter-pi": "workspace:*",
     "@onememory/codememory": "workspace:*",
     "@onememory/config": "workspace:*",
+    "@onememory/consolidation": "workspace:*",
     "@onememory/core": "workspace:*",
     "@onememory/embeddings": "workspace:*",
     "@onememory/extraction": "workspace:*",

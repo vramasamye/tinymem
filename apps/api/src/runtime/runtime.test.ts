@@ -416,4 +416,43 @@ describe('the daemon', () => {
     expect(probeDaemon(join(root, '.onememory'))).resolves.toBeNull();
     await expect(handle.runtime.storage.store.listPendingEvents(1)).rejects.toBeDefined();
   }, 60_000);
+
+  test('POST /v1/projects/{id}/consolidate queues a pass the worker then runs', async () => {
+    const handle = await startDaemon({
+      cwd: root,
+      env: {},
+      port: 0,
+      installSignalHandlers: false,
+    });
+    try {
+      const response = await rawFetch(`${handle.info.url}/v1/projects/${projectId}/consolidate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(response.status).toBe(202);
+      const queued = (await response.json()) as {
+        job_id: string;
+        kind: string;
+        outcome: string;
+        project_id: string;
+        status: string;
+      };
+      expect(queued.kind).toBe('consolidate');
+      expect(queued.outcome).toBe('enqueued');
+      expect(queued.project_id).toBe(projectId);
+
+      // The route only enqueues (async by design); the daemon worker claims the job and runs the
+      // same pass the CLI runs, which flips the orchestration status when it returns.
+      const deadline = Date.now() + 30_000;
+      while (handle.runtime.consolidation.status().last_ran_at === null && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(handle.runtime.consolidation.status().last_ran_at).not.toBeNull();
+      const job = await handle.runtime.storage.jobs.getJob(queued.job_id);
+      expect(job?.status).toBe('done');
+    } finally {
+      await handle.stop();
+    }
+  }, 60_000);
 });

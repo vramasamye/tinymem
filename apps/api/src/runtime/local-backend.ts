@@ -26,7 +26,7 @@ import {
   requireProject,
 } from './memory-service';
 import { computeStats, type StatsOptions } from './stats';
-import { BackendError, type HealthReport, type OnememoryBackend } from './types';
+import { BackendError, type ConsolidateOutcome, type HealthReport, type OnememoryBackend } from './types';
 import { ONEMEMORY_VERSION } from './version';
 
 export interface LocalBackendOptions {
@@ -163,6 +163,33 @@ export function createLocalBackend(
 
     listMemories(projectId, options = {}) {
       return listMemoryPage(runtime, projectId, options);
+    },
+
+    async consolidate(input): Promise<ConsolidateOutcome> {
+      const kind = input.kind ?? 'consolidate';
+      await requireProject(runtime, input.project_id);
+      // The daemon owns the worker that drains this: enqueue is idempotent on (kind, key) while a
+      // pending/running instance exists, so a repeated `onemem consolidate` coalesces instead of
+      // stacking passes. `key` namespaces the coalescing (see the jobs_singleton_idx).
+      const result = await runtime.storage.jobs.enqueue({
+        kind,
+        key: `${kind}:${input.project_id}`,
+        payload: {
+          project_id: input.project_id,
+          ...(input.actor === undefined ? {} : { actor: input.actor }),
+        },
+      });
+      return {
+        project_id: input.project_id,
+        kind,
+        job_id: result.job.id,
+        outcome: result.outcome,
+        status: result.job.status,
+        note:
+          result.outcome === 'existing'
+            ? `a ${kind} pass for this project is already ${result.job.status}; it will run when the daemon worker picks it up`
+            : `queued a ${kind} pass; it runs when the daemon worker picks it up`,
+      };
     },
 
     async close() {
