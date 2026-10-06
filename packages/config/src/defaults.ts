@@ -6,7 +6,13 @@
  * heuristics — the product's default state, and the state `onemem doctor` must pass in.
  */
 
-import { DEFAULT_DAEMON_PORT, DEFAULT_RETENTION_DAYS, parseConfig, type OnememoryConfig } from './schema';
+import {
+  DEFAULT_CONSOLIDATE_INTERVAL_MS,
+  DEFAULT_DAEMON_PORT,
+  DEFAULT_RETENTION_DAYS,
+  parseConfig,
+  type OnememoryConfig,
+} from './schema';
 
 /** Directory that holds the config file, project state, data dir and daemon lock. */
 export const CONFIG_DIR_NAME = '.onememory';
@@ -84,6 +90,7 @@ daemon:
   concurrency: 4            # jobs claimed per worker pass
   lease_seconds: 60
   retention_days: ${DEFAULT_RETENTION_DAYS}        # raw-event retention (D4); compaction needs a scheduled job
+  consolidate_interval_ms: ${DEFAULT_CONSOLIDATE_INTERVAL_MS}  # scheduled consolidation pass (0 disables)
 
 security:
   network_guard: auto       # auto | enforce | off  ('off' is rejected while llm.profile is local)

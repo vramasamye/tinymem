@@ -52,6 +52,12 @@ export const DEFAULT_OPENAI_COMPATIBLE_EMBED_BASE_URL = 'http://127.0.0.1:1234/v
 export const DEFAULT_DAEMON_PORT = 7331;
 /** D4: raw events older than this window are eligible for compaction. */
 export const DEFAULT_RETENTION_DAYS = 30;
+/**
+ * Default interval between scheduled consolidation passes (memory-model.md §8 stages 12–14:
+ * "scheduled batch"). Hourly: consolidation is cheap pure-SQL offline, and the interval bounds
+ * how stale contradictions/duplicates can get without loading the daemon.
+ */
+export const DEFAULT_CONSOLIDATE_INTERVAL_MS = 3_600_000;
 /** Session-context budget default (retrieval.md §5 / ADR-0010 progressive disclosure). */
 export const DEFAULT_CONTEXT_BUDGET = 750;
 /** Search budget default (event-memory-schemas.md §6). */
@@ -148,6 +154,16 @@ export const DaemonSectionSchema = z.strictObject({
   lease_seconds: z.number().int().min(5).max(3600).default(60),
   /** D4: retention window for raw events, in days (0 = keep forever). */
   retention_days: z.number().int().min(0).max(3650).default(DEFAULT_RETENTION_DAYS),
+  /**
+   * How often the daemon enqueues a consolidation pass (ms; 0 disables the schedule). The pass
+   * runs contradiction → derivation → merge → decay over the registered project.
+   */
+  consolidate_interval_ms: z
+    .number()
+    .int()
+    .min(0)
+    .max(86_400_000)
+    .default(DEFAULT_CONSOLIDATE_INTERVAL_MS),
 });
 export type DaemonSection = z.infer<typeof DaemonSectionSchema>;
 
