@@ -26,3 +26,17 @@ export interface JobQueue {
   fail(jobId: string, error: string, options?: { now?: string }): Promise<JobRecord>;
   getJob(jobId: string): Promise<JobRecord | null>;
 }
+
+/**
+ * Strip the queue's own `key` from a stored job payload before validating it.
+ *
+ * `enqueue` writes `key` INSIDE the payload JSON because `jobs_singleton_idx` reads
+ * `payload->>'key'` for (kind, key) idempotency — so the stored payload is `{...fields, key}`.
+ * That `key` is queue metadata, never part of a handler's contract, and a strict payload schema
+ * would reject it as an unrecognized key. A handler parses `jobPayloadFields(job.payload)` and
+ * stays strict about every real field, so a typo'd payload still fails loudly.
+ */
+export function jobPayloadFields(payload: Record<string, unknown>): Record<string, unknown> {
+  const { key: _key, ...fields } = payload;
+  return fields;
+}

@@ -17,6 +17,7 @@
  */
 
 import type { CodeMemoryStore, Extractor, JobQueue, Store } from '@onememory/core';
+import { jobPayloadFields } from '@onememory/core';
 import { z } from 'zod';
 
 import { createDriftApplier, type DriftApplyResult } from './apply-drift';
@@ -108,7 +109,8 @@ export const ReindexJobPayloadSchema = z.strictObject({
 
 /** Parse a `drift_scan` job payload into {@link DriftScanInput} (throws on malformed input). */
 export function parseDriftScanJobPayload(payload: Record<string, unknown>): DriftScanInput {
-  const parsed = DriftScanJobPayloadSchema.parse(payload);
+  // `jobPayloadFields` drops the queue's own `key` (stored inside the payload JSON by `enqueue`).
+  const parsed = DriftScanJobPayloadSchema.parse(jobPayloadFields(payload));
   return {
     project_id: parsed.project_id,
     ...(parsed.repository_id === undefined ? {} : { repository_id: parsed.repository_id }),
@@ -117,7 +119,7 @@ export function parseDriftScanJobPayload(payload: Record<string, unknown>): Drif
 
 /** Parse a `reindex` job payload into {@link ReindexInput} (throws on malformed input). */
 export function parseReindexJobPayload(payload: Record<string, unknown>): ReindexInput {
-  return { project_id: ReindexJobPayloadSchema.parse(payload).project_id };
+  return { project_id: ReindexJobPayloadSchema.parse(jobPayloadFields(payload)).project_id };
 }
 
 export interface CodeMemoryOrchestrationStatus {

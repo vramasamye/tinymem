@@ -1,6 +1,7 @@
 export * from './records';
 export type { Store } from './store';
 export type { JobQueue } from './job-queue';
+export { jobPayloadFields } from './job-queue';
 export type { Embedder, EmbeddingIndex, EmbeddingIndexOptions, EmbeddingBackend } from './embedder';
 export type { Searcher } from './searcher';
 export type { Extractor, ExtractionInput } from './extractor';
