@@ -3,17 +3,20 @@
  * command): near-duplicate merges, contradiction detection with authority resolution,
  * episodic → semantic derivation, and decay/archive, all over the audited Store paths.
  *
- * Backend resolution follows the same pattern as every other command (ADR-0002): load the
- * config, probe the daemon lock, resolve the project. One difference, deliberate: a LIVE
- * daemon owns the embedded data dir, and the REST API exposes no consolidation endpoint yet
- * (daemon-side scheduling is a planned follow-up) — so the command refuses instead of opening
- * a second owner. Direct mode opens the composition root without the job worker, like every
- * other direct-mode command.
+ * Two modes (ADR-0002), because the pass is asynchronous by design (memory-model.md §8):
+ * - **daemon mode** — a daemon owns the data dir and runs the job worker, so the command queues a
+ *   `consolidate` job over `POST /v1/projects/{id}/consolidate` and prints its id. The worker runs
+ *   the pass; the store is the record, not the HTTP response.
+ * - **direct mode** — no daemon, so there is no worker to drain a queued job: the command opens
+ *   the composition root itself (no worker) and runs the pass inline for the full report.
+ *
+ * Both paths drive the same idempotent `runConsolidation` entry, so the outcome is identical.
  */
 
 import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { runConsolidation, type ConsolidationReport } from '@onememory/consolidation';
+import { createHttpBackend, openRuntime } from '@onememory/api/runtime';
+import type { ConsolidateOutcome } from '@onememory/api/runtime';
+import type { ConsolidationReport } from '@onememory/consolidation';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';
@@ -21,26 +24,24 @@ import type { Io } from '../io';
 export interface ConsolidateOptions extends ResolveOptions {}
 
 export async function runConsolidate(options: ConsolidateOptions, io: Io): Promise<number> {
-  // 1. The same resolution steps `resolveBackend` walks, inlined because consolidation must
-  //    refuse (not route) when a daemon owns the data dir.
   const loaded = loadConfig({
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     ...(options.configPath === undefined ? {} : { configPath: options.configPath }),
     ...(options.env === undefined ? {} : { env: options.env }),
   });
   const daemonUrl = await findLiveDaemonUrl(loaded);
-  if (daemonUrl !== null) {
-    throw new BackendError(
-      `a daemon owns this data dir (${daemonUrl}) and the REST API exposes no consolidation ` +
-        'endpoint yet — daemon-side scheduling is a planned follow-up. Stop the daemon ' +
-        "('onemem serve') and run 'onemem consolidate' again, or wait for the scheduler",
-      'conflict',
-    );
-  }
   const projectId = resolveProjectId(loaded, options.projectId);
 
-  // 2. Direct mode: the composition root without the job worker (a short-lived CLI process is
-  //    not a job host; queued normalize/extract jobs drain when 'onemem serve' runs).
+  // Daemon mode: the daemon owns the worker, so queue the pass and report the job id.
+  if (daemonUrl !== null) {
+    const backend = createHttpBackend({ baseUrl: daemonUrl });
+    const outcome = await backend.consolidate({ project_id: projectId });
+    io.emit(outcome);
+    printConsolidateOutcome(io, outcome);
+    return 0;
+  }
+
+  // Direct mode: no worker exists to drain a queued job, so run the pass inline for the report.
   const runtime = await openRuntime({
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     ...(options.configPath === undefined ? {} : { configPath: options.configPath }),
@@ -48,21 +49,21 @@ export async function runConsolidate(options: ConsolidateOptions, io: Io): Promi
     startWorker: false,
   });
   try {
-    const report = await runConsolidation({
-      store: runtime.storage.store,
-      vectors: runtime.storage.vectors,
-      // `null` is the honest local default (no embeddings configured): the vector-dependent
-      // passes degrade with a warning; contradictions and decay always run.
-      ...(runtime.embedder === null ? {} : { embedder: runtime.embedder }),
-      router: runtime.router,
-      scope: { project_id: projectId },
-    });
+    const report = await runtime.consolidation.run({ project_id: projectId });
     io.emit(report);
     printConsolidation(io, report);
     return 0;
   } finally {
     await runtime.close();
   }
+}
+
+function printConsolidateOutcome(io: Io, outcome: ConsolidateOutcome): void {
+  const verb = outcome.outcome === 'existing' ? 'already queued' : 'queued';
+  io.out(
+    `${verb} a ${outcome.kind} pass for project ${outcome.project_id} (job ${outcome.job_id}, ${outcome.status})`,
+  );
+  io.out('the daemon worker runs it; the pass is asynchronous, so nothing waits here');
 }
 
 export function printConsolidation(io: Io, report: ConsolidationReport): void {

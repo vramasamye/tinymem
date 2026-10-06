@@ -10,6 +10,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { writeDaemonLock } from '@onememory/api/runtime';
+
 import { jsonOf, runMain, type Captured } from './test-support';
 
 async function cli(argv: string[]): Promise<Captured> {
@@ -101,5 +103,85 @@ describe('onemem consolidate', () => {
     } finally {
       rmSync(empty, { recursive: true, force: true });
     }
+  });
+});
+
+describe('onemem consolidate in daemon mode', () => {
+  let daemonRoot: string;
+  let server: ReturnType<typeof Bun.serve>;
+  const seen: { method: string; path: string; body: string }[] = [];
+
+  beforeAll(async () => {
+    daemonRoot = join(
+      process.env.TMPDIR ?? '/tmp',
+      `onemem-consolidate-daemon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    mkdirSync(daemonRoot, { recursive: true });
+    expect((await cli(['init', '--preset', 'local', '--name', 'served', '--cwd', daemonRoot, '--json'])).exitCode).toBe(0);
+
+    // A fake loopback daemon: the CLI discovers it through the real lock file + health probe, then
+    // routes the pass over REST. An in-process `startDaemon` would install the process-wide privacy
+    // guard, which has no loopback allowance (see doctor-summary.test.ts).
+    server = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      fetch: async (request) => {
+        const { pathname } = new URL(request.url);
+        if (pathname === '/v1/health') return Response.json({ status: 'ok', version: '0.1.0-test' });
+        if (pathname.endsWith('/consolidate')) {
+          seen.push({ method: request.method, path: pathname, body: await request.text() });
+          return Response.json(
+            {
+              project_id: '00000000-0000-7000-8000-000000000001',
+              kind: 'consolidate',
+              job_id: 'job-42',
+              outcome: 'enqueued',
+              status: 'pending',
+              note: 'queued',
+            },
+            { status: 202 },
+          );
+        }
+        return new Response('not found', { status: 404 });
+      },
+    });
+
+    const port = server.port;
+    if (port === undefined) throw new Error('Bun.serve did not report a TCP port');
+    writeDaemonLock(join(daemonRoot, '.onememory'), {
+      version: 1,
+      pid: process.pid,
+      host: '127.0.0.1',
+      port,
+      url: `http://127.0.0.1:${port}`,
+      started_at: new Date().toISOString(),
+      version_string: '0.1.0-test',
+    });
+  }, 30_000);
+
+  afterAll(async () => {
+    await server.stop(true);
+    rmSync(daemonRoot, { recursive: true, force: true });
+  });
+
+  test('queues the pass over REST and reports the job id instead of opening a second owner', async () => {
+    const result = await cli(['consolidate', '--cwd', daemonRoot, '--json']);
+    expect(result.exitCode).toBe(0);
+
+    const document = jsonOf(result);
+    expect(document.kind).toBe('consolidate');
+    expect(document.job_id).toBe('job-42');
+    expect(document.outcome).toBe('enqueued');
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.method).toBe('POST');
+    expect(seen[0]!.path.endsWith('/consolidate')).toBeTrue();
+  });
+
+  test('human mode explains that the daemon worker runs the queued pass', async () => {
+    const result = await cli(['consolidate', '--cwd', daemonRoot]);
+    expect(result.exitCode).toBe(0);
+    expect(result.out).toContain('queued a consolidate pass');
+    expect(result.out).toContain('job job-42');
+    expect(result.out).toContain('the daemon worker runs it');
   });
 });
