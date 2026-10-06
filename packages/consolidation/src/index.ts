@@ -172,6 +172,11 @@ export {
   SKILL_GENERATION_ACTOR,
   type SkillGenerationInput,
 } from './skills/run';
+export {
+  runSkillFreshness,
+  SERVED_SKILL_STATUSES,
+  type SkillFreshnessInput,
+} from './skills/freshness';
 
 // Configuration + the run report
 export {

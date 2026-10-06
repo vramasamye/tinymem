@@ -689,11 +689,24 @@ Signature recurrence matching → SKILL.md candidates → review/promote flow �
    non-candidate guard fails scenario (a), and mislabelling the audit action fails scenario (b).
    The end-to-end CLI leg (generate → review → promote → audit) was already covered in
    `apps/cli/src/skills-command.test.ts`.
-2. **Skill freshness over time** [P3] — `signature recurrence matcher` will recompute
-   candidates based on new failures; an existing verified skill becomes stale when its
-   underlying signature no longer matches recent failures. Add a "skill validity / decay"
-   pass that flips verified skills back to candidate-or-archived when their match count
-   drops below a threshold.
+2. ~~**Skill freshness over time**~~ ✅ Closed (2026-10-15): landed as a **report-first decay
+   pass + explicit retire**, not a flip-back. The follow-up's wording ("flips verified skills
+   back to candidate-or-archived") contradicted ADR-0009 rule 4 — `verified → candidate` is not
+   a legal `SKILL_TRANSITIONS` edge (a served artifact never silently reverts to the review
+   queue), and deprecation "mirrors Memp's explicit deprecation rather than silent removal."
+   As built: `runSkillFreshness` (`packages/consolidation/src/skills/freshness.ts`) reads every
+   SERVED skill (`verified | promoted`), resolves each cited failure's `signature_hash` through
+   `Store.getMemory`, and checks it against the same `listFailureRecurrences` pool the
+   generation gate reads — reporting `stale` when NO cited signature still recurs, with the
+   evidence (recurring signatures, `last_recurred_at`) and honest edges (unreadable cited
+   failures are counted in `unresolved_failure_ids` and warned, never judged stale; a capped
+   pool scan warns). It mutates nothing. The acting half is `onemem skills deprecate <id>
+   --note <why>` (the note required — deprecated is terminal and the reason is audited; the
+   on-disk SKILL.md is deliberately never deleted). Both surfaces ride the existing audited
+   `updateSkillStatus` / `memory_events` path. Pinned in `freshness.test.ts` (8 tests over the
+   `FakeSkillStore`, mutation-verified: forcing `stale = false` fails two) plus the end-to-end
+   CLI leg in `skills-command.test.ts` (fresh report, human mode, required-note refusal,
+   unknown-id refusal, audited flip, terminal refusal, deprecated rows exit the assessment).
 3. **Skill missions→AGENTS.md / SKILL.md write surface** [P3] — Claude Code and OpenCode
    both consume `SKILL.md` files from a project-local or global path. The filesystem
    write is correct today; the canonical *location* and `manifest.json` (per the runtime's

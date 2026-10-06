@@ -254,6 +254,81 @@ export interface SkillGenerationReport {
 }
 
 // ---------------------------------------------------------------------------
+// Freshness / decay (M15 follow-up 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * ADR-0009 rule 4: the lifecycle is `candidate → verified → promoted → deprecated`, and
+ * deprecation "mirrors Memp's explicit deprecation rather than silent removal". A verified skill
+ * whose underlying failure signature stops recurring is therefore a CANDIDATE FOR DEPRECATION —
+ * this pass only reports it; the flip to `deprecated` is the operator's (`onemem skills
+ * deprecate`), audited like every other transition.
+ *
+ * (`verified → candidate` is deliberately not a legal edge — a served artifact never silently
+ * reverts to the review queue. Decay is reported, and retiring is explicit.)
+ */
+export const SkillFreshnessConfigSchema = z.looseObject({
+  /** Recent failures scanned per pass (bounded; truncated runs are reported, never silent). */
+  poolLimit: z.number().int().min(10).max(MAX_SKILL_POOL_LIMIT).optional(),
+  /** Skills assessed per pass (bounded, newest-updated first). */
+  skillLimit: z.number().int().min(1).max(1000).optional(),
+});
+export type SkillFreshnessConfigInput = z.input<typeof SkillFreshnessConfigSchema>;
+
+export interface SkillFreshnessConfig {
+  poolLimit: number;
+  skillLimit: number;
+}
+
+export const DEFAULT_SKILL_FRESHNESS_CONFIG: SkillFreshnessConfig = {
+  poolLimit: DEFAULT_SKILL_POOL_LIMIT,
+  skillLimit: 200,
+};
+
+/** Merge a config input over the defaults (Zod-validated at the boundary). */
+export function resolveSkillFreshnessConfig(
+  input?: SkillFreshnessConfigInput,
+): SkillFreshnessConfig {
+  const parsed = input === undefined ? {} : SkillFreshnessConfigSchema.parse(input);
+  return {
+    poolLimit: parsed.poolLimit ?? DEFAULT_SKILL_FRESHNESS_CONFIG.poolLimit,
+    skillLimit: parsed.skillLimit ?? DEFAULT_SKILL_FRESHNESS_CONFIG.skillLimit,
+  };
+}
+
+/** One assessed skill — the decay signal plus the evidence behind it. */
+export interface SkillFreshnessRecord {
+  skill_id: string;
+  name: string;
+  status: SkillStatus;
+  /** The signature hashes of the failures the skill cites (deduped, in stored order). */
+  signatures: string[];
+  /** Cited failures whose payload could not be re-read (missing or superseded) — never silent. */
+  unresolved_failure_ids: string[];
+  /** Cited signatures still present in the recent failure pool. */
+  recurring_signatures: string[];
+  /** True when NO cited signature recurs — the decay signal (reported, never a silent flip). */
+  stale: boolean;
+  /** The most recent occurrence among the recurring signatures, when any. */
+  last_recurred_at: string | null;
+}
+
+export interface SkillFreshnessReport {
+  ran_at: string;
+  scope: { project_id: string | null };
+  /** The recent failure pool the pass scanned (truncated: the read cap was reached). */
+  pool: { failures: number; truncated: boolean };
+  skills: {
+    assessed: number;
+    stale: number;
+    fresh: number;
+    records: SkillFreshnessRecord[];
+  };
+  /** Degradations and unreadable evidence — never silent (memory-model.md §1.6). */
+  warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Usage tracking (M15 AC5 — the read side only; the write side is a future session hook)
 // ---------------------------------------------------------------------------
 

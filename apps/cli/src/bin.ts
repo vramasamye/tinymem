@@ -32,6 +32,8 @@ import { runSkillsGenerate } from './commands/skills-generate';
 import { runSkillsList } from './commands/skills-list';
 import { runSkillsReview } from './commands/skills-review';
 import { runSkillsPromote } from './commands/skills-promote';
+import { runSkillsFreshness } from './commands/skills-freshness';
+import { runSkillsDeprecate } from './commands/skills-deprecate';
 
 export interface MainDeps {
   /** Injected stdout (tests capture it; `--json` still routes through it). */
@@ -626,6 +628,52 @@ common(program.command('digest'))
             env,
             skillId: id,
             ...(options.dir === undefined ? {} : { dir: String(options.dir) }),
+            ...(options.note === undefined ? {} : { note: String(options.note) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(skills.command('freshness'))
+    .description(
+      'the decay pass, read-only: report every served (verified|promoted) skill whose cited ' +
+        'failure signature no longer recurs — stale skills are REPORTED, never flipped',
+    )
+    .option('--skill-limit <n>', 'cap on skills assessed per run (default 200)')
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runSkillsFreshness(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            ...(options.skillLimit === undefined ? {} : { skillLimit: Number(options.skillLimit) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(skills.command('deprecate <id>'))
+    .description(
+      'retire a skill explicitly (audited): the verified|promoted → deprecated edge ADR-0009 ' +
+        'rule 4 reserves for the operator — the acting half of the freshness report',
+    )
+    // NOTE: not commander's requiredOption — that path calls process.exit before the JSON error
+    // surface can answer; the command itself refuses (same shape as every other refusal).
+    .option('--note <reason>', 'why (required: deprecated is terminal, the reason is audited)')
+    .action(async (id: string, options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runSkillsDeprecate(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            env,
+            skillId: id,
             ...(options.note === undefined ? {} : { note: String(options.note) }),
           },
           io,

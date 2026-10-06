@@ -37,6 +37,13 @@ agent-authored Markdown skills where the memory service itself makes no LLM call
 - Skills are diffable, auditable artifacts with provenance to the failures that produced them.
 - The engine never auto-writes into an agent's skill directory without the promotion flow —
   candidates live in the DB until reviewed.
+- **Decay is reported, retiring is explicit** (rule 4, as-built M15 follow-up 2): a served
+  (`verified`/`promoted`) skill whose cited failure signature no longer recurs in the
+  recurrence pool is reported `stale` by the read-only freshness pass (`onemem skills
+  freshness`) — never flipped back to `candidate` (not a legal edge; a served artifact does
+  not silently revert to the review queue) and never auto-deprecated. Retiring is the
+  operator's `onemem skills deprecate <id> --note <why>` over the legal `→ deprecated` edge
+  (the reason is required and audited; the on-disk SKILL.md is never deleted by the engine).
 - Failure-mine quality depends on the extraction layer's error/resolution capture (backlog M3b).
 
 ## References

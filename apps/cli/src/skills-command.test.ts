@@ -336,6 +336,82 @@ describe('onemem skills', () => {
     expect(snapshot.usage_count).toBe(0); // the write side is future work — read-only today
   }, 30_000);
 
+  test('freshness reports the served skill as fresh — read-only, the row never flips', async () => {
+    // Rides the world the first test built (init → seed → generate → promote): the verified
+    // skill's cited signature is still in the current failure pool, so it is FRESH.
+    const report = await cli(['skills', 'freshness', '--cwd', root, '--json']);
+    expect(report.exitCode).toBe(0);
+    const json = jsonOf(report);
+    expect(json.scope.project_id).toBe(projectId);
+    expect(json.pool.failures).toBe(8);
+    expect(json.skills.assessed).toBe(1);
+    expect(json.skills.fresh).toBe(1);
+    expect(json.skills.stale).toBe(0);
+    expect(json.warnings).toEqual([]);
+    const record = json.skills.records[0];
+    expect(record.status).toBe('verified');
+    expect(record.signatures).toEqual(['sig-oom']); // deduped across the two cited failures
+    expect(record.recurring_signatures).toEqual(['sig-oom']);
+    expect(record.stale).toBeFalse();
+    expect(record.last_recurred_at).toBe('2026-03-10T09:00:00.000Z'); // newest pool row of the signature
+    expect(record.unresolved_failure_ids).toEqual([]);
+
+    // Human mode explains the same answer.
+    const human = await cli(['skills', 'freshness', '--cwd', root]);
+    expect(human.exitCode).toBe(0);
+    expect(human.out).toContain('skill freshness: 1 served (1 fresh, 0 stale)');
+    expect(human.out).toContain('fresh  cloud-run-deploy-failed-with-oom (verified)');
+
+    // The report mutated nothing.
+    const listed = await cli(['skills', 'list', '--cwd', root, '--json']);
+    expect(jsonOf(listed).skills[0].status).toBe('verified');
+  }, 60_000);
+
+  test('deprecate is the explicit, audited retire — reason required, terminal, refuses cleanly', async () => {
+    const listed = await cli(['skills', 'list', '--cwd', root, '--json']);
+    const skillId = jsonOf(listed).skills[0].id;
+
+    // A retire without a reason is refused (deprecated is terminal — the reason is audited).
+    const noNote = await cli(['skills', 'deprecate', skillId, '--cwd', root, '--json']);
+    expect(noNote.exitCode).toBe(1);
+    expect(jsonOf(noNote).error.message).toContain('--note');
+
+    // An unknown id refuses cleanly, like review/promote do.
+    const unknown = await cli([
+      'skills', 'deprecate', '0192f3c0-0000-7000-8000-0000000000ff',
+      '--note', 'decay', '--cwd', root, '--json',
+    ]);
+    expect(unknown.exitCode).toBe(1);
+    expect(jsonOf(unknown).error.message).toContain('not found');
+
+    // The explicit flip, in human mode (the audit rides the same memory_events path; the
+    // operator-facing answer — including "the artifact is yours, not silently deleted" — is
+    // what this run pins). verified → deprecated is a legal SKILL_TRANSITIONS edge.
+    const deprecated = await cli([
+      'skills', 'deprecate', skillId,
+      '--note', 'the OOM signature stopped recurring (skills freshness)',
+      '--cwd', root,
+    ]);
+    expect(deprecated.exitCode).toBe(0);
+    expect(deprecated.out).toContain('deprecated cloud-run-deploy-failed-with-oom → deprecated');
+    expect(deprecated.out).toContain('reason:    the OOM signature stopped recurring (skills freshness)');
+    expect(deprecated.out).toContain('artifact:  skills/cloud-run-deploy-failed-with-oom/SKILL.md on disk is NOT deleted');
+    expect(existsSync(join(root, 'skills', 'cloud-run-deploy-failed-with-oom', 'SKILL.md'))).toBeTrue();
+
+    // Deprecation is explicit, never silent removal: the queue still shows the row.
+    const after = await cli(['skills', 'list', '--cwd', root, '--json']);
+    expect(jsonOf(after).skills[0].status).toBe('deprecated');
+
+    // Deprecated is terminal — a second retire refuses.
+    const again = await cli(['skills', 'deprecate', skillId, '--note', 'again', '--cwd', root, '--json']);
+    expect(again.exitCode).toBe(1);
+    expect(jsonOf(again).error.message).toContain('terminal');
+
+    // The decay pass assesses only SERVED stages — a deprecated row is no longer assessed.
+    const fresh = await cli(['skills', 'freshness', '--cwd', root, '--json']);
+    expect(jsonOf(fresh).skills.assessed).toBe(0);
+  }, 60_000);
+
   test('refuses cleanly without an initialized project', async () => {
     const empty = join(
       process.env.TMPDIR ?? '/tmp',
@@ -348,6 +424,8 @@ describe('onemem skills', () => {
         ['skills', 'list'],
         ['skills', 'review', '0192f3c0-0000-7000-8000-000000000001'],
         ['skills', 'promote', '0192f3c0-0000-7000-8000-000000000001'],
+        ['skills', 'freshness'],
+        ['skills', 'deprecate', '0192f3c0-0000-7000-8000-000000000001', '--note', 'decay'],
       ]) {
         const result = await cli([...argv, '--cwd', empty, '--json']);
         expect(result.exitCode).toBe(1);
