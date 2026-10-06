@@ -1,0 +1,67 @@
+{
+  "schema_version": "1",
+  "metric": "memory_pollution",
+  "generated_at": "2026-10-06T06:45:15.277Z",
+  "engine": {
+    "profile": "embedded",
+    "embedder": "none (lexical + graph default)",
+    "extraction": "heuristic (no-LLM baseline)"
+  },
+  "stale_cited": {
+    "window_days": 30,
+    "count": 1,
+    "memories": [
+      {
+        "label": "Version: Node 18",
+        "status": "archived",
+        "last_accessed_at": "2026-10-03T10:00:00.000Z",
+        "access_count": 1
+      }
+    ]
+  },
+  "duplicates": {
+    "cosine_threshold": 0.97,
+    "count": 1,
+    "pairs": [
+      {
+        "a": "always run bun install before bun test in ci",
+        "b": "Always run bun install before bun test in CI.",
+        "type": "procedural",
+        "cosine": 1
+      }
+    ]
+  },
+  "unresolved_contradictions": {
+    "count": 1,
+    "memories": [
+      {
+        "label": "Decision: use PostgreSQL with pgvector as the only database dial…",
+        "status": "active",
+        "expected_mark": "superseded"
+      }
+    ]
+  },
+  "gates": [
+    {
+      "metric": "stale_cited_memories",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "max",
+      "passed": true
+    },
+    {
+      "metric": "duplicate_surfaced_pairs",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "max",
+      "passed": true
+    },
+    {
+      "metric": "unresolved_contradicted_memories",
+      "actual": 1,
+      "threshold": 1,
+      "comparison": "max",
+      "passed": true
+    }
+  ]
+}
