@@ -10,7 +10,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { loadConfig } from '@onememory/config';
@@ -441,3 +441,125 @@ describe('onemem skills', () => {
 function candidatePathOf(): string {
   return 'skills/cloud-run-deploy-failed-with-oom/SKILL.md';
 }
+
+describe('onemem skills promote — the configurable write surface (M15 follow-up 3)', () => {
+  let surfaceRoot: string;
+  const AT = (day: number): string => `2026-04-${String(day).padStart(2, '0')}T09:00:00.000Z`;
+
+  beforeAll(() => {
+    surfaceRoot = join(
+      process.env.TMPDIR ?? '/tmp',
+      `onemem-skills-surface-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    mkdirSync(surfaceRoot, { recursive: true });
+  });
+
+  afterAll(() => {
+    rmSync(surfaceRoot, { recursive: true, force: true });
+  });
+
+  test('--runtime writes into the runtime canonical root; skills.dir sets the default; bad flags refuse', async () => {
+    const initialized = await cli(['init', '--preset', 'local', '--name', 'surface-demo', '--cwd', surfaceRoot, '--json']);
+    expect(initialized.exitCode).toBe(0);
+    const surfaceProjectId: string = jsonOf(initialized).project.id;
+
+    // Two qualified groups (two signatures × 2 solved+verified) → two promotable candidates.
+    const loaded = loadConfig({ cwd: surfaceRoot });
+    const storage = await createEmbeddedDb(loaded.paths.data_dir, { migrate: false });
+    try {
+      const source = await storage.store.createSource({
+        kind: 'conversation',
+        uri: 'conversation/session/surface',
+        title: 'surface session',
+        project_id: surfaceProjectId,
+      });
+      const seed = (input: Parameters<typeof seedFailure>[1]) => seedFailure(storage, input);
+      await seed({
+        projectId: surfaceProjectId, sourceId: source.id, entityName: 'cloud-run', signature: 'sig-oom',
+        problem: 'Cloud Run deploy failed with OOM during the build step.',
+        context: 'Cloud Run 2 GiB default memory limit.',
+        solution: 'Raise the memory limit to 4 GiB in service.yaml and redeploy.',
+        verification: 'gcloud run deploy exited 0.', status: 'solved', at: AT(2),
+      });
+      await seed({
+        projectId: surfaceProjectId, sourceId: source.id, entityName: 'cloud-run', signature: 'sig-oom',
+        problem: 'Cloud Run deploy failed with OOM during the build step again.',
+        context: 'Cloud Run 2 GiB default memory limit.',
+        solution: 'Raise the memory limit to 4 GiB in service.yaml, then redeploy.',
+        verification: 'gcloud run deploy exited 0 under 4 GiB.', status: 'verified', at: AT(9),
+      });
+      await seed({
+        projectId: surfaceProjectId, sourceId: source.id, entityName: 'postgres', signature: 'sig-conn',
+        problem: 'Postgres reports too many connections when running the suite.',
+        context: 'Server profile, Docker Postgres 17.',
+        solution: 'Raise max_connections to 200 and restart the container.',
+        verification: 'The suite runs under the limit.', status: 'solved', at: AT(5),
+      });
+      await seed({
+        projectId: surfaceProjectId, sourceId: source.id, entityName: 'postgres', signature: 'sig-conn',
+        problem: 'Postgres reports too many connections when running the suite again.',
+        context: 'Server profile, Docker Postgres 17.',
+        solution: 'Raise max_connections to 200, then restart the container.',
+        verification: 'The suite passes with no connection errors.', status: 'verified', at: AT(6),
+      });
+    } finally {
+      await storage.close(); // one owner per data dir (ADR-0002) — the CLI opens it next
+    }
+
+    expect((await cli(['skills', 'generate', '--cwd', surfaceRoot, '--json'])).exitCode).toBe(0);
+    const queue = (jsonOf(await cli(['skills', 'list', '--cwd', surfaceRoot, '--json'])).skills as Array<{
+      id: string;
+      name: string;
+      status: string;
+    }>);
+    expect(queue).toHaveLength(2);
+    const oom = queue.find((entry) => entry.name.includes('oom'))!;
+    const conn = queue.find((entry) => entry.name.includes('postgres'))!;
+    expect(oom.status).toBe('candidate');
+
+    // --- --runtime: the file lands in that runtime's own skills root ---------------------
+    const promoted = await cli(['skills', 'promote', oom.id, '--cwd', surfaceRoot, '--runtime', 'cursor', '--json']);
+    expect(promoted.exitCode).toBe(0);
+    const document = jsonOf(promoted);
+    expect(document.skills_root_source).toBe('runtime-flag');
+    const cursorPath = join(surfaceRoot, '.cursor', 'skills', oom.name, 'SKILL.md');
+    expect(document.written_path).toBe(cursorPath);
+    expect(existsSync(cursorPath)).toBeTrue();
+    expect(readFileSync(cursorPath, 'utf-8')).toContain(`name: ${oom.name}`);
+    // NOT in the plain default location — the runtime root was chosen.
+    expect(existsSync(join(surfaceRoot, 'skills', oom.name, 'SKILL.md'))).toBeFalse();
+
+    // The audit records how the directory was chosen.
+    const reviewed = await cli(['skills', 'review', oom.id, '--cwd', surfaceRoot, '--json']);
+    const flip = (jsonOf(reviewed).audit as Array<{ action: string; details: Record<string, unknown> }>).find(
+      (entry) => entry.action === 'status_changed',
+    )!;
+    expect(flip.details['skills_root_source']).toBe('runtime-flag');
+    expect(flip.details['skills_root']).toBe(join(surfaceRoot, '.cursor', 'skills'));
+
+    // --- skills.dir in the config sets the default --------------------------------------
+    const configPath = loaded.paths.config_path;
+    expect(configPath).not.toBeNull();
+    const yaml = readFileSync(configPath!, 'utf-8');
+    expect(yaml).toContain('skills: {}');
+    writeFileSync(configPath!, yaml.replace(/^skills: \{\}$/m, 'skills:\n  dir: .opencode/skills'), 'utf-8');
+
+    const promoted2 = await cli(['skills', 'promote', conn.id, '--cwd', surfaceRoot, '--json']);
+    expect(promoted2.exitCode).toBe(0);
+    const document2 = jsonOf(promoted2);
+    expect(document2.skills_root_source).toBe('config');
+    const opencodePath = join(surfaceRoot, '.opencode', 'skills', conn.name, 'SKILL.md');
+    expect(document2.written_path).toBe(opencodePath);
+    expect(existsSync(opencodePath)).toBeTrue();
+
+    // --- the flag refusals (both fail before storage opens) -----------------------------
+    const both = await cli(['skills', 'promote', oom.id, '--cwd', surfaceRoot, '--dir', '/tmp/x', '--runtime', 'cursor', '--json']);
+    expect(both.exitCode).toBe(1);
+    expect(jsonOf(both).error.message).toContain('not both');
+
+    const unknownRuntime = await cli(['skills', 'promote', oom.id, '--cwd', surfaceRoot, '--runtime', 'claude', '--json']);
+    expect(unknownRuntime.exitCode).toBe(1);
+    expect(jsonOf(unknownRuntime).error.message).toContain('unknown runtime');
+    expect(jsonOf(unknownRuntime).error.message).toContain('claude-code');
+  }, 120_000);
+});

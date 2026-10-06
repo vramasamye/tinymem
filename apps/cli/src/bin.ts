@@ -615,7 +615,8 @@ common(program.command('digest'))
 
   common(skills.command('promote <id>'))
     .description('flip candidate → verified (audited) and write skills/<name>/SKILL.md — the human confirmation of the review flow')
-    .option('--dir <dir>', 'skills directory to write into (default: <project root>/skills; Claude Code reads .claude/skills)')
+    .option('--dir <dir>', 'skills directory to write into (highest precedence)')
+    .option('--runtime <id>', 'write into a runtime\'s own skills root: claude-code | codex | cursor | pi | opencode')
     .option('--note <reason>', 'why (recorded in the audit trail)')
     .action(async (id: string, options) => {
       const io = ioFor(options);
@@ -628,6 +629,7 @@ common(program.command('digest'))
             env,
             skillId: id,
             ...(options.dir === undefined ? {} : { dir: String(options.dir) }),
+            ...(options.runtime === undefined ? {} : { runtime: String(options.runtime) }),
             ...(options.note === undefined ? {} : { note: String(options.note) }),
           },
           io,
