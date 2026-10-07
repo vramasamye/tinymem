@@ -121,11 +121,23 @@ export async function createOnememoryMcpContext(
   const workspaceHint = env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR !== '' ? env.CLAUDE_PROJECT_DIR : null;
 
   // Injected engine (daemon mode) wins: one cache domain across the REST and MCP surfaces.
-  // Otherwise the engine rides the storage opened above, vector channel matched to the embedder.
-  const engine = injectedEngine ?? createRetrievalEngine(storage, { embedder, now });
+  // Otherwise the engine rides the storage opened above, vector channel matched to the embedder,
+  // with scope admission (M17) wired to the same cached local user the rest of the context uses.
+  let cachedLocalUserId: string | null = null;
+  const ensureLocalUserId = async (): Promise<string> => {
+    if (cachedLocalUserId === null) {
+      const user = await sourcesRepo.ensureLocalUser(storage.client);
+      cachedLocalUserId = user.id;
+    }
+    return cachedLocalUserId;
+  };
+  const engine = injectedEngine ?? createRetrievalEngine(storage, {
+    embedder,
+    now,
+    resolveUserId: () => ensureLocalUserId().catch(() => null),
+  });
 
   const actor = `agent:${config.agentId}`;
-  let cachedLocalUserId: string | null = null;
 
   return {
     storage,
@@ -150,11 +162,7 @@ export async function createOnememoryMcpContext(
       return { value: result.value as T, redactions: result.redactions };
     },
     async localUserId(): Promise<string> {
-      if (cachedLocalUserId === null) {
-        const user = await sourcesRepo.ensureLocalUser(storage.client);
-        cachedLocalUserId = user.id;
-      }
-      return cachedLocalUserId;
+      return ensureLocalUserId();
     },
     invalidateSearchCache(projectId?: string): void {
       engine.invalidateCache(projectId);

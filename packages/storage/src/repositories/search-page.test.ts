@@ -19,7 +19,8 @@ import {
   type FixtureContext,
   type StorageHandle,
 } from '../integration/harness';
-import { listMemoryPage, type CandidateFilter, type MemoryPageCursor } from './search';
+import { ensureLocalUser } from './projects';
+import { listMemoryPage, planFilter, type CandidateFilter, type MemoryPageCursor } from './search';
 
 const TYPES = ['episodic', 'semantic', 'procedural', 'decision', 'failure', 'preference'] as const;
 
@@ -101,12 +102,71 @@ async function scenario(storage: OnememoryStorage): Promise<void> {
   expect(active.flat()).toEqual(expected.slice(1));
 }
 
+/**
+ * The M17 scope union: a project-scoped query admits the project's rows PLUS the caller's
+ * user-level rows (project_id IS NULL AND user_id = caller) — and nothing else. Other projects'
+ * rows and unowned global rows stay out.
+ */
+async function scenarioProjectOrUserScope(storage: OnememoryStorage): Promise<void> {
+  const ctx = await seedProjectAndSource(storage, 'scope-union');
+  const other = await seedProjectAndSource(storage, 'scope-union-other');
+  const user = await ensureLocalUser(storage.client);
+
+  const projectRow = await seed(storage, ctx, 'project fact', '2026-03-02T09:00:00.000Z');
+  const userLevel = (
+    await storage.store.insertMemory({
+      type: 'preference',
+      content: 'the user-level preference answers from any project',
+      importance: 0.6,
+      confidence: 0.8,
+      observed_at: '2026-03-02T09:00:00.000Z',
+      user_id: user.id,
+      source_id: ctx.sourceId,
+      evidence: [{ source_id: ctx.sourceId, kind: 'message', locator: 's.jsonl:user', excerpt: 'user-level' }],
+      extraction: { method: 'heuristic', prompt_version: 'scope-v1' },
+    })
+  ).memory.id;
+  const otherProjectRow = await seed(storage, other, 'other project fact', '2026-03-02T09:00:00.000Z');
+  const globalRow = await seed(storage, ctx, 'global fact', '2026-03-02T09:00:00.000Z');
+  await storage.client.query(`UPDATE memories SET project_id = NULL, user_id = NULL WHERE id = $1::uuid`, [globalRow]);
+
+  const filter: CandidateFilter = {
+    statuses: MEMORY_STATUSES,
+    window: { kind: 'overlap', from: null, until: null },
+    projectOrUser: { projectId: ctx.projectId, userId: user.id },
+  };
+  const ids = (await walk(storage, filter, 50)).flat().sort();
+  expect(ids).toEqual([projectRow, userLevel].sort());
+  expect(ids).not.toContain(otherProjectRow);
+  expect(ids).not.toContain(globalRow);
+
+  // The pure project scope (no union) stays exactly the project's rows.
+  const projectOnly = (
+    await walk(storage, { ...filter, projectOrUser: undefined, projectId: ctx.projectId }, 50)
+  ).flat();
+  expect(projectOnly.sort()).toEqual([projectRow].sort());
+
+  // The two scope modes are mutually exclusive — an ambiguous filter fails closed.
+  expect(() =>
+    planFilter({ ...filter, projectId: ctx.projectId }, 1),
+  ).toThrow(/mutually exclusive/);
+}
+
 function run(name: string, open: () => Promise<StorageHandle>): void {
   describe(name, () => {
     test('keyset pages cover every row exactly once, ties and sub-millisecond rows included', async () => {
       const handle = await open();
       try {
         await scenario(handle.storage);
+      } finally {
+        await handle.close();
+      }
+    }, 30_000);
+
+    test('the project-or-user scope union admits the project plus the user level, nothing else', async () => {
+      const handle = await open();
+      try {
+        await scenarioProjectOrUserScope(handle.storage);
       } finally {
         await handle.close();
       }

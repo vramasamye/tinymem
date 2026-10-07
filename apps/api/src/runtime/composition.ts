@@ -68,6 +68,7 @@ import {
   createHandlerRegistry,
   createJobWorker,
   createServerDb,
+  sourcesRepo,
   type HandlerRegistry,
   type JobHandler,
   type JobWorker,
@@ -367,9 +368,25 @@ export async function openRuntime(options: OpenRuntimeOptions = {}): Promise<One
       'no embedder configured (embeddings.provider): search runs lexical + graph only, semantic recall is off',
     );
   }
+  let cachedLocalUserId: string | null = null;
+  async function resolveLocalUserId(): Promise<string | null> {
+    if (cachedLocalUserId !== null) return cachedLocalUserId;
+    try {
+      const user = await sourcesRepo.ensureLocalUser(storage.client);
+      cachedLocalUserId = user.id;
+      return cachedLocalUserId;
+    } catch {
+      return null; // unscoped-by-user fallback: project scope only, never a failed search
+    }
+  }
   const engine = createRetrievalEngine(engineStorage, {
     ...(embedder === null ? {} : { embedder }),
     ...(options.now === undefined ? {} : { now: options.now }),
+    // Scope admission (M17, retrieval.md §2): a project-scoped search admits the caller's
+    // user-level rows (project_id IS NULL AND user_id = caller) alongside the project's own.
+    // Local mode has exactly one user — storage owns that rule — so cache the lookup: a search
+    // must never pay for it twice, and a failure degrades to hard project scope, never an error.
+    resolveUserId: resolveLocalUserId,
   });
 
   // 4. Model router + extractor (heuristics are the zero-model baseline; the LLM path degrades).

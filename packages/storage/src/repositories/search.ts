@@ -49,6 +49,12 @@ export interface CandidateFilter {
   window: CandidateWindow;
   /** `undefined` = any project; `null` = global scope only (`project_id IS NULL`). */
   projectId?: string | null;
+  /**
+   * The M17 scope union (mutually exclusive with `projectId`): this project's rows PLUS the
+   * caller's user-level rows (`project_id IS NULL AND user_id = caller`) — so user-level
+   * memories answer from any project while other projects' rows stay out.
+   */
+  projectOrUser?: { projectId: string; userId: string };
   types?: readonly DurableMemoryType[];
   /** Candidate must be bound to ALL of these entities (search-request filter semantics). */
   requiredEntityIds?: readonly string[];
@@ -117,6 +123,18 @@ export function planFilter(filter: CandidateFilter, startIndex: number): FilterP
     clauses.push(`m.project_id IS NOT DISTINCT FROM $${i}::uuid`);
     params.push(filter.projectId);
     i += 1;
+  }
+
+  if (filter.projectOrUser !== undefined) {
+    // The M17 scope union: this project's rows PLUS the caller's user-level rows
+    // (`project_id IS NULL AND user_id = caller`). Mutually exclusive with `projectId` — an
+    // ambiguous scope is a planner bug, so it fails closed instead of guessing.
+    if (filter.projectId !== undefined) {
+      throw new TypeError('search: candidate filter projectId and projectOrUser are mutually exclusive');
+    }
+    clauses.push(`(m.project_id = $${i}::uuid OR (m.project_id IS NULL AND m.user_id = $${i + 1}::uuid))`);
+    params.push(filter.projectOrUser.projectId, filter.projectOrUser.userId);
+    i += 2;
   }
 
   for (const entityId of filter.requiredEntityIds ?? []) {
