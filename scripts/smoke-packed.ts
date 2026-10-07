@@ -94,6 +94,9 @@ function installedOnememoryPackages(nodeModules: string): string[] {
   return dirs.filter((dir) => existsSync(dir));
 }
 
+/** Test scaffolding that must never appear in an installed package (types or code). */
+const TEST_ARTIFACT_PATTERN = /(^|\/)(testing|test-support|test-world|fixtures)(\/|\.)/;
+
 /** Files in the installed packages that still carry a dev-only artifact. */
 function hygieneOffenders(nodeModules: string): string[] {
   const offenders: string[] = [];
@@ -108,7 +111,10 @@ function hygieneOffenders(nodeModules: string): string[] {
   };
   for (const pkgDir of installedOnememoryPackages(nodeModules)) {
     for (const file of walk(pkgDir)) {
-      if (file.endsWith('package.json')) {
+      const relativePath = file.slice(pkgDir.length + 1);
+      if (TEST_ARTIFACT_PATTERN.test(relativePath)) {
+        offenders.push(`${file}: test scaffolding`);
+      } else if (file.endsWith('package.json')) {
         if (readFileSync(file, 'utf8').includes('"workspace:')) offenders.push(`${file}: workspace: specifier`);
       } else if (file.endsWith('.js')) {
         if (readFileSync(file, 'utf8').startsWith('#!/usr/bin/env bun')) offenders.push(`${file}: bun shebang`);
@@ -146,7 +152,7 @@ try {
   const offenders = hygieneOffenders(join(scratch, 'node_modules'));
   check(
     offenders.length === 0,
-    `no workspace: specifiers or bun shebangs survived (${offenders.slice(0, 3).join(', ') || 'clean'})`,
+    `no test scaffolding, workspace: specifiers or bun shebangs survived (${offenders.slice(0, 3).join(', ') || 'clean'})`,
   );
 
   console.log('\ninit (a scratch project, no repo checkout)');
