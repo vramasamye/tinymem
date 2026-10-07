@@ -754,13 +754,25 @@ Signature recurrence matching → SKILL.md candidates → review/promote flow �
    `--dir` → `--runtime` → `skills.dir` → `<project root>/skills`, and the audit row records the
    chosen root plus how it was chosen. The engine already renders the `name`/`description`
    frontmatter every runtime requires with the directory named after the skill, so the same bytes
-   serve all five. Pinned by `packages/core/src/types/runtime-skills.test.ts` (11 tests),
-   `apps/cli/src/skills-target.test.ts` (precedence + refusals, 11 tests) and an end-to-end CLI
-   leg in `apps/cli/src/skills-command.test.ts`; mutation-verified (ignoring `--runtime`, or
-   ignoring `skills.dir`, fails the suite).
-4. **Skill content review UI in `apps/web`** [P3] — M10's web dashboard currently shows
-   the skills list. Add a dedicated `/skills/:id/review` route that renders the SKILL.md
-   body and exposes the `approve | reject` action surface directly (no CLI-only).
+   serve all five. Pinned by `packages/core/src/types/runtime-skills.test.ts` (the table plus the
+   precedence and refusal cases, which moved there from the CLI with the resolver in follow-up
+   4) and an end-to-end CLI leg in `apps/cli/src/skills-command.test.ts`; mutation-verified
+   (ignoring `--runtime`, or ignoring `skills.dir`, fails the suite).
+4. ~~**Skill content review UI in `apps/web`** [P3]~~ ✅ Closed (2026-10-06): the web explorer
+   has `/skills/:skillId/review`, which renders the SKILL.md bytes exactly as promotion writes
+   them, the cited failures and the audit trail, and exposes approve (promote, optionally into a
+   chosen runtime's skills root) and reject (deprecate with a required reason). `/skills` lists
+   the review queue (candidates first) with a link to each review page. The page needed a REST
+   surface the API lacked, so it ships with one: `GET /v1/projects/{id}/skills`, `GET
+   .../skills/{skillId}`, `POST .../promote` and `POST .../deprecate`, backed by
+   `apps/api/src/runtime/skills-service.ts` and the write-root resolver now in
+   `@onememory/core` (`resolveSkillsTarget`, shared with `onemem skills promote`). Every route
+   is scoped to the path project; a repeat deprecate is a 409, not a 500. Pinned by
+   `apps/api/src/runtime/skills-service.test.ts` (real PGlite), the route contract in
+   `apps/api/src/server/app.test.ts`, and the web controller, route-map and smoke tests.
+   Mutation-verified (dropping the project-scope guard, the terminal-state gate, or the evidence
+   gate fails the suite). Not built: a daemon-mode `onemem skills` CLI that routes through these
+   endpoints (the CLI still opens storage directly).
 
 ---
 

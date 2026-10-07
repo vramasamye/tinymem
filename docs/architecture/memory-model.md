@@ -262,6 +262,14 @@ be queryable, a later migration adds the column; no query consumer exists today.
   (`skills_root`, `skills_root_source`) beside `written_path`. Every runtime discovers skills by
   scanning a root for `<name>/SKILL.md` — none consumes a manifest — and the rendered
   `name`/`description` frontmatter with a directory named after the skill satisfies all five.
+- **Review surfaces** (as-built, M15 follow-up 4): the CLI, the REST API and the web explorer
+  share one service (`apps/api/src/runtime/skills-service.ts`) and one write-root resolver
+  (`resolveSkillsTarget` in `@onememory/core`). REST: `GET /v1/projects/{id}/skills` (the
+  queue), `GET .../skills/{skillId}` (row + SKILL.md bytes + audit), `POST .../promote`
+  (artifact first, then the audited `candidate → verified` flip; needs evidence) and `POST
+  .../deprecate` (terminal, reason required; a repeat is a 409). Every route is scoped to the
+  path project. The web page `/skills/:skillId/review` renders the bytes promotion would write
+  and exposes approve (promote, optionally into a runtime's root) and reject (deprecate).
 - **Decision capture**: a decision candidate must eventually carry alternatives + rationale to be
   promoted from `proposed`; otherwise it remains an episodic note.
 

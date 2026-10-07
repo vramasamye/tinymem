@@ -54,7 +54,10 @@ Two boundaries carry all the risk:
 
 1. **The `/v1/*` REST API has no authentication.** It is a loopback control plane for the CLI and
    the web explorer. Never publish it. The compose stack publishes it on `127.0.0.1` only for
-   exactly this reason.
+   exactly this reason. It also writes to the host filesystem: `POST
+   /v1/projects/{id}/skills/{skillId}/promote` accepts an explicit `dir` and writes
+   `<dir>/<name>/SKILL.md` as the daemon user, so a published `/v1` is a file-write primitive,
+   not only a data leak.
 2. **The `/mcp` endpoint is the model-facing surface.** It can be gated with OAuth 2.1
    (`--mcp-auth`), and it is the only surface that should ever face a proxy.
 
