@@ -19,11 +19,22 @@ import { scaffoldCursor } from '@onememory/adapter-cursor';
 import { scaffoldPi } from '@onememory/adapter-pi';
 import { scaffoldOpenCode } from '@onememory/adapter-opencode';
 
-import { daemonMcpUrl, evaluateRuntimeScaffold, runtimeScaffoldChecks, type RuntimeScaffoldState } from './runtime-scaffolds';
+import {
+  RUNTIME_AGENT_IDS,
+  daemonMcpUrl,
+  evaluateRuntimeScaffold,
+  runtimeScaffoldChecks,
+  type RuntimeScaffoldState,
+  type WiredRuntime,
+} from './runtime-scaffolds';
 
 const URL_7331 = 'http://127.0.0.1:7331/mcp';
 const PROJECT_ID = '01900000-0000-7000-8000-0000000000d1';
-const CONTEXT = { expectedUrl: URL_7331, storageProfile: 'embedded' as const };
+/** The per-runtime URL the wire step writes (M17: identity rides the `?agent=` param). */
+function runtimeUrl(runtime: WiredRuntime): string {
+  return `${URL_7331}?agent=${RUNTIME_AGENT_IDS[runtime]}`;
+}
+const CONTEXT = { expectedUrlOf: runtimeUrl, storageProfile: 'embedded' as const };
 
 const tempDirs: string[] = [];
 function tempDir(): string {
@@ -46,15 +57,23 @@ function writeClaude(root: string, url: string): void {
 }
 
 const complete: RuntimeScaffoldState = {
-  mcp: { path: '/p/.mcp.json', state: 'http', url: URL_7331 },
+  mcp: { path: '/p/.mcp.json', state: 'http', url: runtimeUrl('claude-code') },
   hooks: { path: '/p/.claude/settings.json', state: 'complete' },
   pointer: { path: '/p/CLAUDE.md', present: true },
 };
 
 describe('daemonMcpUrl', () => {
-  test('is http://<daemon.host>:<daemon.port>/mcp', () => {
+  test('is http://<daemon.host>:<daemon.port>/mcp, plus the identity param when given', () => {
     expect(daemonMcpUrl({ host: '127.0.0.1', port: 7331 })).toBe(URL_7331);
     expect(daemonMcpUrl({ host: 'localhost', port: 9000 })).toBe('http://localhost:9000/mcp');
+    expect(daemonMcpUrl({ host: '127.0.0.1', port: 7331 }, 'onemem-cursor')).toBe(`${URL_7331}?agent=onemem-cursor`);
+  });
+});
+
+describe('RUNTIME_AGENT_IDS', () => {
+  test('every runtime has a distinct onemem-<runtime> identity', () => {
+    expect(RUNTIME_AGENT_IDS['claude-code']).toBe('onemem-claude-code');
+    expect(new Set(Object.values(RUNTIME_AGENT_IDS)).size).toBe(5);
   });
 });
 
@@ -143,21 +162,21 @@ describe('runtimeScaffoldChecks (real files)', () => {
 
   test('scaffolds written by the adapters pass; a moved daemon port warns', () => {
     const root = tempDir();
-    writeClaude(root, URL_7331);
-    scaffoldCodex({ scope: 'project', root, projectId: PROJECT_ID, transport: 'http', url: URL_7331 });
-    scaffoldCursor({ root, projectName: 'demo', transport: 'http', url: URL_7331 });
-    scaffoldPi({ scope: 'project', root, transport: 'http', url: URL_7331 });
-    scaffoldOpenCode({ root, transport: 'http', url: URL_7331 });
+    writeClaude(root, runtimeUrl('claude-code'));
+    scaffoldCodex({ scope: 'project', root, projectId: PROJECT_ID, transport: 'http', url: runtimeUrl('codex') });
+    scaffoldCursor({ root, projectName: 'demo', transport: 'http', url: runtimeUrl('cursor') });
+    scaffoldPi({ scope: 'project', root, transport: 'http', url: runtimeUrl('pi') });
+    scaffoldOpenCode({ root, transport: 'http', url: runtimeUrl('opencode') });
     const ok = runtimeScaffoldChecks(root, { ...CONTEXT, projectId: PROJECT_ID });
     expect(ok.map((check) => check.status)).toEqual(['pass', 'pass', 'pass', 'pass', 'pass']);
 
-    const moved = runtimeScaffoldChecks(root, { ...CONTEXT, expectedUrl: 'http://127.0.0.1:7400/mcp', projectId: PROJECT_ID });
+    const moved = runtimeScaffoldChecks(root, { ...CONTEXT, expectedUrlOf: () => 'http://127.0.0.1:7400/mcp', projectId: PROJECT_ID });
     expect(moved.map((check) => check.status)).toEqual(['warn', 'warn', 'warn', 'warn', 'warn']);
   });
 
   test('a partially wired OpenCode (config but no pointer) warns with the re-run fix', () => {
     const root = tempDir();
-    scaffoldOpenCode({ root, transport: 'http', url: URL_7331 });
+    scaffoldOpenCode({ root, transport: 'http', url: runtimeUrl('opencode') });
     rmSync(join(root, '.opencode', 'onememory.md'));
     const checks = runtimeScaffoldChecks(root, CONTEXT);
     const opencode = checks.find((check) => check.id === 'runtime-opencode')!;
@@ -167,7 +186,7 @@ describe('runtimeScaffoldChecks (real files)', () => {
 
   test('a partially wired Pi (config but no extension) warns with the re-run fix', () => {
     const root = tempDir();
-    scaffoldPi({ scope: 'project', root, transport: 'http', url: URL_7331 });
+    scaffoldPi({ scope: 'project', root, transport: 'http', url: runtimeUrl('pi') });
     rmSync(join(root, '.pi', 'extensions', 'onememory.ts'));
     const checks = runtimeScaffoldChecks(root, CONTEXT);
     const pi = checks.find((check) => check.id === 'runtime-pi')!;

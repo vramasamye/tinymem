@@ -22,6 +22,8 @@ import type { Prompt, SelectOption } from './prompt';
 
 const BOOT_TIMEOUT = 60_000;
 const URL_7331 = 'http://127.0.0.1:7331/mcp';
+/** The per-runtime identity URL the wire step writes (M17: `?agent=` rides every runtime's MCP URL). */
+const urlOf = (agent: string): string => `${URL_7331}?agent=${agent}`;
 
 interface Captured {
   out: string;
@@ -178,7 +180,7 @@ describe('--with-claude --with-codex', () => {
   test('Claude Code: .mcp.json gets the daemon http entry beside the user server', () => {
     const mcp = JSON.parse(read(join(dir, '.mcp.json')));
     expect(mcp.mcpServers.context7).toEqual({ command: 'npx' });
-    expect(mcp.mcpServers.onememory).toEqual({ type: 'http', url: URL_7331 });
+    expect(mcp.mcpServers.onememory).toEqual({ type: 'http', url: urlOf('onemem-claude-code') });
   });
 
   test('Claude Code: settings.json keeps user keys + hooks and gains the onememory hooks', () => {
@@ -198,7 +200,7 @@ describe('--with-claude --with-codex', () => {
 
   test('Codex: config.toml carries url = <daemon MCP url>; hooks.json and AGENTS.md are written', () => {
     const toml = parseToml(read(join(dir, '.codex', 'config.toml'))) as Record<string, any>;
-    expect(toml['mcp_servers']['onememory']).toEqual({ url: URL_7331 });
+    expect(toml['mcp_servers']['onememory']).toEqual({ url: urlOf('onemem-codex') });
     expect(JSON.parse(read(join(dir, '.codex', 'hooks.json'))).hooks.SessionStart).toBeDefined();
     expect(read(join(dir, 'AGENTS.md'))).toContain(first.project.id);
   });
@@ -275,9 +277,9 @@ describe('--with-claude --with-codex', () => {
 
       const rewired = json(await cli(['init', '--cwd', dir, '--with-claude', '--with-codex', '--json']));
       expect(rewired.runtimes.mcp_url).toBe('http://127.0.0.1:7400/mcp');
-      expect(JSON.parse(read(join(dir, '.mcp.json'))).mcpServers.onememory.url).toBe('http://127.0.0.1:7400/mcp');
+      expect(JSON.parse(read(join(dir, '.mcp.json'))).mcpServers.onememory.url).toBe('http://127.0.0.1:7400/mcp?agent=onemem-claude-code');
       const toml = parseToml(read(join(dir, '.codex', 'config.toml'))) as Record<string, any>;
-      expect(toml['mcp_servers']['onememory']['url']).toBe('http://127.0.0.1:7400/mcp');
+      expect(toml['mcp_servers']['onememory']['url']).toBe('http://127.0.0.1:7400/mcp?agent=onemem-codex');
 
       const fresh = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
       expect(fresh.runtimes.map((check: { status: string }) => check.status)).toEqual([
@@ -323,7 +325,7 @@ describe('already initialized', () => {
       expect(result.out).toContain('skipped');
       expect(result.out).toContain('settings.json is not valid JSON and was left untouched');
       expect(result.err).toContain('left untouched');
-      expect(JSON.parse(read(join(dir, '.mcp.json'))).mcpServers.onememory.url).toBe(URL_7331);
+      expect(JSON.parse(read(join(dir, '.mcp.json'))).mcpServers.onememory.url).toBe(urlOf('onemem-claude-code'));
 
       const doctor = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
       const claude = doctor.runtimes.find((check: { id: string }) => check.id === 'runtime-claude-code');
@@ -357,7 +359,7 @@ describe('--with-cursor', () => {
 
   test('writes .cursor/mcp.json with the daemon http entry beside the user server', () => {
     const document = JSON.parse(read(join(dir, '.cursor', 'mcp.json'))) as { mcpServers: Record<string, unknown> };
-    expect(document.mcpServers['onememory']).toEqual({ url: URL_7331 });
+    expect(document.mcpServers['onememory']).toEqual({ url: urlOf('onemem-cursor') });
     expect(document.mcpServers['linear']).toEqual({ url: 'https://mcp.linear.app/sse' });
   });
 
@@ -427,7 +429,7 @@ describe('--with-cursor', () => {
       expect(staleCursor.detail).toContain('http://127.0.0.1:7400/mcp');
 
       json(await cli(['init', '--cwd', dir, '--with-cursor', '--json']));
-      expect(JSON.parse(read(join(dir, '.cursor', 'mcp.json'))).mcpServers.onememory.url).toBe('http://127.0.0.1:7400/mcp');
+      expect(JSON.parse(read(join(dir, '.cursor', 'mcp.json'))).mcpServers.onememory.url).toBe('http://127.0.0.1:7400/mcp?agent=onemem-cursor');
     },
     BOOT_TIMEOUT,
   );
@@ -453,7 +455,7 @@ describe('--with-pi', () => {
 
   test('writes .pi/mcp.json with the daemon http entry beside the user server', () => {
     const document = JSON.parse(read(join(dir, '.pi', 'mcp.json'))) as { mcpServers: Record<string, unknown> };
-    expect((document.mcpServers['onememory'] as { url: string }).url).toBe(URL_7331);
+    expect((document.mcpServers['onememory'] as { url: string }).url).toBe(urlOf('onemem-pi'));
     expect((document.mcpServers['linear'] as { url: string }).url).toBe('https://mcp.linear.app/sse');
   });
 
@@ -479,7 +481,7 @@ describe('--with-pi', () => {
       const report = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
       const pi = report.runtimes.find((check: { id: string }) => check.id === 'runtime-pi');
       expect(pi.status).toBe('pass');
-      expect(pi.detail).toContain(URL_7331);
+      expect(pi.detail).toContain(urlOf('onemem-pi'));
       const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
       expect(human.out).toContain('[ok] Pi');
 
@@ -522,7 +524,7 @@ describe('--with-opencode', () => {
       instructions: string[];
     };
     expect(document.theme).toBe('opencode');
-    expect(document.mcp['onememory']).toEqual({ type: 'remote', url: URL_7331, enabled: true });
+    expect(document.mcp['onememory']).toEqual({ type: 'remote', url: urlOf('onemem-opencode'), enabled: true });
     expect(document.mcp['filesystem']).toEqual({ type: 'local', command: ['npx', 'fs-serve'] });
     expect(document.instructions).toEqual(['.opencode/rules/team.md', '.opencode/onememory.md']);
   });
@@ -549,7 +551,7 @@ describe('--with-opencode', () => {
       const report = json(await cli(['doctor', '--cwd', dir, '--no-probe', '--json']));
       const opencode = report.runtimes.find((check: { id: string }) => check.id === 'runtime-opencode');
       expect(opencode.status).toBe('pass');
-      expect(opencode.detail).toContain(URL_7331);
+      expect(opencode.detail).toContain(urlOf('onemem-opencode'));
       const human = await cli(['doctor', '--cwd', dir, '--no-probe']);
       expect(human.out).toContain('[ok] OpenCode');
 

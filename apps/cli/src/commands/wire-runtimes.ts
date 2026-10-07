@@ -31,6 +31,7 @@ import { scaffoldCodex } from '@onememory/adapter-codex';
 import { scaffoldCursor } from '@onememory/adapter-cursor';
 import { scaffoldPi } from '@onememory/adapter-pi';
 import { scaffoldOpenCode } from '@onememory/adapter-opencode';
+import { RUNTIME_AGENT_IDS } from '@onememory/api/runtime';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';
@@ -254,16 +255,19 @@ export function runScaffoldPhase(options: ScaffoldPhaseOptions): ScaffoldPhaseRe
   }
 
   for (const runtime of options.runtimes) {
+    // M17: each runtime's URL carries its own `?agent=` identity so the daemon stamps that
+    // runtime's agent_id on every write — the audit trail says which agent remembered.
+    const mcpUrl = `${options.mcpUrl}?agent=${RUNTIME_AGENT_IDS[runtime]}`;
     result.wired.push(
       runtime === 'claude-code'
-        ? wireClaude(options.root, options.mcpUrl, options.projectName)
+        ? wireClaude(options.root, mcpUrl, options.projectName)
         : runtime === 'codex'
-          ? wireCodex(options.root, options.mcpUrl, options.projectId)
+          ? wireCodex(options.root, mcpUrl, options.projectId)
           : runtime === 'cursor'
-            ? wireCursor(options.root, options.mcpUrl, options.projectName)
+            ? wireCursor(options.root, mcpUrl, options.projectName)
             : runtime === 'pi'
-              ? wirePi(options.root, options.mcpUrl, options.projectName)
-              : wireOpenCode(options.root, options.mcpUrl, options.projectName),
+              ? wirePi(options.root, mcpUrl, options.projectName)
+              : wireOpenCode(options.root, mcpUrl, options.projectName),
     );
   }
   return result;

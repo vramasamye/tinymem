@@ -21,9 +21,26 @@ import type { DoctorCheck } from './doctor';
 /** The path the daemon mounts its MCP handler at. */
 export const DAEMON_MCP_PATH = '/mcp';
 
-/** The daemon MCP URL for a config's `daemon` section — the single source of truth. */
-export function daemonMcpUrl(daemon: { host: string; port: number }): string {
-  return `http://${daemon.host}:${daemon.port}${DAEMON_MCP_PATH}`;
+/**
+ * The per-runtime agent identity (M17): the wire step appends `?agent=<id>` to each runtime's
+ * daemon MCP URL, and the HTTP handler stamps that id as `agent_id` on every write from that
+ * runtime — the audit trail says WHICH agent remembered, not just "onememory-mcp".
+ */
+export const RUNTIME_AGENT_IDS = {
+  'claude-code': 'onemem-claude-code',
+  codex: 'onemem-codex',
+  cursor: 'onemem-cursor',
+  pi: 'onemem-pi',
+  opencode: 'onemem-opencode',
+} as const satisfies Record<WiredRuntime, string>;
+
+/**
+ * The daemon MCP URL for a config's `daemon` section — the single source of truth. `agent`
+ * (the runtime's {@link RUNTIME_AGENT_IDS} value) appends the per-request identity param.
+ */
+export function daemonMcpUrl(daemon: { host: string; port: number }, agent?: string): string {
+  const base = `http://${daemon.host}:${daemon.port}${DAEMON_MCP_PATH}`;
+  return agent === undefined ? base : `${base}?agent=${agent}`;
 }
 
 export type WiredRuntime = 'claude-code' | 'codex' | 'cursor' | 'pi' | 'opencode';
@@ -36,8 +53,8 @@ export interface RuntimeScaffoldState {
 }
 
 export interface RuntimeCheckContext {
-  /** The configured daemon MCP URL ({@link daemonMcpUrl}). */
-  expectedUrl: string;
+  /** The configured daemon MCP URL for THIS runtime ({@link daemonMcpUrl} + its identity param). */
+  expectedUrlOf(runtime: WiredRuntime): string;
   /** `embedded` storage has one owner (the daemon), so a stdio MCP entry is a hazard there. */
   storageProfile: 'embedded' | 'server';
 }
@@ -81,6 +98,7 @@ export function evaluateRuntimeScaffold(
   const problems: string[] = [];
   const notes: string[] = [];
   let fixFileFirst: string | null = null;
+  const expectedUrl = context.expectedUrlOf(runtime);
 
   switch (state.mcp.state) {
     case 'absent':
@@ -97,18 +115,18 @@ export function evaluateRuntimeScaffold(
     case 'stdio':
       if (context.storageProfile === 'embedded') {
         problems.push(
-          `${state.mcp.path} has a stdio onememory server — with embedded storage it would open the data directory beside the daemon (one owner only); init scaffolds the daemon URL ${context.expectedUrl}`,
+          `${state.mcp.path} has a stdio onememory server — with embedded storage it would open the data directory beside the daemon (one owner only); init scaffolds the daemon URL ${expectedUrl}`,
         );
       } else {
         notes.push(`MCP: stdio server in ${state.mcp.path} (safe with server-profile storage)`);
       }
       break;
     case 'http':
-      if (state.mcp.url === context.expectedUrl) {
-        notes.push(`MCP → ${context.expectedUrl} (matches daemon.host/daemon.port)`);
+      if (state.mcp.url === expectedUrl) {
+        notes.push(`MCP → ${expectedUrl} (matches daemon.host/daemon.port)`);
       } else {
         problems.push(
-          `${state.mcp.path} points MCP at ${state.mcp.url ?? '(none)'} but the configured daemon serves ${context.expectedUrl}`,
+          `${state.mcp.path} points MCP at ${state.mcp.url ?? '(none)'} but the configured daemon serves ${expectedUrl}`,
         );
       }
       break;
