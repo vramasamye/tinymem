@@ -686,10 +686,28 @@ common(program.command('digest'))
   return { program, exitCode: () => exitCode };
 }
 
+/**
+ * Restore the pre-group flag spellings `onemem auth --status` / `--logout` (dropped when auth
+ * became the login|status|logout group). Rewriting argv to the subcommand name keeps the `auth`
+ * parent option-free, which Commander 15 needs: a middle command that declares options steals
+ * the leaves' --cwd/--config/--json (verified by probe, see the auth section above). Pre-group
+ * precedence is preserved — logout wins over status (the old flat command checked it first) —
+ * and the flags only rewrite when no explicit subcommand is present.
+ */
+export function normalizeAuthAliases(argv: readonly string[]): string[] {
+  if (argv[0] !== 'auth') return [...argv];
+  const rest = argv.slice(1);
+  if (rest.includes('login') || rest.includes('status') || rest.includes('logout')) return [...argv];
+  const wantsLogout = rest.includes('--logout');
+  if (!wantsLogout && !rest.includes('--status')) return [...argv];
+  const subcommand = wantsLogout ? 'logout' : 'status';
+  return ['auth', subcommand, ...rest.filter((token) => token !== '--status' && token !== '--logout')];
+}
+
 /** Parse and run. Returns the process exit code without ever calling process.exit (tests need that). */
 export async function main(argv: string[], deps: MainDeps = {}): Promise<number> {
   const { program, exitCode } = buildProgram(deps);
-  await program.parseAsync(argv, { from: 'user' });
+  await program.parseAsync(normalizeAuthAliases(argv), { from: 'user' });
   return exitCode();
 }
 

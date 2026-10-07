@@ -272,3 +272,62 @@ describe('onemem auth login', () => {
     expect(result.err).toContain('--issuer');
   });
 });
+
+describe('onemem auth --status / --logout (the restored pre-group flag spellings)', () => {
+  let as: FakeAuthorizationServer;
+
+  beforeAll(async () => {
+    as = await startFakeAuthorizationServer();
+  });
+
+  afterAll(async () => {
+    await as.close();
+  });
+
+  test('--status reports an unconfigured credential exactly like the status subcommand', async () => {
+    const cwd = freshProjectDir();
+    const result = await authCli(['auth', '--status', '--cwd', cwd]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.out).toContain('no OAuth credential configured');
+    expect(result.out).toContain('onemem auth login --server-url');
+  });
+
+  test('--status reports the live credential, and --logout removes it (both spellings, one login)', async () => {
+    const cwd = freshProjectDir();
+    await authCli(['auth', 'login', '--server-url', as.resourceUrl, '--cwd', cwd]);
+
+    const status = await authCli(['auth', '--status', '--json', '--cwd', cwd]);
+    expect(status.exitCode).toBe(0);
+    expect(JSON.parse(status.out)).toMatchObject({
+      configured: true,
+      issuer: as.asUrl,
+      hasRefreshToken: true,
+      hasClientRegistration: true,
+    });
+
+    const logout = await authCli(['auth', '--logout', '--cwd', cwd]);
+    expect(logout.exitCode).toBe(0);
+    expect(logout.out).toContain('removed the OAuth credential');
+
+    const after = await authCli(['auth', '--status', '--cwd', cwd]);
+    expect(after.exitCode).toBe(1);
+    expect(after.out).toContain('no OAuth credential configured');
+  });
+
+  test('pre-group precedence holds: --logout wins when both flags are given', async () => {
+    const cwd = freshProjectDir();
+    await authCli(['auth', 'login', '--server-url', as.resourceUrl, '--cwd', cwd]);
+
+    const result = await authCli(['auth', '--logout', '--status', '--cwd', cwd]);
+    expect(result.exitCode).toBe(0);
+    expect(result.out).toContain('removed the OAuth credential');
+  });
+
+  test('the rewrite never fires for an explicit subcommand: login keeps its own flags', async () => {
+    const cwd = freshProjectDir();
+    const result = await authCli(['auth', 'login', '--cwd', cwd]);
+    expect(result.exitCode).toBe(1);
+    expect(result.err).toContain('onemem auth login needs a target');
+  });
+});
