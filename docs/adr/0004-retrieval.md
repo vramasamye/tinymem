@@ -49,3 +49,24 @@ The pipeline in `docs/architecture/retrieval.md`:
 
 `docs/research/memory-systems-landscape.md` adopt-items 4–5, 13; `docs/architecture/retrieval.md`
 (normative); `docs/research/dependency-verification.md` §11 (reranker verdict).
+
+## Amendment (2026-10-07): scope admission is hard, and it is a union (M17)
+
+Scope was previously a *soft* signal only: `w_proj` ranked same-project above cross-project, while
+candidate generation applied no project predicate at all. Another project's rows could therefore
+enter the candidate set and be ranked into an answer (the explain decomposition pinned it as the
+factor `cross-project memory`). Normative from `mission/17-scope-identity`:
+
+- A **project-scoped** request (`project_id` present) admits exactly two row sets: that project's
+  own rows, plus the calling user's user-level rows (`project_id IS NULL AND user_id = caller`).
+  No other project's row enters any channel. Implemented as `CandidateFilter.projectOrUser`
+  (`packages/storage/src/repositories/search.ts`, mutually exclusive with `projectId`, failing
+  closed on both) and selected by the engine when a user resolver is injected
+  (`RetrievalEngineOptions.resolveUserId`).
+- Without a resolvable caller, a project-scoped request is **hard project scope**: the union's
+  second arm is simply absent. Cross-project leakage is closed either way.
+- `w_proj` remains a ranker **within** the admitted set (0.7 still occurs for unscoped requests):
+  §5's scoring table is unchanged, only the admission rule around it is new.
+- Unscoped requests (no `project_id` — reachable only when no project is registered) keep
+  any-project semantics as the wire contract documents.
+

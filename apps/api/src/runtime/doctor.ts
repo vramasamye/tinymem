@@ -35,7 +35,7 @@ import { PATTERN_GROUPS } from '@onememory/security';
 import { DEFAULT_VECTOR_CONFIG } from '@onememory/storage';
 
 import type { OnememoryRuntime } from './composition';
-import { daemonMcpUrl, runtimeScaffoldChecks } from './runtime-scaffolds';
+import { RUNTIME_AGENT_IDS, daemonMcpUrl, runtimeScaffoldChecks } from './runtime-scaffolds';
 import { ONEMEMORY_VERSION } from './version';
 
 /**
@@ -573,7 +573,7 @@ export async function inspectRuntime(
 
   const projectId = runtime.loaded.project_state?.project_id;
   const runtimes = runtimeScaffoldChecks(runtime.loaded.paths.root, {
-    expectedUrl: daemonMcpUrl(runtime.config.daemon),
+    expectedUrlOf: (wired) => daemonMcpUrl(runtime.config.daemon, RUNTIME_AGENT_IDS[wired]),
     storageProfile: runtime.storage.profile,
     ...(projectId === undefined ? {} : { projectId }),
   });

@@ -39,6 +39,50 @@ export interface CreateStreamableHttpOptions extends BuildServerOptions {
 }
 
 /**
+ * The per-request agent id pattern (M17 per-runtime identity): the wire step appends
+ * `?agent=onemem-<runtime>` to each runtime's MCP URL so every client identifies itself on
+ * every request. Same charset discipline as `config.agentId` examples — a URL-safe slug.
+ */
+const AGENT_PARAM_PATTERN = /^[A-Za-z0-9._@-]{1,120}$/;
+
+/** The validated `?agent=` value, or null when the request carries none. */
+export function agentFromRequest(request: Request | undefined): string | null {
+  if (request === undefined) return null;
+  const agent = new URL(request.url).searchParams.get('agent');
+  if (agent === null || agent === '') return null;
+  return AGENT_PARAM_PATTERN.test(agent) ? agent : null;
+}
+
+/** The invalid `?agent=` value when the request carries one the pattern rejects, else null. */
+function invalidAgentOf(request: Request): string | null {
+  const agent = new URL(request.url).searchParams.get('agent');
+  if (agent === null || agent === '') return null;
+  return AGENT_PARAM_PATTERN.test(agent) ? null : agent;
+}
+
+function invalidAgentResponse(agent: string): Response {
+  return new Response(
+    JSON.stringify({
+      error: {
+        code: 'invalid_request',
+        message:
+          `invalid ?agent= value ${JSON.stringify(agent)}: expected 1..120 characters of A-Z a-z 0-9 . _ @ - ` +
+          '— the daemon URL is machine-written by onemem init; edit it there, never by hand',
+      },
+    }),
+    { status: 400, headers: { 'content-type': 'application/json' } },
+  );
+}
+
+/** A per-request context view: the shared storage/engine/cache with this request's identity. */
+function contextWithAgent(context: OnememoryMcpContext, agent: string): OnememoryMcpContext {
+  if (agent === context.config.agentId) return context;
+  // Shallow clone by design: storage, engine and the redactor stay the shared singletons; only
+  // the identity (agent_id on writes, the audited-actor string) is per-request.
+  return { ...context, config: { ...context.config, agentId: agent }, actor: `agent:${agent}` };
+}
+
+/**
  * Build the stateless Streamable HTTP handler. `context` must be created ONCE by the caller
  * (`createOnememoryMcpContext`) and shared; the per-request McpServer instances reference it.
  */
@@ -46,20 +90,44 @@ export function createOnememoryStreamableHttpHandler(
   context: OnememoryMcpContext,
   options: CreateStreamableHttpOptions = {},
 ): McpHttpHandler {
-  const handler = createMcpHandler(() => buildOnememoryServer(context, options), options.handlerOptions);
-  if (options.gate === undefined) return handler;
+  // Per-request identity (M17): a FRESH server per request means the factory sees this
+  // request's URL, so `?agent=` overrides the configured identity for exactly that request.
+  const handler = createMcpHandler(
+    (requestContext) => {
+      const agent = agentFromRequest(requestContext.requestInfo);
+      return buildOnememoryServer(agent === null ? context : contextWithAgent(context, agent), options);
+    },
+    options.handlerOptions,
+  );
+
+  // Validate BEFORE the SDK sees the request: an invalid identity is refused loudly (a
+  // misattributed audit trail is worse than a refused request), for gated and plain hosts alike.
+  const guarded: McpHttpHandler = {
+    async fetch(request: Request, requestOptions?: McpHandlerRequestOptions): Promise<Response> {
+      const invalid = invalidAgentOf(request);
+      if (invalid !== null) return invalidAgentResponse(invalid);
+      return handler.fetch(request, requestOptions);
+    },
+    close: () => handler.close(),
+    notify: handler.notify,
+    bus: handler.bus,
+  };
+  if (options.gate === undefined) return guarded;
+
   const gate = options.gate;
   // Wrap WITHOUT spreading: `fetch` detaches safely, but `notify`/`bus` delegate as references
   // so their internal bindings survive.
   const gated: McpHttpHandler = {
     async fetch(request: Request, requestOptions?: McpHandlerRequestOptions): Promise<Response> {
+      const invalid = invalidAgentOf(request);
+      if (invalid !== null) return invalidAgentResponse(invalid);
       const authInfo: AuthInfo | Response = await gate(request);
       if (authInfo instanceof Response) return authInfo;
       return handler.fetch(request, { ...(requestOptions ?? {}), authInfo });
     },
-    close: () => handler.close(),
-    notify: handler.notify,
-    bus: handler.bus,
+    close: guarded.close,
+    notify: guarded.notify,
+    bus: guarded.bus,
   };
   return gated;
 }

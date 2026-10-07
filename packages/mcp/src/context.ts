@@ -39,8 +39,12 @@ export interface OnememoryMcpContext {
 
   // -- resolved helpers used by every write path ------------------------------------------
 
-  /** Project id for unscoped operations, resolved per call: input → config. */
-  resolveProjectId(inputProjectId?: string): string | undefined;
+  /**
+   * Project id for unscoped operations, resolved per call: input → config → the workspace hint's
+   * project (the M17 cwd→project lookup: the deepest registered root containing the hint wins).
+   * Async because the lookup is a store read.
+   */
+  resolveProjectId(inputProjectId?: string): Promise<string | undefined>;
   /** Redact any JSON value (deep) — the write-path ingest duty. Returns the clean value. */
   redact<T>(value: T): { value: T; redactions: Redaction[] };
   /** Audited-actor string for status transitions (database-schema.md §2 vocabulary). */
@@ -117,11 +121,23 @@ export async function createOnememoryMcpContext(
   const workspaceHint = env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR !== '' ? env.CLAUDE_PROJECT_DIR : null;
 
   // Injected engine (daemon mode) wins: one cache domain across the REST and MCP surfaces.
-  // Otherwise the engine rides the storage opened above, vector channel matched to the embedder.
-  const engine = injectedEngine ?? createRetrievalEngine(storage, { embedder, now });
+  // Otherwise the engine rides the storage opened above, vector channel matched to the embedder,
+  // with scope admission (M17) wired to the same cached local user the rest of the context uses.
+  let cachedLocalUserId: string | null = null;
+  const ensureLocalUserId = async (): Promise<string> => {
+    if (cachedLocalUserId === null) {
+      const user = await sourcesRepo.ensureLocalUser(storage.client);
+      cachedLocalUserId = user.id;
+    }
+    return cachedLocalUserId;
+  };
+  const engine = injectedEngine ?? createRetrievalEngine(storage, {
+    embedder,
+    now,
+    resolveUserId: () => ensureLocalUserId().catch(() => null),
+  });
 
   const actor = `agent:${config.agentId}`;
-  let cachedLocalUserId: string | null = null;
 
   return {
     storage,
@@ -132,19 +148,21 @@ export async function createOnememoryMcpContext(
     workspaceHint,
     serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
     actor,
-    resolveProjectId(inputProjectId?: string): string | undefined {
-      return inputProjectId ?? config.projectId;
+    async resolveProjectId(inputProjectId?: string): Promise<string | undefined> {
+      if (inputProjectId !== undefined) return inputProjectId;
+      if (config.projectId !== undefined) return config.projectId;
+      if (workspaceHint === null) return undefined;
+      // cwd→project lookup (M17): the deepest registered root containing the client's launch
+      // dir wins, so a nested project resolves to itself in a multi-project data dir.
+      const project = await storage.store.findProjectByPath(workspaceHint);
+      return project === null ? undefined : project.id;
     },
     redact<T>(value: T): { value: T; redactions: Redaction[] } {
       const result = redactValue(value, config.redactor);
       return { value: result.value as T, redactions: result.redactions };
     },
     async localUserId(): Promise<string> {
-      if (cachedLocalUserId === null) {
-        const user = await sourcesRepo.ensureLocalUser(storage.client);
-        cachedLocalUserId = user.id;
-      }
-      return cachedLocalUserId;
+      return ensureLocalUserId();
     },
     invalidateSearchCache(projectId?: string): void {
       engine.invalidateCache(projectId);

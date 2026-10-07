@@ -60,6 +60,12 @@ export interface Store {
   createUser(input: NewUser): Promise<UserRecord>;
   createProject(input: NewProject): Promise<ProjectRecord>;
   getProject(id: string): Promise<ProjectRecord | null>;
+  /**
+   * The cwd→project lookup (M17): the deepest registered `root_path` containing the path wins, so
+   * a nested directory resolves to its own project in a multi-project data dir. No registered
+   * root contains it → null (an honest miss, never a guess).
+   */
+  findProjectByPath(path: string): Promise<ProjectRecord | null>;
 
   // --- provenance & raw events (INGEST) --------------------------------------
 

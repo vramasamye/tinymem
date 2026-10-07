@@ -75,6 +75,13 @@ export interface RetrievalEngineOptions {
   config?: RetrievalConfigInput;
   /** Injectable clock (tests / deterministic runs). */
   now?: () => Date;
+  /**
+   * The calling user's id (M17 scope admission): with it, a project-scoped search admits the
+   * project's rows PLUS that user's user-level rows (`project_id IS NULL AND user_id = caller`).
+   * Absent → a project-scoped search is still HARD project scope (no cross-project leaks), just
+   * without the user-level arm. Cache the value per process — it is consulted per search.
+   */
+  resolveUserId?: () => Promise<string | null>;
 }
 
 export interface CacheStats {
@@ -562,6 +569,19 @@ export function createRetrievalEngine(
       ...(durableTypes !== undefined && durableTypes.length > 0 ? { types: durableTypes } : {}),
       ...(requiredEntityIds.length > 0 ? { requiredEntityIds } : {}),
     };
+
+    // Scope admission (M17, retrieval.md §2): a project-scoped request is HARD-scoped to that
+    // project plus the caller's user-level rows — other projects' rows never leak in. The
+    // project-match scoring signal stays a ranker WITHIN the admitted set. Unscoped requests
+    // (no project_id) keep the any-project semantics the wire contract documents.
+    if (request.project_id !== undefined) {
+      const userId = options.resolveUserId === undefined ? null : await options.resolveUserId();
+      if (userId === null) {
+        filter.projectId = request.project_id;
+      } else {
+        filter.projectOrUser = { projectId: request.project_id, userId };
+      }
+    }
 
     const [lexical, vector] = skipDurable
       ? [

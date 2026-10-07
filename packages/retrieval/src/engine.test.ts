@@ -16,6 +16,7 @@ import type {
   Reranker,
 } from '@onememory/core';
 import { MemorySearchResponseSchema } from '@onememory/core';
+import { sourcesRepo } from '@onememory/storage';
 
 import { createRetrievalEngine } from './engine';
 import type { RetrievalEngine, RetrievalStorage } from './engine';
@@ -379,5 +380,67 @@ describe('retrieval engine (embedded PGlite)', () => {
     await new Promise((resolve) => setTimeout(resolve, 100)); // fire-and-forget settle
     const after = await world.storage.store.getMemory(world.ids.preference);
     expect((after?.access_count ?? 0)).toBeGreaterThan(before?.access_count ?? 0);
+  });
+});
+
+describe('scope admission (M17: user-level answers, no cross-project leaks)', () => {
+  /** The packed wire items are the progressive-disclosure ID-index — read the rows back through
+   * the store for content assertions. */
+  const readBack = async (memories: Array<{ id: string }>): Promise<string> => {
+    const rows = await Promise.all(memories.map((memory) => world.storage.store.getMemory(memory.id)));
+    return rows.map((row) => `${row?.title ?? ''} ${row?.content ?? ''}`).join('\n');
+  };
+
+  test('a project search answers with the project PLUS the caller\'s user level, never another project', async () => {
+    const user = await sourcesRepo.ensureLocalUser(world.storage.client);
+    // Topically distinct from every fixture row: the near-duplicate collapse (cosine ≥ 0.97)
+    // must not be what "answers" this — only the scope union can.
+    const userLevel = await world.storage.store.insertMemory({
+      type: 'preference',
+      title: 'User-level editor preference',
+      content: 'The user runs every editor in dark mode with a 13pt font.',
+      importance: 0.7,
+      confidence: 0.8,
+      observed_at: '2025-09-01T00:00:00.000Z',
+      user_id: user.id,
+      source_id: world.ids.explicitSourceId,
+      evidence: [
+        { source_id: world.ids.explicitSourceId, kind: 'message', locator: 'cli', excerpt: 'user-level preference' },
+      ],
+      extraction: { method: 'heuristic', prompt_version: 'scope-v1' },
+    });
+    expect(userLevel.outcome).toBe('inserted');
+
+    const scoped = createRetrievalEngine(world.storage, {
+      embedder: world.embedder,
+      now: fixedNow,
+      resolveUserId: async () => user.id,
+    });
+
+    // The caller's user-level row answers from INSIDE the project search (the union's second arm).
+    const darkMode = await scoped.search({ query: 'dark mode editor', project_id: world.ids.projectId });
+    expect(await readBack(darkMode.memories)).toContain('dark mode with a 13pt font');
+
+    // The lexical probe for 'database': the project's decision answers, the OTHER project's
+    // SQLite row — which the old unscoped filter ranked (see the explain factor
+    // 'cross-project memory' this mission removed) — never does.
+    const database = await scoped.search({ query: 'which database does the project use', project_id: world.ids.projectId });
+    const databaseContents = await readBack(database.memories);
+    expect(databaseContents).toContain('PostgreSQL');
+    expect(databaseContents).not.toContain('other-app uses SQLite');
+
+    // Without a user resolver the scope is still HARD project scope: the leak stays closed and
+    // user-level rows simply do not ride along.
+    const noResolver = createRetrievalEngine(world.storage, { embedder: world.embedder, now: fixedNow });
+    const plainDark = await noResolver.search({ query: 'dark mode editor', project_id: world.ids.projectId });
+    expect(await readBack(plainDark.memories)).not.toContain('dark mode');
+    const plainDatabase = await noResolver.search({ query: 'which database does the project use', project_id: world.ids.projectId });
+    const plainContents = await readBack(plainDatabase.memories);
+    expect(plainContents).toContain('PostgreSQL');
+    expect(plainContents).not.toContain('other-app uses SQLite');
+
+    // The user-level row really has no project (the union's second arm is what surfaced it).
+    const userLevelRow = await world.storage.store.getMemory(userLevel.memory.id);
+    expect(userLevelRow?.project_id).toBeUndefined();
   });
 });

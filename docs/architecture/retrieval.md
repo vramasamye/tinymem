@@ -54,6 +54,15 @@ Three independent channels, all time-boxed; each returns (memory_id, channel, ra
   pulls latest accepted decisions; intent `failure` pulls matching open/solved failures by
   signature similarity; intent `context` pulls the project digest.
 
+**Scope admission (hard, M17).** Every channel is filtered before it ranks. A project-scoped
+request admits the project's rows plus the caller's user-level rows (`project_id IS NULL AND
+user_id = caller`); no other project's rows enter candidate generation. Without a resolvable
+caller the scope is project-only — the leak stays closed either way. A request with no
+`project_id` (reachable only when no project is registered) keeps any-project semantics. `w_proj`
+therefore ranks *within* the admitted set (ADR-0004 amendment, 2026-10-07). Known boundary: the
+entity-name index (`listScopeEntities`) covers the project (or global) scope, so an entity bound
+only to a user-level row resolves as not-found from inside a project search.
+
 ### Stage 3 — Temporal & status filtering (hard)
 
 - Default (`temporal_mode: current`): `valid_from ≤ now < valid_until` AND status IN
@@ -94,7 +103,7 @@ Default weights (all config-overridable; these ARE the explain decomposition):
 | `w_conf` confidence | 0.08 | stored |
 | `w_rec` recency | 0.10 | exp decay, half-life per type (episodic 30d, decision 400d, failure 180d) |
 | `w_acc` access | 0.05 | log(1+access_count), stamped by last_accessed_at |
-| `w_proj` project match | 0.10 | 1.0 same project / 0.7 cross-project / 0.4 user-global |
+| `w_proj` project match | 0.10 | 1.0 same project / 0.7 cross-project (unscoped requests only, §1 Stage 2) / 0.4 user-global |
 | `w_ent` entity overlap | 0.10 | fraction of query entities bound to the memory |
 | `w_type` type affinity | 0.01–0.15 | intent×type matrix (failure intent boosts failure/procedural) |
 

@@ -29,9 +29,9 @@ afterEach(async () => {
 
 /** POST one stateless JSON-RPC request; the SDK answers with a single `event: message` frame
  * (the Streamable HTTP POST response format — NOT an SSE transport stream). */
-async function rpc(method: string, params: unknown, id: number): Promise<Record<string, unknown>> {
+async function rpc(method: string, params: unknown, id: number, url = 'http://localhost/mcp'): Promise<Record<string, unknown>> {
   const response = await handler.fetch(
-    new Request('http://localhost/mcp', {
+    new Request(url, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -107,5 +107,63 @@ describe('stateless Streamable HTTP handler (shared-server mode)', () => {
     const second = (await rpc('tools/list', {}, 7)) as { result: { tools: unknown[] } };
     expect(first.result.tools.length).toBe(second.result.tools.length);
     expect(first.result.tools.length).toBe(8);
+  });
+
+  test('a per-request ?agent= stamps that runtime\'s identity on writes (M17)', async () => {
+    const stored = (await rpc(
+      'tools/call',
+      {
+        name: 'memory_store',
+        arguments: {
+          content: 'Cursor writes with its own identity.',
+          type: 'semantic',
+          evidence: [{ excerpt: 'probe', locator: 'session.jsonl:1' }],
+        },
+      },
+      8,
+      'http://localhost/mcp?agent=onemem-cursor',
+    )) as { result: { structuredContent: { id: string }; isError?: boolean } };
+    expect(stored.result.isError).toBeUndefined();
+
+    const fetched = (await rpc('tools/call', { name: 'memory_get', arguments: { id: stored.result.structuredContent.id } }, 9)) as {
+      result: { structuredContent: { memory: { agent_id?: string } } };
+    };
+    expect(fetched.result.structuredContent.memory.agent_id).toBe('onemem-cursor');
+  });
+
+  test('without the param, writes keep the configured default identity', async () => {
+    const stored = (await rpc(
+      'tools/call',
+      {
+        name: 'memory_store',
+        arguments: {
+          content: 'The default identity stays the configured one.',
+          type: 'semantic',
+          evidence: [{ excerpt: 'probe', locator: 'session.jsonl:2' }],
+        },
+      },
+      10,
+    )) as { result: { structuredContent: { id: string }; isError?: boolean } };
+    expect(stored.result.isError).toBeUndefined();
+
+    const fetched = (await rpc('tools/call', { name: 'memory_get', arguments: { id: stored.result.structuredContent.id } }, 11)) as {
+      result: { structuredContent: { memory: { agent_id?: string } } };
+    };
+    expect(fetched.result.structuredContent.memory.agent_id).toBe('onememory-mcp');
+  });
+
+  test('an invalid ?agent= is refused loudly, never silently misattributed', async () => {
+    const response = await handler.fetch(
+      new Request('http://localhost/mcp?agent=bad%20agent', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 12, method: 'tools/list', params: {} }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain('?agent=');
   });
 });

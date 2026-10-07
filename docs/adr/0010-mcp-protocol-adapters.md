@@ -99,3 +99,22 @@ already states that MCP stdio servers should "speak HTTP to it". Made concrete:
 - **Known gap (backlog):** the stdio bin opening embedded storage while a daemon is alive would be
   a second owner of the same data dir. `onemem init` never scaffolds that combination; a
   lock/probe guard in the bin closes the hazard.
+
+## Amendment (2026-10-07): per-runtime identity and cwd→project resolution (M17)
+
+Two wiring decisions behind the embedded-profile entry (`mission/17-scope-identity`):
+
+- **Per-runtime identity rides the wired URL.** The scaffolded entry for each runtime targets
+  `http://127.0.0.1:<daemon-port>/mcp?agent=<runtime-id>`, where the ids are
+  `RUNTIME_AGENT_IDS` (`apps/api/src/runtime/runtime-scaffolds.ts`): `onemem-claude-code`,
+  `onemem-codex`, `onemem-cursor`, `onemem-pi`, `onemem-opencode`. The server reads the parameter
+  per request (`packages/mcp/src/http.ts`), clones the shared context with `config.agentId` and
+  actor `agent:<id>` for that request only, and answers `400` on a malformed id — so the audit
+  trail names the runtime that wrote each memory with no per-client env var. Without the
+  parameter the default `onememory-mcp` identity stands, so already-wired clients keep working.
+- **cwd→project resolution.** A client may launch from a nested directory. The MCP context
+  resolves the workspace hint (`CLAUDE_PROJECT_DIR`) through `store.findProjectByPath`: deepest
+  registered root wins, containment is segment-precise (`/a/bc` never matches `/a/b`), and no
+  registered root resolves to no project — never a guess. An explicit `project_id` argument, then
+  the configured `projectId`, still outrank the workspace hint; the CLI mirrors the chain
+  (`resolveProjectIdForCwd`: `--project` → direct-mode path lookup → init pointer → error).

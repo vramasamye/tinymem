@@ -14,7 +14,7 @@ import { loadConfig } from '@onememory/config';
 import { BackendError, openRuntime } from '@onememory/api/runtime';
 import { runDigest as runDigestPass, type ProjectDigestPassResult } from '@onememory/consolidation';
 
-import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
+import { findLiveDaemonUrl, resolveProjectIdForCwd, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';
 
 export interface DigestOptions extends ResolveOptions {
@@ -39,8 +39,6 @@ export async function runDigest(options: DigestOptions, io: Io): Promise<number>
       'conflict',
     );
   }
-  const projectId = resolveProjectId(loaded, options.projectId);
-
   // 2. Direct mode: the composition root without the job worker (like every direct-mode command).
   const runtime = await openRuntime({
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
@@ -48,6 +46,8 @@ export async function runDigest(options: DigestOptions, io: Io): Promise<number>
     ...(options.env === undefined ? {} : { env: options.env }),
     startWorker: false,
   });
+  // Opened first so the cwd→project lookup (M17) can read the store.
+  const projectId = await resolveProjectIdForCwd(loaded, options.projectId, runtime.storage.store, options.cwd);
   try {
     const report = await runDigestPass({
       store: runtime.storage.store,

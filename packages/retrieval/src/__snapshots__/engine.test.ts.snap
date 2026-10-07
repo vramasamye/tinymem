@@ -112,7 +112,7 @@ exports[`retrieval engine (embedded PGlite) explain snapshot for a fixed query 1
           "weight": 0.1,
         },
         {
-          "detail": "vector channel rank #3 (RRF k=60)",
+          "detail": "vector channel rank #2 (RRF k=60)",
           "factor": "semantic_similarity",
           "weight": 0.2,
         },
@@ -127,7 +127,7 @@ exports[`retrieval engine (embedded PGlite) explain snapshot for a fixed query 1
           "weight": 0,
         },
       ],
-      "relevance": 0.7022,
+      "relevance": 0.7049,
       "temporal": {
         "status": "active",
         "valid_from": "2025-03-10",
@@ -135,58 +135,6 @@ exports[`retrieval engine (embedded PGlite) explain snapshot for a fixed query 1
       },
       "title": "PostgreSQL connection limit exhausted",
       "type": "failure",
-    },
-    {
-      "explain": [
-        {
-          "detail": "confidence 0.60",
-          "factor": "confidence",
-          "weight": 0.08,
-        },
-        {
-          "detail": "importance 0.50",
-          "factor": "importance",
-          "weight": 0.12,
-        },
-        {
-          "detail": "FTS rank #3",
-          "factor": "lexical_relevance",
-          "weight": 0.16,
-        },
-        {
-          "detail": "cross-project memory",
-          "factor": "project_match",
-          "weight": 0.1,
-        },
-        {
-          "detail": "observed 2025-04-01 (half-life 400d for semantic)",
-          "factor": "recency",
-          "weight": 0.1,
-        },
-        {
-          "detail": "vector channel rank #2 (RRF k=60)",
-          "factor": "semantic_similarity",
-          "weight": 0.2,
-        },
-        {
-          "detail": "intent 'decision' favors type 'semantic'",
-          "factor": "type_affinity",
-          "weight": 0.06,
-        },
-        {
-          "detail": "currently valid (temporal filter passed)",
-          "factor": "temporal_validity",
-          "weight": 0,
-        },
-      ],
-      "relevance": 0.5455,
-      "temporal": {
-        "status": "active",
-        "valid_from": "2025-04-01",
-        "valid_until": null,
-      },
-      "title": null,
-      "type": "semantic",
     },
     {
       "explain": [

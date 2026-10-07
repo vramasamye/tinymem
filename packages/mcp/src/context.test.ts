@@ -65,3 +65,33 @@ describe('createOnememoryMcpContext — the daemon sharing seam', () => {
     expect(context.engine).not.toBe(world.context.engine);
   });
 });
+
+describe('resolveProjectId — the cwd→project lookup (M17)', () => {
+  test('a workspace hint inside a registered root resolves to that project when nothing is configured', async () => {
+    const hinted = await openMcpTestWorld({
+      config: { projectId: null },
+      env: { CLAUDE_PROJECT_DIR: '/dev/mcp-fixture/src/some-file.ts' },
+    });
+    try {
+      expect(await hinted.context.resolveProjectId()).toBe(hinted.ids.projectId);
+      // An explicit input still wins over every fallback.
+      expect(await hinted.context.resolveProjectId('00000000-0000-7000-8000-000000000001')).toBe(
+        '00000000-0000-7000-8000-000000000001',
+      );
+    } finally {
+      await hinted.close();
+    }
+  });
+
+  test('a hint outside every registered root stays honestly unconfigured', async () => {
+    const hinted = await openMcpTestWorld({
+      config: { projectId: null },
+      env: { CLAUDE_PROJECT_DIR: '/somewhere/else-entirely' },
+    });
+    try {
+      expect(await hinted.context.resolveProjectId()).toBeUndefined();
+    } finally {
+      await hinted.close();
+    }
+  });
+});

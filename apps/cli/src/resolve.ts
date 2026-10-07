@@ -63,6 +63,7 @@ export async function resolveBackend(options: ResolveOptions): Promise<Resolved>
 
   let backend: OnememoryBackend;
   let mode: Resolved['mode'];
+  let store: { findProjectByPath(path: string): Promise<{ id: string } | null> } | null = null;
   if (daemonUrl !== null) {
     backend = createHttpBackend({ baseUrl: daemonUrl });
     mode = 'daemon';
@@ -75,9 +76,11 @@ export async function resolveBackend(options: ResolveOptions): Promise<Resolved>
     });
     backend = createLocalBackend(runtime, { adapter: 'cli', closeRuntime: true });
     mode = 'local';
+    // The cwd→project lookup needs the database (M17): available only in direct mode.
+    store = runtime.storage.store;
   }
 
-  const projectId = resolveProjectId(loaded, options.projectId);
+  const projectId = await resolveProjectIdForCwd(loaded, options.projectId, store, options.cwd);
   return { backend, mode, daemonUrl, loaded, projectId };
 }
 
@@ -110,6 +113,32 @@ export function resolveProjectId(loaded: LoadedConfig, override: string | undefi
     `no project registered in ${loaded.paths.project_state_path} — run 'onemem init' or pass --project <id>`,
     'invalid_request',
   );
+}
+
+/** The minimal store surface the cwd→project lookup needs (structural — no core dependency). */
+interface PathLookupStore {
+  findProjectByPath(path: string): Promise<{ id: string } | null>;
+}
+
+/**
+ * `--project` wins. Then the cwd→project lookup (M17), when a store is available (direct mode
+ * only — a daemon-mode CLI process has no local database): the deepest registered root
+ * containing the command's cwd resolves to its own project, so a nested directory in a
+ * multi-project data dir picks the right project, not the init pointer. Then the init pointer
+ * (the daemon-mode fallback and the outside-every-root fallback); an honest error last.
+ */
+export async function resolveProjectIdForCwd(
+  loaded: LoadedConfig,
+  override: string | undefined,
+  store: PathLookupStore | null,
+  cwd?: string,
+): Promise<string> {
+  if (override !== undefined && override !== '') return override;
+  if (store !== null) {
+    const found = await store.findProjectByPath(cwd ?? process.cwd());
+    if (found !== null) return found.id;
+  }
+  return resolveProjectId(loaded, override);
 }
 
 /** Render config errors as-is: already file-scoped, key-pathed and value-free (ConfigError.format). */
