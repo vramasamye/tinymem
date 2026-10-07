@@ -106,9 +106,54 @@ export function extraPublishedFiles(manifest: SourceManifest): string[] {
   return (manifest.files ?? []).filter((entry) => entry !== 'dist');
 }
 
+/** One package in a release plan: its name, workspace dir, and the tarball to publish. */
+export interface PlannedPackage {
+  name: string;
+  dir: string;
+  tarball: string | null;
+}
+
+export interface ReleasePlanShape {
+  version: string;
+  packages: PlannedPackage[];
+}
+
+/**
+ * The packages a `publish` run should touch. A registry write is irreversible and a mid-sequence
+ * failure (expired OTP, network) leaves a partial release, so the run must be resumable:
+ * `--only <name>` re-runs a single package, `--from <name>` resumes at a package and continues in
+ * order. Both are looked up by name because that is what the operator sees in the plan; an unknown
+ * name is an error, never a silently empty run.
+ */
+export function selectPlanned(
+  packages: readonly PlannedPackage[],
+  options: { from?: string; only?: string } = {},
+): PlannedPackage[] {
+  if (options.from !== undefined && options.only !== undefined) {
+    throw new Error('release: --from and --only are mutually exclusive');
+  }
+  if (options.only !== undefined) {
+    const match = packages.find((pkg) => pkg.name === options.only);
+    if (match === undefined) throw new Error(`release: --only ${options.only} is not in the plan`);
+    return [match];
+  }
+  if (options.from !== undefined) {
+    const index = packages.findIndex((pkg) => pkg.name === options.from);
+    if (index === -1) throw new Error(`release: --from ${options.from} is not in the plan`);
+    return packages.slice(index);
+  }
+  return [...packages];
+}
+
+/** The next package to publish after `published` succeeded — the resume point, or null when done. */
+export function resumeFrom(packages: readonly PlannedPackage[], published: number): PlannedPackage | null {
+  return packages[published] ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Publish order
 // ---------------------------------------------------------------------------
+
 
 export interface PublishablePackage {
   dir: string;

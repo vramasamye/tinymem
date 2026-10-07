@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { publishableDirs, readManifest } from './manifest';
-import { publishOrder, publishableDependencySpec, stagedManifest, extraPublishedFiles } from './publish';
+import { publishOrder, publishableDependencySpec, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, type PlannedPackage } from './publish';
 
 const repoRoot = join(import.meta.dir, '..', '..');
 
@@ -109,6 +109,43 @@ describe('staged manifest', () => {
     expect(() =>
       stagedManifest({ name: '@onememory-ai/x', version: '0.1.0', exports: { '.': './src/index.ts' }, files: ['migrations'] }),
     ).toThrow(/must include 'dist'/);
+  });
+});
+
+describe('resumable publish selection', () => {
+  const plan: PlannedPackage[] = ['@onememory-ai/core', '@onememory-ai/storage', 'onememory'].map((name) => ({
+    name,
+    dir: name,
+    tarball: `${name}.tgz`,
+  }));
+
+  test('no flags publishes the whole plan in order', () => {
+    expect(selectPlanned(plan).map((pkg) => pkg.name)).toEqual(plan.map((pkg) => pkg.name));
+  });
+
+  test('--from resumes at a package and keeps the order', () => {
+    expect(selectPlanned(plan, { from: '@onememory-ai/storage' }).map((pkg) => pkg.name)).toEqual([
+      '@onememory-ai/storage',
+      'onememory',
+    ]);
+    expect(selectPlanned(plan, { from: '@onememory-ai/core' })).toHaveLength(3);
+  });
+
+  test('--only re-runs a single package', () => {
+    expect(selectPlanned(plan, { only: '@onememory-ai/storage' }).map((pkg) => pkg.name)).toEqual(['@onememory-ai/storage']);
+  });
+
+  test('an unknown name or a contradictory flag pair is an error, never a silent no-op', () => {
+    expect(() => selectPlanned(plan, { from: 'nope' })).toThrow(/not in the plan/);
+    expect(() => selectPlanned(plan, { only: 'nope' })).toThrow(/not in the plan/);
+    expect(() => selectPlanned(plan, { from: '@onememory-ai/core', only: 'onememory' })).toThrow(/mutually exclusive/);
+  });
+
+  test('resumeFrom names the package after the last success, and null once complete', () => {
+    expect(resumeFrom(plan, 0)?.name).toBe('@onememory-ai/core');
+    expect(resumeFrom(plan, 1)?.name).toBe('@onememory-ai/storage');
+    expect(resumeFrom(plan, 2)?.name).toBe('onememory');
+    expect(resumeFrom(plan, 3)).toBeNull();
   });
 });
 

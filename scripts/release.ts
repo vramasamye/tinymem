@@ -23,7 +23,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, write
 import { join } from 'node:path';
 import { undeclaredDependencies } from './lib/deps';
 import { deriveTargets, distEntryOf, publishableDirs, readManifest } from './lib/manifest';
-import { publishOrder, stagedManifest, extraPublishedFiles, type PublishablePackage } from './lib/publish';
+import { publishOrder, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, type PublishablePackage } from './lib/publish';
 
 const repoRoot = join(import.meta.dir, '..');
 const releaseDir = join(repoRoot, '.release');
@@ -138,18 +138,73 @@ async function pack(packages: readonly PublishablePackage[], version: string): P
   return plan;
 }
 
-async function publish(plan: ReleasePlan, flags: { dryRun: boolean; yes: boolean }): Promise<void> {
+interface PublishFlags {
+  dryRun: boolean;
+  yes: boolean;
+  /** One-time code for accounts with 2FA required for publishing (npm's `--otp`). */
+  otp?: string;
+  from?: string;
+  only?: string;
+}
+
+/**
+ * Publish the selected packages in order, reporting partial progress.
+ *
+ * A registry write is irreversible, so a mid-sequence failure must leave an operator with an exact
+ * account of what landed and an obvious way to continue. On failure the error names every package
+ * that DID publish and prints the `--from` command that resumes after it.
+ */
+async function publish(plan: ReleasePlan, flags: PublishFlags): Promise<void> {
   if (!flags.dryRun && !flags.yes) {
     throw new Error('release: refusing to publish without --yes (use --dry-run to inspect first)');
   }
-  for (const pkg of plan.packages) {
+  const selected = selectPlanned(plan.packages, {
+    ...(flags.from === undefined ? {} : { from: flags.from }),
+    ...(flags.only === undefined ? {} : { only: flags.only }),
+  });
+
+  const published: string[] = [];
+  for (const pkg of selected) {
     if (pkg.tarball === null) throw new Error(`release: ${pkg.name} has no tarball — re-run pack`);
     const args = ['publish', pkg.tarball, '--tag', 'latest'];
     if (pkg.name.startsWith('@')) args.push('--access', 'public');
     if (flags.dryRun) args.push('--dry-run');
-    await $`npm ${args}`.cwd(repoRoot);
+    if (flags.otp !== undefined) args.push('--otp', flags.otp);
+    try {
+      await $`npm ${args}`.cwd(repoRoot);
+    } catch (error) {
+      if (published.length > 0) {
+        const next = resumeFrom(selected, published.length);
+        console.error(`release: ${published.length} package(s) DID publish: ${published.join(', ')}`);
+        if (next !== null) {
+          console.error(`release: resume with \`bun run scripts/release.ts publish --yes --from ${next.name}\``);
+        }
+      } else {
+        console.error('release: nothing was published');
+      }
+      throw error;
+    }
+    published.push(pkg.name);
   }
-  console.log(`release: ${flags.dryRun ? 'dry-ran' : 'published'} ${plan.packages.length} package(s)`);
+  console.log(`release: ${flags.dryRun ? 'dry-ran' : 'published'} ${published.length} package(s)`);
+}
+
+/** `--from <name>`, `--only <name>`, `--otp <code>` parsed from the command line. */
+function publishFlags(args: readonly string[]): PublishFlags {
+  const valueOf = (flag: string): string | undefined => {
+    const index = args.indexOf(flag);
+    return index === -1 ? undefined : args[index + 1];
+  };
+  const otp = valueOf('--otp');
+  const from = valueOf('--from');
+  const only = valueOf('--only');
+  return {
+    dryRun: args.includes('--dry-run'),
+    yes: args.includes('--yes'),
+    ...(otp === undefined ? {} : { otp }),
+    ...(from === undefined ? {} : { from }),
+    ...(only === undefined ? {} : { only }),
+  };
 }
 
 const [command, ...rest] = process.argv.slice(2);
@@ -175,12 +230,14 @@ switch (command) {
     break;
   }
   case 'publish':
-    await publish(readPlan(), { dryRun: rest.includes('--dry-run'), yes: rest.includes('--yes') });
+    await publish(readPlan(), publishFlags(rest));
     break;
   case 'clean':
     rmSync(releaseDir, { recursive: true, force: true });
     console.log('release: removed .release/');
     break;
   default:
-    throw new Error('release: usage: release.ts <order|stage|pack|publish|clean> [--dry-run|--yes]');
+    throw new Error(
+      'release: usage: release.ts <order|stage|pack|publish|clean> [--dry-run|--yes|--from <name>|--only <name>|--otp <code>]',
+    );
 }
