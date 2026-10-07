@@ -195,10 +195,15 @@ Definition of done (Wave B):
       passes there.
 - [ ] Durable writes can carry user scope; user-level memories answer from any project; a
       nested cwd resolves to its project; each runtime identifies itself in the audit trail.
-- [ ] `onemem export` renders every durable memory with provenance; a re-run is byte-identical;
+- [x] `onemem export` renders every durable memory with provenance; a re-run is byte-identical;
       nothing reads the export back as a source of truth; the session-index artifact stays under
-      its cap or the writer errors (Claude Code index discipline).
+      its cap or the writer errors (Claude Code index discipline). — M18
+      (`mission/18-export`, merged to main): report
+      `docs/plan/mission-reports/mission-18-export.md`.
 - [ ] Packages published; CI smoke-tests the published artifacts.
+
+Status (2026-10-07): M18 closed first (the export surface is the trust surface the rest of the
+release rides). M16 (publishing) and M17 (scope & identity) remain.
 
 ### Wave A — data correctness
 

@@ -28,5 +28,8 @@ export * from './shared';
 // projects.digest renderable record — shared by consolidation, storage, and the CLI)
 export * from './types/digest';
 
+// Markdown export surface (ADR-0013 — the pure renderer over records + the digest rollup)
+export * from './types/export';
+
 // Ports (repository-structure.md): the contract every other package codes against
 export * from './ports/index';

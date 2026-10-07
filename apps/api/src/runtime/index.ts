@@ -83,6 +83,12 @@ export {
   summarizeSkill,
 } from './skills-service';
 
+export {
+  exportProject,
+  type ExportProjectInput,
+  type ExportProjectReport,
+} from './export-service';
+
 export { createHttpBackend, type HttpBackendOptions } from './http-backend';
 
 export {
