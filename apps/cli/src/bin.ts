@@ -27,6 +27,7 @@ import { runStats } from './commands/stats';
 import { runServe } from './commands/serve';
 import { runConsolidate } from './commands/consolidate';
 import { runDigest } from './commands/digest';
+import { runExport } from './commands/export';
 import { runCompact, parseWindowDays } from './commands/compact';
 import { runSkillsGenerate } from './commands/skills-generate';
 import { runSkillsList } from './commands/skills-list';
@@ -500,6 +501,33 @@ common(program.command('digest'))
             ...(options.project === undefined ? {} : { projectId: String(options.project) }),
             env,
             ...(options.budget === undefined ? {} : { budget: Number(options.budget) }),
+          },
+          io,
+        ),
+      );
+    });
+
+  common(program.command('export'))
+    .description(
+      'write the Markdown export tree (ADR-0013): the git-diffable projection of this project\'s ' +
+        'durable memories — MEMORY.md, one index per type, one file per memory, all stamped with the ' +
+        'ownership marker. One-way: the database stays canonical',
+    )
+    .option(
+      '--dir <path>',
+      'export root (default: the config export.dir, else <project root>/memory; relative paths resolve ' +
+        'against the project root, ~/ paths against HOME)',
+    )
+    .action(async (options) => {
+      const io = ioFor(options);
+      await execute(io, () =>
+        runExport(
+          {
+            ...(options.cwd === undefined ? {} : { cwd: String(options.cwd) }),
+            ...(options.config === undefined ? {} : { configPath: String(options.config) }),
+            ...(options.project === undefined ? {} : { projectId: String(options.project) }),
+            env,
+            ...(options.dir === undefined ? {} : { dir: String(options.dir) }),
           },
           io,
         ),
