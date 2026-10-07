@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "description": "onememory storage: Postgres dialect (Drizzle schema + SQL) over PGlite (embedded) and Postgres+pgvector (server)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
+  "files": [
+    "dist",
+    "migrations"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },

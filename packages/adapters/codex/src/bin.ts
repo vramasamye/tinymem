@@ -23,6 +23,8 @@
 
 import { readFileSync } from 'node:fs';
 
+import { isMainModule } from '@onememory/core';
+
 import type { CaptureOutcome } from './capture';
 
 import {
@@ -181,7 +183,7 @@ function report(outcome: CaptureOutcome, err: (text: string) => void): void {
   }
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   const readStdin = async (): Promise<string> => {
     const chunks: Buffer[] = [];
     if (process.stdin.isTTY === true) return '';

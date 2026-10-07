@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory adapter for OpenAI Codex CLI: config.toml MCP scaffold, AGENTS.md bootstrap, hook + rollout session capture, fail-soft daemon delivery (ADR-0010)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "bin": {
     "onemem-codex-capture": "./src/bin.ts"

@@ -36,3 +36,6 @@ Thumbs.db
 tmp/
 tmpdir/
 .cache/
+
+# Release staging (M16)
+.release/

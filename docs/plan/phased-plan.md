@@ -186,13 +186,14 @@ everything the engine claims.
 
 | Mission | Branch | Scope | Key deps |
 |---|---|---|---|
-| M16 Distribution | `mission/16-distribution` | publish every workspace package to npm; make `npx onememory init` the real install path; version + release process; published-artifact smoke in CI | ADR-0002 |
+| M16 Distribution | `mission/16-distribution` | publish every workspace package to npm; make `npx onememory init` the real install path; version + release process; published-artifact smoke in CI — ADR-0014: bundled `dist/` artifacts, staged publish manifests, Node-LTS bins, packed smoke in CI | ADR-0002, ADR-0014 |
 | M17 Scope & identity wiring | `mission/17-scope-identity` | user-scope wiring (`user_id` on durable writes, user-level memories answering cross-project); cwd→project lookup (nested directories resolve to their project); per-runtime MCP identity (each runtime's client stamps its own `agent_id`) | ADR-0003, ADR-0011 |
 | M18 Markdown export surface | `mission/18-export` | ADR-0013: the canonical-store rule (the DB stays canonical, export is an idempotent projection); `onemem export` rendering a `MEMORY.md` index + per-layer topic files with cross-links and evidence pointers; `MEMORY.md` session-index artifact with a hard cap (200 lines / 25KB) and error-forcing rewrite | comparison §5 items 1–2; M13 |
 
 Definition of done (Wave B):
-- [ ] `npx onememory init` scaffolds a scratch project with no repo checkout; `onemem doctor`
-      passes there.
+- [x] `npx onememory init` scaffolds a scratch project with no repo checkout; `onemem doctor`
+      passes there. — M16: enforced by the packed-artifact smoke (npm + Node only, Bun stripped
+      from PATH), which runs exactly those two commands through `npx`; CI runs it on every push.
 - [x] Durable writes can carry user scope; user-level memories answer from any project; a
       nested cwd resolves to its project; each runtime identifies itself in the audit trail. — M17
       (`mission/17-scope-identity`, merged to main): report
@@ -203,11 +204,16 @@ Definition of done (Wave B):
       its cap or the writer errors (Claude Code index discipline). — M18
       (`mission/18-export`, merged to main): report
       `docs/plan/mission-reports/mission-18-export.md`.
-- [ ] Packages published; CI smoke-tests the published artifacts.
+- [ ] Packages published; CI smoke-tests the published artifacts. — CI half done (M16
+      `packed-artifacts` job: build → stage → pack → smoke on every push). The registry write is
+      the remaining step and is gated on explicit user confirmation; the pipeline is ready
+      (`docs/plan/release-process.md`, ADR-0014).
 
-Status (2026-10-07): M18 and M17 closed; M16 (publishing) is the last Wave B item. M17 also closed
-a retrieval correctness bug the Wave B wording implied: project-scoped searches were soft-scoped,
-so other projects' rows could rank into answers.
+Status (2026-10-07): M18, M17 and M16's engineering are closed; only the first npm publish remains
+in Wave B. M17 also closed a retrieval correctness bug the Wave B wording implied (project-scoped
+searches were soft-scoped, so other projects' rows could rank into answers), and M16 found three
+published-artifact bugs that no in-repo test could see (an undeclared dependency hidden by npm
+hoisting, unshipped SQL migrations, and a bundle-relative path resolving outside the package).
 
 ### Wave A — data correctness
 

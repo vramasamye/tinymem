@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory security core: secret detection & redaction at ingest, path exclusions, and the 100%-local privacy gate",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

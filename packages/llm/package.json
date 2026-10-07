@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory model router: per-operation provider routing behind an internal ModelProvider interface (ADR-0006)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

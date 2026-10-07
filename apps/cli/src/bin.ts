@@ -13,6 +13,7 @@ import { Command, InvalidOptionArgumentError, type OptionValues } from 'commande
 
 import { ConfigError, ConfigNotFoundError } from '@onememory/config';
 import { BackendError, ONEMEMORY_VERSION } from '@onememory/api/runtime';
+import { isMainModule } from '@onememory/core';
 
 import { createIo, type Io } from './io';
 import { createClackPrompt, createNonInteractivePrompt, PromptRequiredError, type Prompt } from './prompt';
@@ -742,7 +743,7 @@ export async function main(argv: string[], deps: MainDeps = {}): Promise<number>
 // The bin entry. `process.exitCode` (not process.exit) so `onemem serve` keeps running: after a
 // serve command the Bun.serve socket holds the loop open; after any other command the loop drains
 // and the process exits with the code set here.
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;

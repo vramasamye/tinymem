@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory REST API (/v1) + the shared runtime composition root (storage, security, retrieval, model router, job handlers)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory adapter for the Cursor editor: .cursor/mcp.json MCP scaffold, .cursor/rules + hooks bootstrap, hook payload → OnememoryEvent translation, fail-soft daemon delivery (ADR-0010)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "bin": {
     "onemem-cursor-hook": "./src/bin.ts"

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Local code fingerprints: Git index/worktree snapshots, rename-aware changes, filesystem hash fallback, and tree-sitter symbol extraction",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

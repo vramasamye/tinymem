@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory retrieval: hybrid lexical/vector/graph engine with RRF fusion, weighted scoring, token packing, and session-context assembly",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
