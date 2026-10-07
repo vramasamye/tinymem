@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory CONSOLIDATE / DECAY stages (memory-model.md §7–§9): near-duplicate merges, contradiction detection with authority resolution, episodic→semantic derivation, prominence-based decay, project digest rollup",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

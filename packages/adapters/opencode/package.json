@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory OpenCode adapter: plugin-signal translation (events, tool.execute.after, chat.message) to OnememoryEvent envelopes, daemon REST delivery, system-prompt context injection, opencode.json + .opencode/plugins + instructions scaffolds",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

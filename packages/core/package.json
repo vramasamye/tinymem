@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory engine core: canonical Zod schemas, memory model, and lifecycle ports",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

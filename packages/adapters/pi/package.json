@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory Pi adapter: extension-event translation (pi.on lifecycle) to OnememoryEvent envelopes, daemon REST delivery, session-start context injection, .pi/mcp.json + .pi/extensions + APPEND_SYSTEM.md scaffolds",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

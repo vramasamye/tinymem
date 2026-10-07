@@ -12,7 +12,13 @@
   ],
   "scripts": {
     "test": "bun test",
-    "test:node": "vitest run"
+    "test:node": "vitest run",
+    "build": "bun run scripts/build.ts",
+    "release:order": "bun run scripts/release.ts order",
+    "release:stage": "bun run scripts/release.ts stage",
+    "release:pack": "bun run scripts/release.ts pack",
+    "release:publish": "bun run scripts/release.ts publish",
+    "smoke:packed": "bun run scripts/smoke-packed.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

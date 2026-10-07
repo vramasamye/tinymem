@@ -5,6 +5,8 @@
  * lock on a dedicated connection so concurrent boots cannot race a migration.
  */
 
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { drizzle as drizzleNodePg } from 'drizzle-orm/node-postgres';
@@ -14,9 +16,33 @@ import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import type { PGlite } from '@electric-sql/pglite';
 import type pg from 'pg';
 
-/** Absolute path of packages/storage/migrations — resolved from this module, not cwd. */
+/** Nearest ancestor holding a package.json — the package root, in the src AND the dist layout. */
+function packageRoot(from: string): string {
+  let dir = from;
+  for (;;) {
+    if (existsSync(join(dir, 'package.json'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) throw new Error(`storage: no package root above ${from}`);
+    dir = parent;
+  }
+}
+
+let cachedMigrationsFolder: string | null = null;
+
+/**
+ * Absolute path of the committed `migrations/` set, anchored at the PACKAGE ROOT (M16).
+ *
+ * Anchoring on the package root rather than on this module's own depth is what makes it correct
+ * both in the repo (`src/drivers/migrate.ts` → `packages/storage/migrations`) and in the published
+ * bundle, where every module is inlined into `dist/index.js` — a fixed `../../migrations` resolved
+ * one level outside the installed package and the published CLI could not migrate its own database.
+ * The published tarball ships the folder (`files: ["dist", "migrations"]`).
+ */
 export function migrationsFolder(): string {
-  return fileURLToPath(new URL('../../migrations', import.meta.url));
+  if (cachedMigrationsFolder === null) {
+    cachedMigrationsFolder = join(packageRoot(dirname(fileURLToPath(import.meta.url))), 'migrations');
+  }
+  return cachedMigrationsFolder;
 }
 
 /** Advisory lock key guarding server-mode migrations (arbitrary, stable constant). */

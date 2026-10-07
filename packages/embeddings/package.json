@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "onememory embedding providers: Ollama /api/embed, OpenAI-compatible /v1/embeddings, optional local transformers.js (ADR-0006)",
   "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
