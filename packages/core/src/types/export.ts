@@ -246,7 +246,19 @@ function appendPayloadSections(lines: string[], payload: unknown): void {
   const bullets = (heading: string, entries: unknown): void => {
     if (!Array.isArray(entries) || entries.length === 0) return;
     lines.push(`## ${heading}`, '');
-    for (const entry of entries) if (typeof entry === 'string') lines.push(`- ${entry}`);
+    for (const entry of entries) {
+      if (typeof entry === 'string') {
+        lines.push(`- ${entry}`);
+      } else if (entry !== null && typeof entry === 'object' && typeof (entry as { option?: unknown }).option === 'string') {
+        // Decision alternatives are option objects: { option, why_rejected? }.
+        const option = entry as { option: string; why_rejected?: unknown };
+        lines.push(
+          typeof option.why_rejected === 'string' && option.why_rejected !== ''
+            ? `- ${option.option} (rejected: ${option.why_rejected})`
+            : `- ${option.option}`,
+        );
+      }
+    }
     lines.push('');
   };
 

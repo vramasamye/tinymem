@@ -65,8 +65,10 @@ function fixtureMemories(): MemoryRecord[] {
       payload: {
         title: 'Adopt pgvector for similarity search',
         decision: 'Use pgvector for the vector channel on the server profile.',
-        alternatives: ['pgvector', 'Qdrant'],
+        alternatives: [{ option: 'pgvector' }, { option: 'Qdrant', why_rejected: 'a second system to run' }],
         rationale: 'One store, one dialect (ADR-0002).',
+        participants: ['the architecture review'],
+        decided_at: BASE_TIME,
         status: 'accepted',
         evidence: [],
       },
@@ -154,6 +156,7 @@ describe('renderProjectExport', () => {
     expect(decisionFile).toContain('Use pgvector for the vector channel on the server profile.');
     expect(decisionFile).toContain('## Alternatives');
     expect(decisionFile).toContain('- pgvector');
+    expect(decisionFile).toContain('- Qdrant (rejected: a second system to run)');
     expect(decisionFile).toContain('## Rationale');
     expect(decisionFile).toContain('## Status');
     expect(decisionFile).toContain('accepted');
