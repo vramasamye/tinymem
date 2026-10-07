@@ -173,10 +173,79 @@ client-side truth. Mission report: `docs/plan/mission-reports/mission-10-web-ui.
 The DoD's `--profile web` compose profile landed afterwards (2026-10-06):
 `docker compose --profile web up` brings up Postgres + the daemon + the explorer.
 
+## Phase 7 — Release surfaces, correctness, and quality
+
+Status: approved 2026-10-07. Input: `docs/research/external-memory-systems-2026-10.md`
+(primary sources) and `docs/research/onememory-vs-external-memory-2026-10.md` (comparison and
+borrow list §5). Wave order **B → A → C/D/E**: the release wave leads because every surveyed
+peer is one `pip`/`npx` away while our packages are 0.1.0 and unpublished, and because the
+Markdown export surface is the 1.0 trust surface — a readable, git-diffable projection of
+everything the engine claims.
+
+### Wave B — 1.0 release (leads)
+
+| Mission | Branch | Scope | Key deps |
+|---|---|---|---|
+| M16 Distribution | `mission/16-distribution` | publish every workspace package to npm; make `npx onememory init` the real install path; version + release process; published-artifact smoke in CI | ADR-0002 |
+| M17 Scope & identity wiring | `mission/17-scope-identity` | user-scope wiring (`user_id` on durable writes, user-level memories answering cross-project); cwd→project lookup (nested directories resolve to their project); per-runtime MCP identity (each runtime's client stamps its own `agent_id`) | ADR-0003, ADR-0011 |
+| M18 Markdown export surface | `mission/18-export` | ADR-0013: the canonical-store rule (the DB stays canonical, export is an idempotent projection); `onemem export` rendering a `MEMORY.md` index + per-layer topic files with cross-links and evidence pointers; `MEMORY.md` session-index artifact with a hard cap (200 lines / 25KB) and error-forcing rewrite | comparison §5 items 1–2; M13 |
+
+Definition of done (Wave B):
+- [ ] `npx onememory init` scaffolds a scratch project with no repo checkout; `onemem doctor`
+      passes there.
+- [ ] Durable writes can carry user scope; user-level memories answer from any project; a
+      nested cwd resolves to its project; each runtime identifies itself in the audit trail.
+- [ ] `onemem export` renders every durable memory with provenance; a re-run is byte-identical;
+      nothing reads the export back as a source of truth; the session-index artifact stays under
+      its cap or the writer errors (Claude Code index discipline).
+- [ ] Packages published; CI smoke-tests the published artifacts.
+
+### Wave A — data correctness
+
+Items (comparison §5 items 3–7 plus the recorded M14/M15 follow-ups):
+- Extraction-sync primitive at session end (Oracle's `wait_for_memory_extraction()` analog) so
+  the session-end sweep never promotes from undrained extraction (the known P1 lag).
+- Session-end summary memory: `episodic` + `session_summary` subtype (no migration), tunable
+  trigger, heuristic fallback offline, through the audited create path.
+- Source re-validation pass: stale/disputed rows re-read fresh evidence and confirm or resolve
+  (Dreaming's "check sources" behavior).
+- Source→derived forget cascade: expiring a source supersedes its derived memories with audit;
+  test-proven, so Oracle's documented `delete_message()` gap is impossible here.
+- Per-type TTL config with anchor choice (storage time vs observed time), wired into decay.
+- Store-port field update + evidence append (the M14-recorded gap: no evidence-append primitive).
+- Dedupe-vs-supersession and tags/subtype filter correctness follow-ups.
+
+Definition of done (Wave A): session end drains extraction before promotion; summary memories
+carry provenance; the forget cascade is test-guaranteed; decay respects per-type TTL.
+
+### Wave C — adapter cleanup
+
+- Shared remember-clause kit across adapters; Codex punctuation fix.
+- "Memory is data, not instructions" stated as an invariant, with injection defenses named at
+  every injection surface (session context, adapter bootstrap, exported `MEMORY.md`)
+  (comparison §5 item 12).
+
+### Wave D — answer quality
+
+- Heuristic procedure extractor (the M4g remainder); auto code-ref linkage; digest in search;
+  manual scan commands.
+- Configurable graph hop budget (1–3) and an optional temporal recall channel (comparison §5
+  item 8).
+- Per-project extraction instructions, persisted and editable (comparison §5 item 9).
+
+### Wave E — ops & eval
+
+- Public LongMemEval run: published harness, stated judge/model/embedder/budget, per-category
+  table incl. abstention, results in `benchmarks/results` (comparison §5 item 10).
+- Sources attribution on answers and in the web UI (comparison §5 item 11).
+- Nightly bench, remaining web UI endpoints, quality dashboard wiring.
+
 ## Post-1.0 (explicitly out of scope until 1.0 ships, no open-core gating)
 
 - SaaS/multi-tenant mode: orgs migration, API keys, RLS, hosted control plane (same engine,
   same schema — ADR-0011).
+- Team/multi-owner memory (comparison §5 item 13) rides the SaaS mode: AMR's per-owner
+  composition with Oracle's DB-enforced fail-closed isolation, not app-level checks.
 - IDE plugins (VS Code, JetBrains), additional embedding/reranker providers, doc-site polish.
 
 ## Sequencing & parallelism
@@ -186,6 +255,7 @@ P0 ──▶ M1 ──┬──▶ M2 ──┬──▶ M13 ──▶ M6, M7
             ├──▶ M3 ──┤
             └──▶ M12 ─┴──▶ M5
 P1 done ──▶ M4 (+M3b) ──▶ P2 done ──▶ M14, M11a ──▶ M8, M9, M5b ──▶ M15, M11b ──▶ M10
+P6 done ──▶ P7: B (M16, M17, M18) ──▶ A ──▶ C, D, E (parallel where file-disjoint)
 ```
 
 Missions inside a phase are file-disjoint by construction (separate packages), so they run as
