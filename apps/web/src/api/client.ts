@@ -13,6 +13,14 @@
  */
 
 import {
+  DeprecateSkillResponseSchema,
+  PromoteSkillResponseSchema,
+  SkillListResponseSchema,
+  SkillReviewResponseSchema,
+  type DeprecateSkillResponse,
+  type PromoteSkillResponse,
+  type SkillListResponse,
+  type SkillReviewResponse,
   HealthResponseSchema,
   InspectResponseSchema,
   MemoryPageResponseSchema,
@@ -86,7 +94,10 @@ export function apiUrl(path: string, baseUrl: string): string {
   return `${baseUrl}${path}`;
 }
 
-/** Read-only surface the pages consume (the explorer is a viewer — no write routes). */
+/**
+ * The surface the pages consume. Everything is a read except the two audited skill-review
+ * actions (approve = promote, reject = deprecate); memory forget/restore/purge stay CLI/SDK-only.
+ */
 export interface ApiClient {
   health(): Promise<HealthResponse>;
   listProjects(): Promise<ProjectListResponse>;
@@ -99,6 +110,20 @@ export interface ApiClient {
   listMemories(projectId: string, options?: MemoryPageOptions): Promise<MemoryPageResponse>;
   stats(projectId: string): Promise<StatsResponse>;
   context(projectId: string, options?: ContextOptions): Promise<SessionContextResponse>;
+  /** The project's skills (the review queue), newest-updated first. */
+  listSkills(projectId: string): Promise<SkillListResponse>;
+  /** One skill's review bundle: the row, the SKILL.md bytes, the audit trail. */
+  reviewSkill(projectId: string, skillId: string): Promise<SkillReviewResponse>;
+  /** Approve: write the SKILL.md, then `candidate → verified` (audited). */
+  promoteSkill(projectId: string, skillId: string, options?: PromoteSkillOptions): Promise<PromoteSkillResponse>;
+  /** Reject or retire: `→ deprecated` (terminal, audited; the reason is required). */
+  deprecateSkill(projectId: string, skillId: string, note: string): Promise<DeprecateSkillResponse>;
+}
+
+export interface PromoteSkillOptions {
+  /** Write into this runtime's canonical skills root instead of the configured default. */
+  runtime?: string;
+  note?: string;
 }
 
 export interface ListOptions {
@@ -298,6 +323,32 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
           session_id: options.session_id,
         })}`,
         SessionContextResponseSchema,
+      );
+    },
+    async listSkills(projectId: string) {
+      return get(`/v1/projects/${encodeURIComponent(projectId)}/skills`, SkillListResponseSchema);
+    },
+    async reviewSkill(projectId: string, skillId: string) {
+      return get(
+        `/v1/projects/${encodeURIComponent(projectId)}/skills/${encodeURIComponent(skillId)}`,
+        SkillReviewResponseSchema,
+      );
+    },
+    async promoteSkill(projectId: string, skillId: string, options: PromoteSkillOptions = {}) {
+      return post(
+        `/v1/projects/${encodeURIComponent(projectId)}/skills/${encodeURIComponent(skillId)}/promote`,
+        PromoteSkillResponseSchema,
+        {
+          ...(options.runtime === undefined ? {} : { runtime: options.runtime }),
+          ...(options.note === undefined ? {} : { note: options.note }),
+        },
+      );
+    },
+    async deprecateSkill(projectId: string, skillId: string, note: string) {
+      return post(
+        `/v1/projects/${encodeURIComponent(projectId)}/skills/${encodeURIComponent(skillId)}/deprecate`,
+        DeprecateSkillResponseSchema,
+        { note },
       );
     },
   };

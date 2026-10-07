@@ -432,6 +432,65 @@ export function stubApi(routes: StubRoutes): FetchLike {
   }) as FetchLike;
 }
 
+export const SKILL_ID_CANDIDATE = '0195a7f0-9f5e-7a1d-bc2d-000000000030';
+export const SKILL_ID_VERIFIED = '0195a7f0-9f5e-7a1d-bc2d-000000000031';
+
+export const FIXTURE_SKILL_MARKDOWN =
+  '---\nname: raise-cloud-run-memory\ndescription: Cloud Run deploys OOM; raise the memory limit.\n---\n\n# Procedure\n\n1. `gcloud run deploy --memory 1Gi`\n';
+
+export function fixtureSkillSummary(
+  id: string = SKILL_ID_CANDIDATE,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id,
+    project_id: PROJECT_ID,
+    name: id === SKILL_ID_CANDIDATE ? 'raise-cloud-run-memory' : 'restore-pgvector-extension',
+    description: 'Cloud Run deploys OOM; raise the memory limit.',
+    version: '1.0.0',
+    status: id === SKILL_ID_CANDIDATE ? 'candidate' : 'verified',
+    path: 'skills/raise-cloud-run-memory/SKILL.md',
+    usage_count: 0,
+    success_rate: null,
+    evidence_count: 1,
+    verified_at: '2026-10-01T12:00:00.000Z',
+    source_failure_ids: [MEMORY_ID_BETA],
+    created_at: '2026-10-01T12:00:00.000Z',
+    updated_at: '2026-10-01T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function fixtureSkillList(): object {
+  return {
+    project_id: PROJECT_ID,
+    // Newest-updated first, as the API orders it: the verified row precedes the candidate.
+    skills: [fixtureSkillSummary(SKILL_ID_VERIFIED), fixtureSkillSummary(SKILL_ID_CANDIDATE)],
+    warnings: [],
+  };
+}
+
+export function fixtureSkillReview(skill: Record<string, unknown> = fixtureSkillSummary()): object {
+  return {
+    project_id: PROJECT_ID,
+    skill,
+    markdown: FIXTURE_SKILL_MARKDOWN,
+    audit: [
+      {
+        id: '0195a7f0-9f5e-7a1d-bc2d-000000000040',
+        memory_id: skill['id'],
+        action: 'created',
+        from_status: null,
+        to_status: 'candidate',
+        actor: 'system:generation',
+        details: { kind: 'skill', status: 'candidate' },
+        at: '2026-10-01T12:00:00.000Z',
+      },
+    ],
+    unresolved_failure_ids: [],
+  };
+}
+
 /** The full default fixture set: every route a page hits while exploring a project. */
 export function defaultStubRoutes(): StubRoutes {
   const routes: StubRoutes = {
@@ -452,6 +511,8 @@ export function defaultStubRoutes(): StubRoutes {
       jsonResponse(apiErrorBody('not_found', 'memory not found (fixture purge)'), 404),
     [`GET /v1/projects/${PROJECT_ID}/stats`]: fixtureStatsResponse(),
     [`GET /v1/projects/${PROJECT_ID}/context`]: fixtureSessionContext(),
+    [`GET /v1/projects/${PROJECT_ID}/skills`]: fixtureSkillList(),
+    [`GET /v1/projects/${PROJECT_ID}/skills/${SKILL_ID_CANDIDATE}`]: fixtureSkillReview(),
   };
   return routes;
 }

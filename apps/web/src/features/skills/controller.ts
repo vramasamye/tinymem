@@ -1,9 +1,10 @@
 /**
  * The skills surface.
  *
- * Skills are procedural memories carrying a `SkillPayload` (the skillify stage is
- * M15 scope — until it lands the API has no dedicated skills endpoint). This
- * mirrors the engine's own convention for that mapping: the MCP surface maps kind
+ * Two sources, both from the API: the `skills` table (the review queue, from
+ * `GET /v1/projects/{id}/skills`; each row links to `/skills/:skillId/review`), and
+ * procedural memories carrying a `SkillPayload`. For the latter this mirrors the
+ * engine's own convention for that mapping: the MCP surface maps kind
  * `skill` → types `['procedural']`, and the API's typed-list endpoints synthesize
  * their query from the kind (`query: options.query ?? kind`). Then one bounded
  * inspect per result keeps only memories whose payload parses as a skill payload
@@ -15,6 +16,7 @@ import {
   SkillPayloadSchema,
   type MemorySearchResponse,
   type SkillPayload,
+  type SkillSummary,
 } from '../../api/schemas';
 
 /** How many results get inspected (bounded N+1 — a local-first viewer). */
@@ -29,6 +31,10 @@ export interface SkillCard {
 }
 
 export interface SkillsViewModel {
+  /** The `skills` table rows (the review queue): candidates first, then the API order. */
+  readonly queue: readonly SkillSummary[];
+  /** How many candidates await review. */
+  readonly pendingReview: number;
   readonly querySent: string;
   /** Procedural memories the search returned. */
   readonly procedural: MemorySearchResponse['memories'];
@@ -45,12 +51,17 @@ export async function loadSkills(
   projectId: string,
   cap: number = SKILL_INSPECT_CAP,
 ): Promise<SkillsViewModel> {
-  const search = await api.search(projectId, {
-    query: 'skill',
-    types: ['procedural'],
-    explain: false,
-    max_memories: cap,
-  });
+  const [list, search] = await Promise.all([
+    api.listSkills(projectId),
+    api.search(projectId, {
+      query: 'skill',
+      types: ['procedural'],
+      explain: false,
+      max_memories: cap,
+    }),
+  ]);
+  const candidates = list.skills.filter((skill) => skill.status === 'candidate');
+  const queue = [...candidates, ...list.skills.filter((skill) => skill.status !== 'candidate')];
 
   const inspections = await Promise.all(
     search.memories.slice(0, cap).map(async (memory) => {
@@ -83,11 +94,13 @@ export async function loadSkills(
   }
 
   return {
+    queue,
+    pendingReview: candidates.length,
     querySent: 'skill',
     procedural: search.memories,
     skills,
     inspectFailures,
     tokens: search.tokens,
-    warnings: search.warnings,
+    warnings: [...list.warnings, ...search.warnings],
   };
 }

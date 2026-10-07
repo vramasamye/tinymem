@@ -18,6 +18,7 @@ import { MemoriesPage } from './features/memories/MemoriesPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { QualityPage } from './features/quality/QualityPage';
 import { MemoryDetailPage, SourcesPage } from './features/src-provenance';
+import { SkillReviewPage } from './features/skills/review/SkillReviewPage';
 import { SkillsPage } from './features/skills/SkillsPage';
 import { TimelinePage } from './features/timeline/TimelinePage';
 
@@ -73,6 +74,11 @@ export const APP_ROUTES: readonly AppRoute[] = [
     path: '/skills',
     surface: 'skills (skill payloads on procedural memories)',
     element: <SkillsPage />,
+  },
+  {
+    path: '/skills/:skillId/review',
+    surface: 'skill review (SKILL.md body + audited approve / reject)',
+    element: <SkillReviewPage />,
   },
   {
     path: '/graph',

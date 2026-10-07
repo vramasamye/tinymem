@@ -488,8 +488,68 @@ export const SessionContextResponseSchema = z.strictObject({
 });
 
 // ---------------------------------------------------------------------------
+// Skills review (1:1 with apps/api/src/server/schemas.ts)
+// ---------------------------------------------------------------------------
+
+export type SkillStatus = import('@onememory/core').SkillStatus;
+export type AgentRuntimeIdUi = import('@onememory/core').AgentRuntimeId;
+export const SKILL_STATUSES_UI = ['candidate', 'verified', 'promoted', 'deprecated'] as const satisfies readonly SkillStatus[];
+
+export const SkillSummarySchema = z.strictObject({
+  id: uuid,
+  project_id: uuid.nullable(),
+  name: z.string().min(1),
+  description: z.string(),
+  version: z.string(),
+  status: z.enum(SKILL_STATUSES_UI),
+  path: z.string(),
+  usage_count: z.number().int().min(0),
+  success_rate: z.number().min(0).max(1).nullable(),
+  evidence_count: z.number().int().min(0),
+  verified_at: isoTimestamp,
+  source_failure_ids: z.array(uuid),
+  created_at: isoTimestamp,
+  updated_at: isoTimestamp,
+});
+
+export const SkillListResponseSchema = z.strictObject({
+  project_id: uuid,
+  skills: z.array(SkillSummarySchema),
+  warnings: z.array(z.string()),
+});
+
+export const SkillReviewResponseSchema = z.strictObject({
+  project_id: uuid,
+  skill: SkillSummarySchema,
+  /** The SKILL.md bytes exactly as promotion would write them. */
+  markdown: z.string(),
+  audit: z.array(MemoryEventRecordSchema),
+  unresolved_failure_ids: z.array(uuid),
+});
+
+export const PromoteSkillResponseSchema = z.strictObject({
+  project_id: uuid,
+  skill: SkillSummarySchema,
+  written_path: z.string().min(1),
+  skills_root: z.string().min(1),
+  skills_root_source: z.enum(['dir-flag', 'runtime-flag', 'config', 'project-default']),
+  markdown_bytes: z.number().int().min(0),
+});
+
+export const DeprecateSkillResponseSchema = z.strictObject({
+  project_id: uuid,
+  skill: SkillSummarySchema,
+});
+
+// ---------------------------------------------------------------------------
 // Inferred wire types for the pages
 // ---------------------------------------------------------------------------
+
+export type SkillSummary = z.infer<typeof SkillSummarySchema>;
+export type SkillListResponse = z.infer<typeof SkillListResponseSchema>;
+export type SkillReviewResponse = z.infer<typeof SkillReviewResponseSchema>;
+export type PromoteSkillResponse = z.infer<typeof PromoteSkillResponseSchema>;
+export type DeprecateSkillResponse = z.infer<typeof DeprecateSkillResponseSchema>;
 
 export type MemoryEventRecord = z.infer<typeof MemoryEventRecordSchema>;
 export type EntityRecord = z.infer<typeof EntityRecordSchema>;

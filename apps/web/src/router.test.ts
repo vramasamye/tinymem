@@ -22,9 +22,9 @@ const M10_SURFACES = [
 ] as const;
 
 describe('the route map', () => {
-  test('has 12 routes (10 surfaces + browse + the root redirect)', () => {
-    expect(ROUTE_COUNT).toBe(12);
-    expect(APP_ROUTES.length).toBe(12);
+  test('has 13 routes (10 surfaces + browse + skill review + the root redirect)', () => {
+    expect(ROUTE_COUNT).toBe(13);
+    expect(APP_ROUTES.length).toBe(13);
   });
 
   test('every path is unique', () => {
@@ -63,6 +63,7 @@ describe('the route map', () => {
       '/decisions',
       '/failures',
       '/skills',
+      '/skills/:skillId/review',
       '/graph',
       '/sources',
       '/quality',

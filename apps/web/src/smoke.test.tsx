@@ -34,12 +34,15 @@ import { MemoryDetailView } from './features/src-provenance/MemoryDetailPage';
 import { SourcesView } from './features/src-provenance/SourcesPage';
 import { loadSkills } from './features/skills/controller';
 import { SkillsView } from './features/skills/SkillsPage';
+import { loadSkillReview } from './features/skills/review/controller';
+import { SkillReviewView } from './features/skills/review/SkillReviewPage';
 import { loadTimeline } from './features/timeline/controller';
 import { TimelineView } from './features/timeline/TimelinePage';
 import { ProjectProvider } from './state/project';
 import {
   MEMORY_ID_ALPHA,
   PROJECT_ID,
+  SKILL_ID_CANDIDATE,
   defaultStubRoutes,
   fixtureEmptySearchResponse,
   fixtureProceduralSearchResponse,
@@ -170,6 +173,31 @@ describe('each surface renders its API data', () => {
     expect(html).toContain('fixture skill: how to restore the pgvector extension in server mode');
     expect(html).toContain('skills/restore-pgvector-extension/SKILL.md');
     expect(html).toContain('verified');
+    expect(html).toContain(`/skills/${SKILL_ID_CANDIDATE}/review`);
+    expect(html).toContain('1 awaiting review');
+  });
+
+  test('skill review: the API markdown, the audit trail, and the action gates', async () => {
+    const vm = await loadSkillReview(api, PROJECT_ID, SKILL_ID_CANDIDATE);
+    const view = (note: string) =>
+      render(
+        <SkillReviewView
+          vm={vm}
+          form={{ runtime: '', note }}
+          outcome={{ kind: 'approved', writtenPath: '/repo/skills/raise-cloud-run-memory/SKILL.md', rootSource: 'project-default' }}
+          onFormChange={noop}
+          onApprove={noop}
+          onReject={noop}
+        />,
+      );
+    const html = view('');
+    expect(html).toContain('# Procedure');
+    expect(html).toContain('system:generation');
+    expect(html).toContain('/repo/skills/raise-cloud-run-memory/SKILL.md');
+    // Reject stays disabled until a reason is typed; approve is enabled for an evidenced candidate.
+    expect(html).toMatch(/<button type="button">Approve<\/button>/);
+    expect(html).toMatch(/<button type="button" disabled="">Reject<\/button>/);
+    expect(view('wrong fix')).toMatch(/<button type="button">Reject<\/button>/);
   });
 
   test('sources: grouped by kind + uri with the inspected source title', async () => {

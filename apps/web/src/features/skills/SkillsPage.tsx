@@ -1,13 +1,13 @@
 /**
- * The skills route (`/skills`): skill payloads found among the project's procedural
- * memories (the skillify stage, M15, is not landed — the honest state is whatever
- * the API returns, including zero skills).
+ * The skills route (`/skills`): the review queue from the `skills` table (each row
+ * links to its `/skills/:skillId/review` page), plus skill payloads found among the
+ * project's procedural memories. Zero skills renders as zero skills.
  */
 
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
-import { AsyncGate, EmptyState, TokensMeter, Warnings } from '../../components/kit';
+import { AsyncGate, EmptyState, StatusBadge, TokensMeter, Warnings } from '../../components/kit';
 import { useAsync } from '../../lib/async';
 import { useProject } from '../../state/project';
 import { loadSkills, type SkillsViewModel } from './controller';
@@ -31,6 +31,21 @@ export function SkillsView({
       </p>
       <TokensMeter tokens={vm.tokens} />
       <Warnings warnings={[...projectWarnings, ...vm.warnings]} />
+
+      <h2>Review queue ({vm.pendingReview} awaiting review)</h2>
+      {vm.queue.length === 0 ? (
+        <EmptyState message="the API lists no skills for this project (generation creates candidates from recurring, verified failures)" />
+      ) : (
+        <ul className="skill-queue">
+          {vm.queue.map((skill) => (
+            <li key={skill.id}>
+              <Link to={`/skills/${skill.id}/review`}>{skill.name}</Link> v{skill.version}{' '}
+              <StatusBadge status={skill.status} /> · {skill.evidence_count} evidence span
+              {skill.evidence_count === 1 ? '' : 's'} · updated {skill.updated_at}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <h2>Skill payloads</h2>
       {vm.skills.length === 0 ? (

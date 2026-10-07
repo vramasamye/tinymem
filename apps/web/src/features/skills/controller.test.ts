@@ -10,6 +10,8 @@ import { createApiClient } from '../../api/client';
 import {
   MEMORY_ID_PROCEDURAL,
   PROJECT_ID,
+  SKILL_ID_CANDIDATE,
+  SKILL_ID_VERIFIED,
   defaultStubRoutes,
   fixtureMemoryRecord,
   fixtureProceduralSearchResponse,
@@ -63,6 +65,17 @@ describe('loadSkills', () => {
 
     expect(vm.skills).toEqual([]);
     expect(vm.procedural.length).toBe(1); // still listed honestly as a procedure
+  });
+
+  test('the review queue comes from the skills endpoint, candidates first', async () => {
+    const api = createApiClient({ fetchImpl: stubApi(skillsRoutes()) });
+    const vm = await loadSkills(api, PROJECT_ID);
+
+    expect(vm.queue.map((skill) => [skill.id, skill.status])).toEqual([
+      [SKILL_ID_CANDIDATE, 'candidate'],
+      [SKILL_ID_VERIFIED, 'verified'],
+    ]);
+    expect(vm.pendingReview).toBe(1);
   });
 
   test('a failed inspect is reported, and the row stays listed', async () => {
