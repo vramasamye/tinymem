@@ -17,7 +17,7 @@
  */
 
 import { $ } from 'bun';
-import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deriveTargets, distEntryOf, publishableDirs, readManifest } from './lib/manifest';
 
@@ -39,6 +39,36 @@ function nodeShebangBin(path: string): void {
   const body = lines[0]?.startsWith('#!') === true ? lines.slice(1).join('\n') : source;
   writeFileSync(path, `${NODE_SHEBANG}\n${body}`);
   chmodSync(path, BIN_MODE);
+}
+
+/**
+ * Test scaffolding must never reach a published tarball. The declaration pass (`tsc`) emits a
+ * `.d.ts` for every file in the program, and test helpers imported by other test files (`testing`,
+ * `test-world`, `fixtures`, `test-support`) can slip in even when `exports` excludes them — that is
+ * exactly what shipped four stray `*.d.ts` files until this check existed. Bundles are covered too:
+ * a test helper reaching a bundle would ship its code, not just its types.
+ */
+const TEST_ARTIFACT_PATTERN = /(^|\/)(testing|test-support|test-world|fixtures)(\/|\.)/;
+
+function assertNoTestArtifacts(dir: string, distDir: string): void {
+  const strays: string[] = [];
+  const walk = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      const relativePath = path.slice(distDir.length + 1);
+      if (TEST_ARTIFACT_PATTERN.test(relativePath)) strays.push(relativePath);
+    }
+  };
+  walk(distDir);
+  if (strays.length > 0) {
+    throw new Error(
+      `build: ${dir} emitted test scaffolding into dist (${strays.join(', ')}) — tighten tsconfig.build.json's exclude list or rename the file`,
+    );
+  }
 }
 
 async function buildPackage(dir: string): Promise<BuiltPackage> {
@@ -63,6 +93,7 @@ async function buildPackage(dir: string): Promise<BuiltPackage> {
     const declarations = bundle.replace(/\.js$/, '.d.ts');
     if (!existsSync(declarations)) throw new Error(`build: ${dir} produced no ${declarations.replace(repoRoot + '/', '')}`);
   }
+  assertNoTestArtifacts(dir, distDir);
 
   const binPaths: string[] = [];
   for (const bin of bins) {

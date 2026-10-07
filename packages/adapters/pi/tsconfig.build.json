@@ -15,6 +15,10 @@
     "src/**/*.scenarios.ts",
     "src/**/scenarios.ts",
     "src/**/testing.ts",
-    "src/test-support/**"
+    "src/**/testing/**",
+    "src/**/test-support.ts",
+    "src/**/test-support/**",
+    "src/**/test-world.ts",
+    "src/**/fixtures.ts"
   ]
 }
