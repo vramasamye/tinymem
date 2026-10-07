@@ -17,6 +17,9 @@
  *   3. `skills.dir` in the config  — e.g. `.claude/skills`, or `~/.claude/skills` for a global root;
  *   4. `<project root>/skills`     — the documented default (ADR-0009 rule 5).
  *
+ * The precedence resolver lives in `@onememory/core` (`resolveSkillsTarget`), shared with the REST
+ * API so the CLI and the web review surface agree on where a skill lands.
+ *
  * Every runtime discovers skills by scanning its skills root for `<name>/SKILL.md` — none
  * consumes a manifest (verified against each runtime's docs; see the core table). The engine
  * already renders the `name`/`description` frontmatter every runtime requires, and names the
@@ -24,12 +27,12 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { join } from 'node:path';
 
-import { loadConfig, type OnememoryConfig } from '@onememory/config';
+import { loadConfig } from '@onememory/config';
 import { BackendError, localUser, openRuntime } from '@onememory/api/runtime';
 import { loadSkillForReview } from '@onememory/consolidation';
-import { AGENT_RUNTIME_IDS, isAgentRuntimeId, primarySkillRoot } from '@onememory/core';
+import { isAgentRuntimeId, resolveSkillsTarget, type SkillsTarget } from '@onememory/core';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';
@@ -45,96 +48,6 @@ export interface SkillsPromoteOptions extends ResolveOptions {
   note?: string;
 }
 
-/** How the write directory was chosen (recorded in the audit details). */
-export type SkillsTargetSource = 'dir-flag' | 'runtime-flag' | 'config' | 'project-default';
-
-export interface SkillsTarget {
-  dir: string;
-  source: SkillsTargetSource;
-  /** Set when `--runtime` chose the directory. */
-  runtime?: string;
-}
-
-/** `~` / `~/x` → HOME-relative; anything else is returned unchanged. */
-export function expandHome(path: string, home: string | null): string {
-  if (path === '~') return home ?? path;
-  if (path.startsWith('~/')) {
-    if (home === null) {
-      throw new BackendError(
-        `cannot resolve '${path}': HOME is not set in this environment — pass an absolute --dir`,
-        'invalid_request',
-      );
-    }
-    return join(home, path.slice(2));
-  }
-  return path;
-}
-
-/**
- * Resolve the write directory from the flag/config precedence. Pure (no filesystem) so the
- * precedence is unit-testable; the caller has already validated `--runtime`.
- */
-export function resolveSkillsTarget(input: {
-  dirFlag?: string | undefined;
-  runtime?: string | undefined;
-  config: OnememoryConfig;
-  projectRoot: string | null;
-  home: string | null;
-}): SkillsTarget {
-  if (input.dirFlag !== undefined && input.dirFlag !== '') {
-    return { dir: expandHome(input.dirFlag, input.home), source: 'dir-flag' };
-  }
-
-  if (input.runtime !== undefined && input.runtime !== '') {
-    if (!isAgentRuntimeId(input.runtime)) {
-      throw new BackendError(
-        `unknown runtime '${input.runtime}' — known runtimes: ${AGENT_RUNTIME_IDS.join(', ')}`,
-        'invalid_request',
-      );
-    }
-    if (input.projectRoot === null) {
-      // Every runtime's canonical root is project-scoped, so this needs a project root.
-      throw new BackendError(
-        `the project has no root path, so --runtime ${input.runtime} has nothing to resolve against — pass --dir <absolute-path> instead`,
-        'invalid_request',
-      );
-    }
-    const dir = primarySkillRoot(input.runtime, { root: input.projectRoot, home: input.home });
-    if (dir === null) {
-      throw new BackendError(
-        `cannot resolve the ${input.runtime} skills root without HOME — pass --dir <path>`,
-        'invalid_request',
-      );
-    }
-    return { dir, source: 'runtime-flag', runtime: input.runtime };
-  }
-
-  const configured = input.config.skills.dir;
-  if (configured !== undefined) {
-    const expanded = expandHome(configured, input.home);
-    // A relative configured dir resolves against the project root (it is project-relative by
-    // default); an absolute one is used as-is.
-    if (isAbsolute(expanded)) return { dir: expanded, source: 'config' };
-    if (input.projectRoot === null) {
-      throw new BackendError(
-        `skills.dir is '${configured}' (project-relative) but the project has no root path — pass --dir <path>`,
-        'invalid_request',
-      );
-    }
-    return { dir: resolve(input.projectRoot, expanded), source: 'config' };
-  }
-
-  if (input.projectRoot === null) {
-    throw new BackendError(
-      'the project has no root path and no skills directory was given — pass --dir <skills-directory> ' +
-        '(e.g. --dir .claude/skills for Claude Code, --dir .opencode/skills for OpenCode), or set ' +
-        'skills.dir in the config',
-      'invalid_request',
-    );
-  }
-  return { dir: join(input.projectRoot, 'skills'), source: 'project-default' };
-}
-
 export async function runSkillsPromote(options: SkillsPromoteOptions, io: Io): Promise<number> {
   if (options.dir !== undefined && options.runtime !== undefined) {
     throw new BackendError(
@@ -145,7 +58,7 @@ export async function runSkillsPromote(options: SkillsPromoteOptions, io: Io): P
   // Validate the runtime id before opening storage: a typo should not cost a PGlite boot.
   if (options.runtime !== undefined && !isAgentRuntimeId(options.runtime)) {
     throw new BackendError(
-      `unknown runtime '${options.runtime}' — known runtimes: ${AGENT_RUNTIME_IDS.join(', ')}`,
+      `unknown runtime '${options.runtime}' — known runtimes: ${['claude-code', 'codex', 'cursor', 'pi', 'opencode'].join(', ')}`,
       'invalid_request',
     );
   }
@@ -158,8 +71,8 @@ export async function runSkillsPromote(options: SkillsPromoteOptions, io: Io): P
   const daemonUrl = await findLiveDaemonUrl(loaded);
   if (daemonUrl !== null) {
     throw new BackendError(
-      `a daemon owns this data dir (${daemonUrl}) and the REST API exposes no skills endpoint ` +
-        "yet — stop the daemon ('onemem serve') and run 'onemem skills promote' again",
+      `a daemon owns this data dir (${daemonUrl}) — promote the skill through the daemon's REST API ` +
+        `(POST ${daemonUrl}/v1/projects/<project>/skills/<id>/promote) or the web review surface`,
       'conflict',
     );
   }
@@ -202,13 +115,15 @@ export async function runSkillsPromote(options: SkillsPromoteOptions, io: Io): P
     //    its artifact is not).
     const project = await runtime.storage.store.getProject(projectId);
     const projectRoot = project === null ? null : project.root_path;
-    const target = resolveSkillsTarget({
+    const resolved = resolveSkillsTarget({
       dirFlag: options.dir,
       runtime: options.runtime,
-      config: loaded.config,
+      configDir: loaded.config.skills.dir,
       projectRoot,
       home,
     });
+    if (!resolved.ok) throw new BackendError(resolved.message, 'invalid_request');
+    const target = resolved.target;
     const targetDir = join(target.dir, skill.name);
     const targetPath = join(targetDir, 'SKILL.md');
     await mkdir(targetDir, { recursive: true });

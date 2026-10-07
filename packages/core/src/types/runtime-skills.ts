@@ -136,3 +136,111 @@ export function runtimeForSkillDir(dir: string, context: SkillRootContext): Agen
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// The write-target resolver (shared by the CLI and the REST API so they agree)
+// ---------------------------------------------------------------------------
+
+/** How a write directory was chosen. */
+export type SkillsTargetSource = 'dir-flag' | 'runtime-flag' | 'config' | 'project-default';
+
+export interface SkillsTarget {
+  dir: string;
+  source: SkillsTargetSource;
+  /** Set when a runtime's canonical root was chosen. */
+  runtime?: AgentRuntimeId;
+}
+
+/** A discriminated result: callers map `ok: false` onto their own error type (core never throws). */
+export type SkillsTargetResolution = { ok: true; target: SkillsTarget } | { ok: false; message: string };
+
+/** `~` / `~/x` → HOME-relative; anything else is unchanged. `~` with no HOME is a failure. */
+export function expandSkillsHome(path: string, home: string | null): { ok: true; path: string } | { ok: false; message: string } {
+  if (path === '~') {
+    return home === null
+      ? { ok: false, message: "cannot resolve '~': HOME is not set in this environment — pass an absolute --dir" }
+      : { ok: true, path: home };
+  }
+  if (path.startsWith('~/')) {
+    return home === null
+      ? { ok: false, message: `cannot resolve '${path}': HOME is not set in this environment — pass an absolute --dir` }
+      : { ok: true, path: joinPath(home, path.slice(2)) };
+  }
+  return { ok: true, path };
+}
+
+/** Absolute = POSIX-rooted or a Windows drive/UNC path (the project's paths are POSIX-style). */
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
+}
+
+export interface ResolveSkillsTargetInput {
+  /** `--dir <path>` (highest precedence). */
+  dirFlag?: string | undefined;
+  /** `--runtime <id>`. */
+  runtime?: string | undefined;
+  /** The config's `skills.dir`. */
+  configDir?: string | undefined;
+  /** The project root (required for project-relative targets). */
+  projectRoot: string | null;
+  /** `$HOME`, for `~/` expansion. */
+  home: string | null;
+}
+
+/**
+ * Resolve the skill write directory. Precedence, first wins:
+ * `--dir` → `--runtime` → `skills.dir` → `<project root>/skills`.
+ *
+ * Pure (no filesystem): the caller creates the directory and writes the artifact. Every failure
+ * is a message, not a throw, so the CLI and the API can map it onto their own error envelope
+ * with the same wording.
+ */
+export function resolveSkillsTarget(input: ResolveSkillsTargetInput): SkillsTargetResolution {
+  if (input.dirFlag !== undefined && input.dirFlag !== '') {
+    const expanded = expandSkillsHome(input.dirFlag, input.home);
+    return expanded.ok ? { ok: true, target: { dir: expanded.path, source: 'dir-flag' } } : expanded;
+  }
+
+  if (input.runtime !== undefined && input.runtime !== '') {
+    if (!isAgentRuntimeId(input.runtime)) {
+      return { ok: false, message: `unknown runtime '${input.runtime}' — known runtimes: ${AGENT_RUNTIME_IDS.join(', ')}` };
+    }
+    if (input.projectRoot === null) {
+      return {
+        ok: false,
+        message: `the project has no root path, so runtime ${input.runtime} has nothing to resolve against — pass dir instead`,
+      };
+    }
+    const dir = primarySkillRoot(input.runtime, { root: input.projectRoot, home: input.home });
+    if (dir === null) {
+      return { ok: false, message: `cannot resolve the ${input.runtime} skills root without HOME — pass dir instead` };
+    }
+    return { ok: true, target: { dir, source: 'runtime-flag', runtime: input.runtime } };
+  }
+
+  const configured = input.configDir;
+  if (configured !== undefined && configured !== '') {
+    const expanded = expandSkillsHome(configured, input.home);
+    if (!expanded.ok) return expanded;
+    // A relative configured dir is project-relative (the default shape); an absolute one is used
+    // as-is (a `~/global` path expands to an absolute one above).
+    if (isAbsolutePath(expanded.path)) return { ok: true, target: { dir: expanded.path, source: 'config' } };
+    if (input.projectRoot === null) {
+      return {
+        ok: false,
+        message: `skills.dir is '${configured}' (project-relative) but the project has no root path — pass dir instead`,
+      };
+    }
+    return { ok: true, target: { dir: joinPath(input.projectRoot, expanded.path), source: 'config' } };
+  }
+
+  if (input.projectRoot === null) {
+    return {
+      ok: false,
+      message:
+        'the project has no root path and no skills directory was given — pass dir (e.g. .claude/skills ' +
+        'for Claude Code, .opencode/skills for OpenCode), or set skills.dir in the config',
+    };
+  }
+  return { ok: true, target: { dir: joinPath(input.projectRoot, 'skills'), source: 'project-default' } };
+}

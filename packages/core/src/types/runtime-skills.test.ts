@@ -9,10 +9,12 @@ import { describe, expect, test } from 'bun:test';
 import {
   AGENT_RUNTIME_IDS,
   RUNTIME_SKILL_TARGETS,
+  expandSkillsHome,
   isAgentRuntimeId,
   primarySkillRoot,
   resolveSkillRoot,
   resolveSkillRoots,
+  resolveSkillsTarget,
   runtimeForSkillDir,
   type AgentRuntimeId,
 } from './runtime-skills';
@@ -108,5 +110,100 @@ describe('runtimeForSkillDir', () => {
   test('an arbitrary directory maps to no runtime', () => {
     expect(runtimeForSkillDir('/repo/skills', CTX)).toBeNull();
     expect(runtimeForSkillDir('/somewhere/else', CTX)).toBeNull();
+  });
+});
+
+describe('expandSkillsHome', () => {
+  test('expands ~ and ~/x against HOME; leaves everything else alone', () => {
+    expect(expandSkillsHome('~/skills', '/home/dev')).toEqual({ ok: true, path: '/home/dev/skills' });
+    expect(expandSkillsHome('~', '/home/dev')).toEqual({ ok: true, path: '/home/dev' });
+    expect(expandSkillsHome('/abs/skills', '/home/dev')).toEqual({ ok: true, path: '/abs/skills' });
+    expect(expandSkillsHome('rel/skills', '/home/dev')).toEqual({ ok: true, path: 'rel/skills' });
+  });
+
+  test('a ~/ path with no HOME is a failure, never a bogus literal path', () => {
+    expect(expandSkillsHome('~/skills', null).ok).toBeFalse();
+    expect(expandSkillsHome('~', null).ok).toBeFalse();
+  });
+});
+
+describe('resolveSkillsTarget precedence', () => {
+  const base = { projectRoot: '/repo', home: '/home/dev' };
+
+  test('--dir wins over everything, and expands ~', () => {
+    expect(resolveSkillsTarget({ dirFlag: '/explicit', runtime: 'claude-code', configDir: '.opencode/skills', ...base })).toEqual(
+      { ok: true, target: { dir: '/explicit', source: 'dir-flag' } },
+    );
+    expect(resolveSkillsTarget({ dirFlag: '~/skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/home/dev/skills', source: 'dir-flag' },
+    });
+  });
+
+  test('--runtime resolves the runtime canonical root (and records which runtime)', () => {
+    expect(resolveSkillsTarget({ runtime: 'claude-code', configDir: '.opencode/skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/repo/.claude/skills', source: 'runtime-flag', runtime: 'claude-code' },
+    });
+    expect(resolveSkillsTarget({ runtime: 'opencode', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/repo/.opencode/skills', source: 'runtime-flag', runtime: 'opencode' },
+    });
+  });
+
+  test('--runtime with an unknown id is refused, naming the known ones', () => {
+    const result = resolveSkillsTarget({ runtime: 'claude', ...base });
+    expect(result.ok).toBeFalse();
+    if (!result.ok) {
+      expect(result.message).toContain("unknown runtime 'claude'");
+      expect(result.message).toContain('claude-code');
+    }
+  });
+
+  test('--runtime with no project root is refused (every canonical root is project-scoped)', () => {
+    const result = resolveSkillsTarget({ runtime: 'cursor', projectRoot: null, home: '/home/dev' });
+    expect(result.ok).toBeFalse();
+  });
+
+  test('configDir (relative) resolves against the project root', () => {
+    expect(resolveSkillsTarget({ configDir: '.claude/skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/repo/.claude/skills', source: 'config' },
+    });
+  });
+
+  test('configDir (absolute, or ~/global) is used as given', () => {
+    expect(resolveSkillsTarget({ configDir: '/etc/skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/etc/skills', source: 'config' },
+    });
+    expect(resolveSkillsTarget({ configDir: '~/.claude/skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: '/home/dev/.claude/skills', source: 'config' },
+    });
+  });
+
+  test('a relative configDir with no project root is refused', () => {
+    expect(resolveSkillsTarget({ configDir: '.claude/skills', projectRoot: null, home: '/home/dev' }).ok).toBeFalse();
+  });
+
+  test('with nothing set, the documented default is <project root>/skills', () => {
+    expect(resolveSkillsTarget({ ...base })).toEqual({
+      ok: true,
+      target: { dir: '/repo/skills', source: 'project-default' },
+    });
+  });
+
+  test('with nothing set and no project root, it refuses with actionable guidance', () => {
+    const result = resolveSkillsTarget({ projectRoot: null, home: '/home/dev' });
+    expect(result.ok).toBeFalse();
+    if (!result.ok) expect(result.message).toContain('skills.dir');
+  });
+
+  test('a Windows drive path counts as absolute (used as given, not joined)', () => {
+    expect(resolveSkillsTarget({ configDir: 'C:\\skills', ...base })).toEqual({
+      ok: true,
+      target: { dir: 'C:\\skills', source: 'config' },
+    });
   });
 });
