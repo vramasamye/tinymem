@@ -62,6 +62,15 @@ package, where it:
 The staged manifest is the only thing that is packed or published: one reviewed, unit-tested
 rewrite instead of 17 hand-edited manifests that can disagree.
 
+**Test scaffolding never ships, and that is asserted rather than assumed.** Excluding a subpath
+from `exports` is not enough: the declaration pass follows imports, so a test helper imported by
+another test file (`test-world.ts`, `skills/fixtures.ts`, `test-support.ts`,
+`testing/transcripts.ts`) still lands in `dist/` unless the *importers* are excluded too — which is
+how four stray `*.d.ts` files reached the tarballs until the first dry run showed them.
+`tsconfig.build.json` now excludes the whole scaffolding family, `scripts/build.ts` fails the build
+if any test artifact reaches `dist/`, and the packed smoke checks the installed packages for the
+same. Dropping one exclude is enough to fail the build, so the guard is not decorative.
+
 **3. Bins run under Node; `serve` is the one Bun-only command.**
 
 `dist` bins carry `#!/usr/bin/env node` (the build rewrites the source's `#!/usr/bin/env bun`), and
