@@ -15,6 +15,8 @@
  * SessionStart `additionalContext` object).
  */
 
+import { isMainModule } from '@onememory/core';
+
 import { runHook } from './hook-bin';
 
 async function readAllStdin(): Promise<string> {
@@ -37,7 +39,7 @@ async function main(): Promise<void> {
   await runHook(input, {});
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   main().catch(() => {
     // Last-resort guard: a hook NEVER fails the agent.
     process.exit(0);

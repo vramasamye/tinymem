@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 /**
  * `onemem-cursor-hook` — the Cursor hook binary.
  *
@@ -10,6 +11,8 @@
  * Cursor's BLOCKING signal (hooks reference, "Exit code behavior"), which onememory never emits.
  * Diagnostics are one machine-readable stderr line.
  */
+
+import { isMainModule } from '@onememory/core';
 
 import { runHook } from './hook-bin';
 
@@ -33,7 +36,7 @@ async function main(): Promise<void> {
   await runHook(input, {});
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   main()
     .catch(() => {
       // Last-resort guard: a hook NEVER fails the agent.

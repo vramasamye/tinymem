@@ -27,6 +27,7 @@
  */
 
 import { isLoopbackHost } from '@onememory/config';
+import { isMainModule } from '@onememory/core';
 
 import { mcpConfigFromEnv } from './config';
 import { createOnememoryStreamableHttpServer } from './streamable-http';
@@ -227,7 +228,7 @@ async function buildAuth(options: {
   };
 }
 
-if (import.meta.main) {
+if (isMainModule(import.meta.url)) {
   main().catch((error) => {
     // Boot failures (bad env, unwritable data dir, unreachable Postgres) must be loud — a
     // runtime that spawns this server needs to see WHY the connection died.

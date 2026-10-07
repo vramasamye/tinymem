@@ -33,3 +33,7 @@ export * from './types/export';
 
 // Ports (repository-structure.md): the contract every other package codes against
 export * from './ports/index';
+
+// Process-entry helpers (M16, ADR-0014): portable main-module detection for published bins —
+// Node LTS has no `import.meta.main`, so bins guard on this instead
+export * from './util/is-main-module';
