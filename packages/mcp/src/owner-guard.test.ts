@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { daemonLockPath, writeDaemonLock } from '@onememory/config';
+import { daemonLockPath, writeDaemonLock } from '@onememory-ai/config';
 
 import { main } from './bin';
 import { assertNoEmbeddedOwner, EmbeddedStorageOwnerError } from './owner-guard';

@@ -8,7 +8,7 @@
  * per-batch caps.
  */
 
-import type { ExtractedMemory, ExtractionResult, WorkingCandidate } from '@onememory/core';
+import type { ExtractedMemory, ExtractionResult, WorkingCandidate } from '@onememory-ai/core';
 
 import { DEFAULT_THRESHOLDS, type ExtractionThresholds } from './types';
 

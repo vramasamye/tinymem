@@ -2,7 +2,7 @@
  * The storage object both drivers return — one repository API over both deployment profiles.
  */
 
-import type { CodeMemoryStore, EmbeddingIndex, EventsCompactor, JobQueue, SkillStore, Store } from '@onememory/core';
+import type { CodeMemoryStore, EmbeddingIndex, EventsCompactor, JobQueue, SkillStore, Store } from '@onememory-ai/core';
 
 import type { Database } from './client';
 

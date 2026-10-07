@@ -51,7 +51,7 @@ embedded PGlite, `npx onememory init` + `doctor`, and artifact hygiene checks. C
 None of these were visible to the repo's own test suite, which is exactly why the packed smoke is
 the gate (ADR-0014 §5–6):
 
-1. **An undeclared dependency.** `@onememory/mcp` imported `@modelcontextprotocol/client` while
+1. **An undeclared dependency.** `@onememory-ai/mcp` imported `@modelcontextprotocol/client` while
    declaring it only as a `devDependency`; npm hoisting hid it in the monorepo, and every consumer
    install failed with `ERR_MODULE_NOT_FOUND`. Fixed in `packages/mcp/package.json`; the release
    pre-flight now extracts real import specifiers from the built bundles and refuses to stage a
@@ -61,7 +61,7 @@ the gate (ADR-0014 §5–6):
    but from the inlined `dist/index.js` it pointed one level *outside* the installed package. So
    `init` failed on the first user install with drizzle's `Can't find meta/_journal.json`.
    `migrationsFolder()` now anchors at the package root (found by walking up to the nearest
-   `package.json`, which is correct in both layouts) and `@onememory/storage` declares
+   `package.json`, which is correct in both layouts) and `@onememory-ai/storage` declares
    `files: ["dist", "migrations"]`.
 3. **A bin with no shebang** (Cursor hook, fixed in the portability commit).
 

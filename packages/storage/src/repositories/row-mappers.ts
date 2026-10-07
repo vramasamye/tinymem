@@ -13,8 +13,8 @@ import type {
   StoredEvent,
   UserRecord,
   WorkingMemoryRecord,
-} from '@onememory/core';
-import type { MemoryRecord, EvidenceSpan } from '@onememory/core';
+} from '@onememory-ai/core';
+import type { MemoryRecord, EvidenceSpan } from '@onememory-ai/core';
 import {
   EDGE_RELATIONS,
   ENTITY_KINDS,
@@ -24,7 +24,7 @@ import {
   MEMORY_STATUSES,
   MEMORY_TYPES,
   WORKING_MEMORY_KINDS,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { toIso, toIsoOrNull, toStringArray } from '../drivers/client';
 

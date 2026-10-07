@@ -9,7 +9,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import { MEMORY_STATUSES } from '@onememory/core';
+import { MEMORY_STATUSES } from '@onememory-ai/core';
 
 import { createServerDb } from '../drivers/server';
 import type { OnememoryStorage } from '../drivers/types';

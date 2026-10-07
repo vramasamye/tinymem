@@ -5,7 +5,7 @@
  * a quality tier is down.
  */
 
-import type { Reranker } from '@onememory/core';
+import type { Reranker } from '@onememory-ai/core';
 
 import type { ScoredCandidate } from './fusion';
 

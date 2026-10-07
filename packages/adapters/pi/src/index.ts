@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-pi` — the Pi adapter (ADR-0010 §6/§7).
+ * `@onememory-ai/adapter-pi` — the Pi adapter (ADR-0010 §6/§7).
  *
  * A translator, nothing more: Pi-native extension events (`pi.on()` lifecycle) → validated
  * `OnememoryEvent` envelopes (runtime: 'pi') → the daemon's public REST surface. It never imports

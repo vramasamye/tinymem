@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/consolidation",
+  "name": "@onememory-ai/consolidation",
   "version": "0.1.0",
   "description": "onememory CONSOLIDATE / DECAY stages (memory-model.md §7–§9): near-duplicate merges, contradiction detection with authority resolution, episodic→semantic derivation, prominence-based decay, project digest rollup",
   "license": "Apache-2.0",
@@ -16,14 +16,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/core": "workspace:*",
-    "@onememory/extraction": "workspace:*",
-    "@onememory/llm": "workspace:*",
-    "@onememory/storage": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/extraction": "workspace:*",
+    "@onememory-ai/llm": "workspace:*",
+    "@onememory-ai/storage": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@onememory/mcp": "workspace:*",
+    "@onememory-ai/mcp": "workspace:*",
     "@types/bun": "^1.4.2"
   }
 }

@@ -125,7 +125,7 @@ Branch: `mission/8-cursor` · `.cursor/mcp.json` + rules; conformance green.
 
 Status: ✅ Completed 2026-10-06 (merged `2dd3c9f`). Mission report at
 `docs/plan/mission-reports/mission-8-cursor.md`. New package
-`@onememory/adapter-cursor` (35 files), 14 new conformance tests in
+`@onememory-ai/adapter-cursor` (35 files), 14 new conformance tests in
 `benchmarks/eval/src/adapter-conformance/`. Conexts cursor to the
 shared 10-fact canonical session via a real-engine pipeline; byte-identical
 to Claude, with one pre-existing Codex normalization gap pinned by a
@@ -138,8 +138,8 @@ Branch: `mission/9-pi-opencode` · pi extension/config; opencode.json MCP + skil
 
 Status: ✅ Completed 2026-10-06 (merged `d95efc4`). Mission report at
 `docs/plan/mission-reports/mission-9-pi-opencode.md`. New packages
-`@onememory/adapter-pi` (Pi extension adapter, 96 tests) and
-`@onememory/adapter-opencode` (OpenCode plugin adapter, 147 tests).
+`@onememory-ai/adapter-pi` (Pi extension adapter, 96 tests) and
+`@onememory-ai/adapter-opencode` (OpenCode plugin adapter, 147 tests).
 The shared 5-runtime conformance suite now runs Claude + Cursor + Codex +
 Pi + OpenCode: byte-identical memory results across the canonical
 10-fact session (with one pinned edit-line-count landscape
@@ -245,10 +245,10 @@ formalization, to be folded rather than run as written.
    `onemem-mcp` bin now probes the daemon lock for both real embedded data-dir layouts and
    refuses to open embedded storage (PGlite) while a live daemon still owns the data dir. Server
    profile (`ONEMEMORY_PG_URL`) is unaffected — Postgres is multi-process-safe by design. The probe
-   is the same shared `@onememory/config` seam the daemon writes, so the lock schema and discovery
+   is the same shared `@onememory-ai/config` seam the daemon writes, so the lock schema and discovery
    stay in lockstep.
 6. **Shared wire-schema package** (`project.json` / `daemon.json`) [P3] — the Claude Code adapter
-   re-declares cross-process wire records owned by `@onememory/config` / `apps/api`; strict schemas
+   re-declares cross-process wire records owned by `@onememory-ai/config` / `apps/api`; strict schemas
    fail loud on drift, but a format change needs two edits (mission-6 §5.3).
 7. **Doctor: adapter state + capture health** [P3] — surface `.onememory/adapters/*.json` cursor
    state with a reset offer (mission-6 §5.4) and a structured delivery ledger for capture hooks,
@@ -391,7 +391,7 @@ Merged 2026-10-05 as `bc8bf24` (mission report:
    idempotency key *inside* the payload JSON, and the strict `drift_scan`/`reindex` payload
    schemas rejected it — so every scheduled code-memory job dead-lettered with
    `unrecognized_keys: ["key"]` (no test ran those kinds through the worker). `jobPayloadFields`
-   in `@onememory/core` strips the queue key before validation; strictness is preserved.
+   in `@onememory-ai/core` strips the queue key before validation; strictness is preserved.
 2. **Evidence-append Store primitive** [P2] — near-dup merge records the evidence union on the
    `merged` audit event because the port cannot append evidence to an existing memory row.
 3. **`MemoryQuery` null-scope probe** [P3] — user-scope-only passes need a null-`project_id`
@@ -501,7 +501,7 @@ remaining items below are honest residual risk or doc follow-ups.
    dependencies receive `.bin` links; a user installing `onemem` (not the adapter packages) under
    pnpm would not get `onemem-claude-hook`/`onemem-mcp` links. Coordinator-owned decision:
    either document direct installation of the adapter packages, or publish a
-   `pnpm.public-hoist-pattern[]=@onememory/*` note in `README.md`.
+   `pnpm.public-hoist-pattern[]=@onememory-ai/*` note in `README.md`.
 2. **Doctor cannot flag a stale-but-wired invocation form** [P3] — `hooks.json`/`settings.json`
    written by an older `onemem init` still reports `complete`. Token-based recognition is
    deliberate (mirrors Claude's behavior, no sudden warnings), so only a re-run of `onemem init`
@@ -513,7 +513,7 @@ remaining items below are honest residual risk or doc follow-ups.
 4. **Windows is out of scope** — bun shebangs and the Codex shell command are POSIX-only,
    consistent with Phase 1's posture (`docs/research/dependency-verification.md` §10 pins argv-array
    spawning; no Windows CI). Cleaner to keep this documented than a partial port.
-5. **`bun.lock` drift on merge** — the `@onememory/config` workspace edge added in `e0b879a`
+5. **`bun.lock` drift on merge** — the `@onememory-ai/config` workspace edge added in `e0b879a`
    needs a `bun install` on the merge destination before the MCP suite can find the new link.
    Worker documented it; re-incur if a sibling mission changes the same edge again. Capture in
    `AGENTS.md` contributor notes if it becomes routine.
@@ -766,7 +766,7 @@ Signature recurrence matching → SKILL.md candidates → review/promote flow �
    surface the API lacked, so it ships with one: `GET /v1/projects/{id}/skills`, `GET
    .../skills/{skillId}`, `POST .../promote` and `POST .../deprecate`, backed by
    `apps/api/src/runtime/skills-service.ts` and the write-root resolver now in
-   `@onememory/core` (`resolveSkillsTarget`, shared with `onemem skills promote`). Every route
+   `@onememory-ai/core` (`resolveSkillsTarget`, shared with `onemem skills promote`). Every route
    is scoped to the path project; a repeat deprecate is a 409, not a 500. Pinned by
    `apps/api/src/runtime/skills-service.test.ts` (real PGlite), the route contract in
    `apps/api/src/server/app.test.ts`, and the web controller, route-map and smoke tests.

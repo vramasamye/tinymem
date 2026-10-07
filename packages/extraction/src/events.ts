@@ -19,7 +19,7 @@ import {
   type OnememoryEvent,
   type SourceKind,
   type StoredEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import { z } from 'zod';
 
 import { NormalizationError } from './types';

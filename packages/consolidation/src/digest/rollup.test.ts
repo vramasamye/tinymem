@@ -14,7 +14,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { estimateTokens } from '@onememory/core';
+import { estimateTokens } from '@onememory-ai/core';
 
 import { memoryFixture } from '../testing';
 import {

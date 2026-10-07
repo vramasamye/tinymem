@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { writeDaemonLock, type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
+import { writeDaemonLock, type DoctorCheck, type DoctorReport } from '@onememory-ai/api/runtime';
 
 import { main } from './bin';
 import { jsonOf } from './test-support';

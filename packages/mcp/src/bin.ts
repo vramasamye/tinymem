@@ -26,8 +26,8 @@
  * daemon owns is exactly the second-PGlite-owner hazard the guard exists to refuse.
  */
 
-import { isLoopbackHost } from '@onememory/config';
-import { isMainModule } from '@onememory/core';
+import { isLoopbackHost } from '@onememory-ai/config';
+import { isMainModule } from '@onememory-ai/core';
 
 import { mcpConfigFromEnv } from './config';
 import { createOnememoryStreamableHttpServer } from './streamable-http';

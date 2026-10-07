@@ -17,8 +17,8 @@
  */
 
 import { z } from 'zod';
-import { REDACTION_KINDS } from '@onememory/core';
-import type { RedactionKind } from '@onememory/core';
+import { REDACTION_KINDS } from '@onememory-ai/core';
+import type { RedactionKind } from '@onememory-ai/core';
 
 /** A pattern group's `kind` is fixed, or derived from the matched assignment name. */
 export type KindSource = RedactionKind | ((name: string) => RedactionKind);

@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/adapter-pi",
+  "name": "@onememory-ai/adapter-pi",
   "version": "0.1.0",
   "description": "onememory Pi adapter: extension-event translation (pi.on lifecycle) to OnememoryEvent envelopes, daemon REST delivery, session-start context injection, .pi/mcp.json + .pi/extensions + APPEND_SYSTEM.md scaffolds",
   "license": "Apache-2.0",
@@ -15,9 +15,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/config": "workspace:*",
-    "@onememory/core": "workspace:*",
-    "@onememory/security": "workspace:*",
+    "@onememory-ai/config": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/security": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

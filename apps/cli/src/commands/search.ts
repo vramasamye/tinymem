@@ -4,8 +4,8 @@
  * channels, truncation) are printed rather than swallowed.
  */
 
-import { MEMORY_TYPES, type MemoryType, type MemorySearchResponse } from '@onememory/core';
-import { BackendError } from '@onememory/api/runtime';
+import { MEMORY_TYPES, type MemoryType, type MemorySearchResponse } from '@onememory-ai/core';
+import { BackendError } from '@onememory-ai/api/runtime';
 
 import { shortDate, type Io } from '../io';
 import { describeResolution, resolveBackend, type ResolveOptions } from '../resolve';

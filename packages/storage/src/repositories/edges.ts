@@ -3,8 +3,8 @@
  * (from, to, relation) so addEdge is idempotent.
  */
 
-import { NewEdgeSchema, uuidv7 } from '@onememory/core';
-import type { EdgeRecord, NewEdge } from '@onememory/core';
+import { NewEdgeSchema, uuidv7 } from '@onememory-ai/core';
+import type { EdgeRecord, NewEdge } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

@@ -12,7 +12,7 @@
  * (`requireBearerAuth` from the SDK — 401/403 + `WWW-Authenticate` challenges). The gate is
  * still the DEPLOYER's explicit opt-in (`onemem serve --mcp-auth <issuer>`); absent → no auth,
  * the local-first default. The RFC 9728 discovery documents are the host's routes (the daemon
- * serves them from `@onememory/mcp`'s `onememoryOauthMetadataResponse`), public by design.
+ * serves them from `@onememory-ai/mcp`'s `onememoryOauthMetadataResponse`), public by design.
  */
 
 import {

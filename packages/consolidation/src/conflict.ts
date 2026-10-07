@@ -18,8 +18,8 @@
  *   contradiction pass's job, so this seam is pure and independently testable.
  */
 
-import type { MemoryRecord } from '@onememory/core';
-import type { ModelRouter } from '@onememory/llm';
+import type { MemoryRecord } from '@onememory-ai/core';
+import type { ModelRouter } from '@onememory-ai/llm';
 import { z } from 'zod';
 
 import { pairKey } from './cluster';

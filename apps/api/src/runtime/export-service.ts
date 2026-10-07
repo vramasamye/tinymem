@@ -1,7 +1,7 @@
 /**
  * The Markdown export service (ADR-0013 §5): the one surface `onemem export` (and later the REST
  * routes) share — page the project's durable memories through the canonical read path, render the
- * deterministic tree with `@onememory/core`'s pure renderer, write it under the resolved root, and
+ * deterministic tree with `@onememory-ai/core`'s pure renderer, write it under the resolved root, and
  * prune exactly the files the export owns (marker-bearing), never the operator's own files.
  *
  * The canonical-store rule (ADR-0013 §1) is enforced by shape: this module only writes; nothing
@@ -18,8 +18,8 @@ import {
   MEMORY_STATUSES,
   renderProjectExport,
   type MemoryRecord,
-} from '@onememory/core';
-import { memoriesRepo, searchRepo } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { memoriesRepo, searchRepo } from '@onememory-ai/storage';
 
 import type { OnememoryRuntime } from './composition';
 import { requireProject } from './memory-service';

@@ -12,7 +12,7 @@
  * 2. **Oracle gap** — `used / oracle_min_tokens`, the room there is to compress. The oracle is
  *    the token cost of the packer's MOST COMPACT representation of exactly the golden answer
  *    set: `Σ estimateTokens(deriveLabel(title, content))` over the expected facts — the same
- *    estimator (`@onememory/core`) and label derivation (`@onememory/retrieval`) the engine's
+ *    estimator (`@onememory-ai/core`) and label derivation (`@onememory-ai/retrieval`) the engine's
  *    titles-only overflow line uses. A gap of 1.0 means the response was exactly the golden
  *    answer at its tightest packing; every point above is extra memories or richer
  *    representations. The gated value is the mean over queries whose expected facts ALL

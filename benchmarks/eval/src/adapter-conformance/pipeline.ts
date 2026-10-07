@@ -16,11 +16,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createExtractHandler, createHeuristicClassifier, createHeuristicExtractor } from '@onememory/extraction';
-import { createRetrievalEngine } from '@onememory/retrieval';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
-import type { EvidenceSpan, MemoryRecord } from '@onememory/core';
+import { createExtractHandler, createHeuristicClassifier, createHeuristicExtractor } from '@onememory-ai/extraction';
+import { createRetrievalEngine } from '@onememory-ai/retrieval';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
+import type { EvidenceSpan, MemoryRecord } from '@onememory-ai/core';
 
 import { FACT_IDS, RUNTIMES, SCENARIO, SCENARIO_NOW, translateScenario, type RuntimeName, type ScenarioContext } from './scenario';
 

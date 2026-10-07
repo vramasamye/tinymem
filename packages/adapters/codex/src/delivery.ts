@@ -7,13 +7,13 @@
  *
  * Discovery order (mirrors the CLI's `resolveBackend` seam):
  *   1. `ONEMEMORY_DAEMON_URL` + `ONEMEMORY_PROJECT_ID` env overrides,
- *   2. `@onememory/config` discovery (`--config` > `ONEMEMORY_CONFIG` > nearest
+ *   2. `@onememory-ai/config` discovery (`--config` > `ONEMEMORY_CONFIG` > nearest
  *      `.onememory/onememory.yaml` walking up) → `.onememory/project.json` (project id)
  *      + `.onememory/daemon.json` (daemon url; the documented v1 lock format written by
  *      `onemem serve`).
  *
  * The adapter reads the lock FILE format (a documented, stable pointer) rather than importing
- * `@onememory/api/runtime` — that package is the composition root (storage, extraction, llm,
+ * `@onememory-ai/api/runtime` — that package is the composition root (storage, extraction, llm,
  * embeddings) and an adapter must not depend on engine internals (repository-structure.md rule 2).
  */
 
@@ -22,8 +22,8 @@ import { join } from 'node:path';
 
 import { z } from 'zod';
 
-import { ConfigError, ConfigNotFoundError, loadConfig } from '@onememory/config';
-import type { OnememoryEvent } from '@onememory/core';
+import { ConfigError, ConfigNotFoundError, loadConfig } from '@onememory-ai/config';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 /** `IngestRequest.events` caps a batch at 500 (apps/api server schema). */
 export const MAX_EVENTS_PER_REQUEST = 500;

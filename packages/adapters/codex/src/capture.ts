@@ -2,14 +2,14 @@
  * The capture pipeline: translate → path-exclude → redact → deliver.
  *
  * Redaction and path exclusion are the security package's documented adapter contract
- * (`@onememory/security` index doc: "adapters … call `isEventPathExcluded` … and `redactEvent`
+ * (`@onememory-ai/security` index doc: "adapters … call `isEventPathExcluded` … and `redactEvent`
  * before ingest"), and the daemon redacts again on arrival — defense in depth, two boundaries.
  * Redaction failure is a DROP (counted), never a crash and never an unredacted send: if the
  * redactor cannot make an event safe, the event does not leave this process.
  */
 
-import { isEventPathExcluded, redactEvent } from '@onememory/security';
-import type { OnememoryEvent } from '@onememory/core';
+import { isEventPathExcluded, redactEvent } from '@onememory-ai/security';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 import { deliverEvents, fetchSessionContext, type DeliverOptions, type DeliveryResult } from './delivery';
 import { clampDigest, DropCounter, type DroppedRecord, type EventContext, type TranslationResult } from './event-builder';

@@ -28,7 +28,7 @@ import {
   type Extractor,
   type OnememoryEvent,
   type WorkingCandidate,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { createHeuristicClassifier, EXPLICIT_SEMANTIC_SUBTYPE, type Classifier, type WorkingSignal } from '../classifier';
 import { decisionContent, decisionPayloadFromText, enrichDecision } from '../enrichment/decision';

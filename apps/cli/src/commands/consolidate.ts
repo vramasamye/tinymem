@@ -13,10 +13,10 @@
  * Both paths drive the same idempotent `runConsolidation` entry, so the outcome is identical.
  */
 
-import { loadConfig } from '@onememory/config';
-import { createHttpBackend, openRuntime } from '@onememory/api/runtime';
-import type { ConsolidateOutcome } from '@onememory/api/runtime';
-import type { ConsolidationReport } from '@onememory/consolidation';
+import { loadConfig } from '@onememory-ai/config';
+import { createHttpBackend, openRuntime } from '@onememory-ai/api/runtime';
+import type { ConsolidateOutcome } from '@onememory-ai/api/runtime';
+import type { ConsolidationReport } from '@onememory-ai/consolidation';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';

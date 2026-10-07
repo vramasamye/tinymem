@@ -1,5 +1,5 @@
 /**
- * `@onememory/llm` — the model router (ADR-0006).
+ * `@onememory-ai/llm` — the model router (ADR-0006).
  *
  * One internal `ModelProvider` seam, an AI SDK v6 implementation behind it, and a config-driven
  * per-operation routing table (embedding / classify / extract / consolidate / conflict /

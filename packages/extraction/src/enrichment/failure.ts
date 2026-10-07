@@ -17,7 +17,7 @@
 
 import { createHash } from 'node:crypto';
 
-import { FailureSignatureSchema, type FailureSignature } from '@onememory/core';
+import { FailureSignatureSchema, type FailureSignature } from '@onememory-ai/core';
 
 import type { NormalizedEvent } from '../events';
 import { executableOf } from '../heuristic/patterns';

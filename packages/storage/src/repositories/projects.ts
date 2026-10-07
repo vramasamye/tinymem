@@ -2,7 +2,7 @@
  * Identity, scope, and provenance repositories: users, projects, sources.
  */
 
-import { NewProjectSchema, NewSourceSchema, NewUserSchema, SOURCE_KINDS, uuidv7 } from '@onememory/core';
+import { NewProjectSchema, NewSourceSchema, NewUserSchema, SOURCE_KINDS, uuidv7 } from '@onememory-ai/core';
 import type {
   NewProject,
   NewSource,
@@ -10,7 +10,7 @@ import type {
   ProjectRecord,
   SourceRef,
   UserRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

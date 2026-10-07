@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-claude` — the Claude Code adapter (ADR-0010 §6/§7).
+ * `@onememory-ai/adapter-claude` — the Claude Code adapter (ADR-0010 §6/§7).
  *
  * Public surface, grouped by consumer:
  * - Translation (pure): `translateHookInput` + the hook-input schemas — runtime-native hook

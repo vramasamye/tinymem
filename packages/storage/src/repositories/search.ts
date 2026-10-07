@@ -22,7 +22,7 @@ import type {
   EntityRecord,
   MemoryRecord,
   MemoryStatus,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { pgTextArray, pgUuidArray } from '../drivers/client';

@@ -6,7 +6,7 @@
  *
  * - **entries**: every `exports` target that is not test-support, plus every `bin` target. The
  *   build bundles exactly these, and the staged manifest points exactly these at `dist/`.
- * - **test-support**: the `./testing` subpath family (`@onememory/*\/testing` is imported by
+ * - **test-support**: the `./testing` subpath family (`@onememory-ai/*\/testing` is imported by
  *   other packages' tests only — it imports `bun:test` and is never published).
  */
 

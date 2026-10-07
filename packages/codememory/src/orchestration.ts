@@ -16,8 +16,8 @@
  * apply errors are recorded as warnings on the result. Degraded is a state, not an error.
  */
 
-import type { CodeMemoryStore, Extractor, JobQueue, Store } from '@onememory/core';
-import { jobPayloadFields } from '@onememory/core';
+import type { CodeMemoryStore, Extractor, JobQueue, Store } from '@onememory-ai/core';
+import { jobPayloadFields } from '@onememory-ai/core';
 import { z } from 'zod';
 
 import { createDriftApplier, type DriftApplyResult } from './apply-drift';

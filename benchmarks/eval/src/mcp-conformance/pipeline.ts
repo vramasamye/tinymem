@@ -28,18 +28,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { createExtractHandler, createHeuristicClassifier, createHeuristicExtractor } from '@onememory/extraction';
+import { createExtractHandler, createHeuristicClassifier, createHeuristicExtractor } from '@onememory-ai/extraction';
 import {
   MemoryGetOutputSchema,
   MemorySearchOutputSchema,
   DEFAULT_TOOLS,
   createOnememoryMcpContext,
   createStreamableHttpSessionManager,
-} from '@onememory/mcp';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
-import type { MemoryGetOutput, MemorySearchOutput } from '@onememory/mcp';
-import type { MemoryRecord } from '@onememory/core';
+} from '@onememory-ai/mcp';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
+import type { MemoryGetOutput, MemorySearchOutput } from '@onememory-ai/mcp';
+import type { MemoryRecord } from '@onememory-ai/core';
 
 import {
   CONFORMANCE_QUERY,

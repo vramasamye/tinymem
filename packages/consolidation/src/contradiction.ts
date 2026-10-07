@@ -24,7 +24,7 @@
  * choice left is WHERE the loser's window closes ({@link supersessionValidUntil}).
  */
 
-import type { EmbeddingIndex, MemoryRecord, MemoryType, Store } from '@onememory/core';
+import type { EmbeddingIndex, MemoryRecord, MemoryType, Store } from '@onememory-ai/core';
 
 import { winnerOf, authorityViewOf } from './authority';
 import { pairKey, scopeKeyOf } from './cluster';

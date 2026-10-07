@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { uuidv7 } from '@onememory/core';
-import { installNetworkGuard } from '@onememory/security';
-import { createEmbeddedDb, ValidationError } from '@onememory/storage';
+import { uuidv7 } from '@onememory-ai/core';
+import { installNetworkGuard } from '@onememory-ai/security';
+import { createEmbeddedDb, ValidationError } from '@onememory-ai/storage';
 
 import { captureSnapshot, detectChanges, extractSymbolTable } from './index';
 import type { SymbolTable } from './index';

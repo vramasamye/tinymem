@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { validateOnememoryEvent, type OnememoryEvent } from '@onememory/core';
+import { validateOnememoryEvent, type OnememoryEvent } from '@onememory-ai/core';
 
 import { translateRolloutSession } from './translate-rollout';
 import { FIXTURE_PROJECT_ID, goldenRollout, mcpToolResultsRollout, noiseRollout } from './testing';

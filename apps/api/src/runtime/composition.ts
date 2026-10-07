@@ -26,7 +26,7 @@ import {
   type OnememoryConfig,
   type LoadedConfig,
   type RedactionOptions,
-} from '@onememory/config';
+} from '@onememory-ai/config';
 import {
   createCodeMemoryOrchestration,
   createCodeMemoryScheduler,
@@ -37,13 +37,13 @@ import {
   type DriftScanResult,
   type ReindexInput,
   type ReindexResult,
-} from '@onememory/codememory';
-import type { Extractor, JobKind } from '@onememory/core';
+} from '@onememory-ai/codememory';
+import type { Extractor, JobKind } from '@onememory-ai/core';
 import {
   parseConsolidationJobPayload,
   type ConsolidationReport,
-} from '@onememory/consolidation';
-import { createReEmbedJobHandler, type EmbedderHandle } from '@onememory/embeddings';
+} from '@onememory-ai/consolidation';
+import { createReEmbedJobHandler, type EmbedderHandle } from '@onememory-ai/embeddings';
 import {
   createExtractHandler,
   createFallbackExtractor,
@@ -51,9 +51,9 @@ import {
   createHeuristicExtractor,
   createLlmExtractor,
   createNormalizeHandler,
-} from '@onememory/extraction';
-import { createModelRouter, type ModelRouter } from '@onememory/llm';
-import { createRetrievalEngine, type RetrievalEngine } from '@onememory/retrieval';
+} from '@onememory-ai/extraction';
+import { createModelRouter, type ModelRouter } from '@onememory-ai/llm';
+import { createRetrievalEngine, type RetrievalEngine } from '@onememory-ai/retrieval';
 import {
   createPathExclusionPolicy,
   createRedactor,
@@ -61,7 +61,7 @@ import {
   NetworkGuardError,
   type NetworkGuard,
   type PathExclusionPolicy,
-} from '@onememory/security';
+} from '@onememory-ai/security';
 import {
   DEFAULT_VECTOR_CONFIG,
   createEmbeddedDb,
@@ -74,7 +74,7 @@ import {
   type JobWorker,
   type OnememoryStorage,
   type VectorConfig,
-} from '@onememory/storage';
+} from '@onememory-ai/storage';
 
 import { createEmbedder, type EmbedderFactoryOptions } from './embedder';
 import {

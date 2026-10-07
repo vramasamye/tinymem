@@ -21,7 +21,7 @@ ADR-0008's zero-token freshness oracle now exists end to end:
 - `packages/codememory` implements the core `DriftWatcher` port (`createDriftWatcher(store)`,
   constructor injection, no SQL in the package): `detectDrift({ project_id })` is a pure read
   over PERSISTED state in the pipeline shape saveSnapshot → detectDrift. `packages/codememory`
-  gained `@onememory/core` as a dependency (runtime) and `@onememory/storage` as a devDependency
+  gained `@onememory-ai/core` as a dependency (runtime) and `@onememory-ai/storage` as a devDependency
   (test-only, for the real-storage end-to-end test — the same cross-package test pattern as
   `packages/security` and `packages/extraction`).
 

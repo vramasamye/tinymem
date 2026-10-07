@@ -10,8 +10,8 @@
  * lowest-signal end, never truncated mid-line.
  */
 
-import { estimateTokens } from '@onememory/core';
-import type { CodeMemoryStore, CodeRepositoryRecord, StoredSymbol } from '@onememory/core';
+import { estimateTokens } from '@onememory-ai/core';
+import type { CodeMemoryStore, CodeRepositoryRecord, StoredSymbol } from '@onememory-ai/core';
 
 import { compareText } from './internal';
 

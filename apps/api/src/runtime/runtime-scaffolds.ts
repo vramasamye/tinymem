@@ -10,11 +10,11 @@
  * exactly the configured daemon URL; anything else warns with the fix.
  */
 
-import { inspectClaudeScaffold } from '@onememory/adapter-claude';
-import { inspectCodexScaffold } from '@onememory/adapter-codex';
-import { inspectCursorScaffold } from '@onememory/adapter-cursor';
-import { inspectPiScaffold } from '@onememory/adapter-pi';
-import { inspectOpenCodeScaffold } from '@onememory/adapter-opencode';
+import { inspectClaudeScaffold } from '@onememory-ai/adapter-claude';
+import { inspectCodexScaffold } from '@onememory-ai/adapter-codex';
+import { inspectCursorScaffold } from '@onememory-ai/adapter-cursor';
+import { inspectPiScaffold } from '@onememory-ai/adapter-pi';
+import { inspectOpenCodeScaffold } from '@onememory-ai/adapter-opencode';
 
 import type { DoctorCheck } from './doctor';
 

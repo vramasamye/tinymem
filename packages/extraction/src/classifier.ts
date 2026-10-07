@@ -19,7 +19,7 @@ import {
   type ExtractedMemoryType,
   type WorkingCandidate,
   type WorkingMemoryKind,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { ClassifiedMemory } from './types';
 

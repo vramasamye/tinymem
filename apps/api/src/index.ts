@@ -1,5 +1,5 @@
 /**
- * `@onememory/api` — the REST surface plus the runtime composition root.
+ * `@onememory-ai/api` — the REST surface plus the runtime composition root.
  *
  * The REST app is transport; the runtime (storage, security, embedder, retrieval engine, model
  * router, job handlers, worker) is what the CLI reuses. Exporting both from one package keeps the

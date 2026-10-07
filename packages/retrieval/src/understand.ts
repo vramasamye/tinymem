@@ -11,7 +11,7 @@
  *                 pure part of this module just consumes the matches
  */
 
-import type { SearchIntent } from '@onememory/core';
+import type { SearchIntent } from '@onememory-ai/core';
 
 export interface TimeScope {
   from?: string;

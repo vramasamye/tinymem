@@ -7,8 +7,8 @@
  * to the remote path by construction, because both implement {@link OnememoryBackend}.
  */
 
-import { llmProfileSummary } from '@onememory/config';
-import type { MemorySearchRequest } from '@onememory/core';
+import { llmProfileSummary } from '@onememory-ai/config';
+import type { MemorySearchRequest } from '@onememory-ai/core';
 
 import type { OnememoryRuntime } from './composition';
 import { inspectRuntime, type DoctorOptions } from './doctor';
@@ -105,7 +105,7 @@ export function createLocalBackend(
 
     async listProjects() {
       const warnings: string[] = [
-        'project listing is incomplete: @onememory/storage exposes no list-projects query, so only the project registered in .onememory/project.json can be returned (coordinator follow-up, mission-13 report)',
+        'project listing is incomplete: @onememory-ai/storage exposes no list-projects query, so only the project registered in .onememory/project.json can be returned (coordinator follow-up, mission-13 report)',
       ];
       const projects = [];
       const registered = runtime.loaded.project_state;

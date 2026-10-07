@@ -1,7 +1,7 @@
 # Mission 6 report — Claude Code adapter
 
 **Branch:** `mission/6-claude-adapter` (worktree `onemem-m6`, base `8a6a2f3`)
-**Scope delivered:** `@onememory/adapter-claude` (`packages/adapters/claude`) — hook-payload →
+**Scope delivered:** `@onememory-ai/adapter-claude` (`packages/adapters/claude`) — hook-payload →
 OnememoryEvent translation, the fail-soft `onemem-claude-hook` binary with SessionStart context
 injection, daemon REST delivery, and the pure scaffold builders for `onemem init` (`.mcp.json`,
 `.claude/settings.json` hooks, AGENTS.md/MEMORY.md pointer) — plus unit + integration tests,
@@ -19,9 +19,9 @@ the package README, and this report. No ADR, root-config, or architecture-doc ch
 
 ## 1. What changed
 
-### `packages/adapters/claude` (new package, `@onememory/adapter-claude`)
+### `packages/adapters/claude` (new package, `@onememory-ai/adapter-claude`)
 
-Depends on **`@onememory/core` + `zod` only** (rationale in §4.4) — plus dev `@types/bun`. Bin:
+Depends on **`@onememory-ai/core` + `zod` only** (rationale in §4.4) — plus dev `@types/bun`. Bin:
 `onemem-claude-hook` (`src/bin.ts`). Exports: `.` (full public surface, `src/index.ts`).
 
 | Module | Contents |
@@ -83,7 +83,7 @@ import {
   // .mcp.json (stdio entry for mission-5's onemem-mcp bin)
   buildMcpJson,   // (options?: {
   renderMcpJson,  //   command?: string;              // default 'bun'
-                   //   args?: string[];               // default ['${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory/mcp/src/bin.ts']
+                   //   args?: string[];               // default ['${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory-ai/mcp/src/bin.ts']
                    //   env?: Record<string, string>;  // extra env, wins on key collision
                    //   profile?: 'default8' | 'full11';
                    //   storage?: { mode: 'embedded'; dataDir?: string } | { mode: 'server' };
@@ -92,11 +92,11 @@ import {
                    // }) => { mcpServers: { onememory: { command; args?; env? } } }   (schema-validated)
   // .claude/settings.json hooks
   buildClaudeHooksConfig,    // (options?: { hook?: { command: string; args?: string[] } }) => HooksConfig
-  renderClaudeSettingsHooks, // (options?) => string   // default invocation: bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory/adapter-claude/src/bin.ts
+  renderClaudeSettingsHooks, // (options?) => string   // default invocation: bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory-ai/adapter-claude/src/bin.ts
   // AGENTS.md / MEMORY.md pointer (ADR-0010 §7)
   buildMemoryPointerBlock,   // (options?: { projectName?: string }) => string
   mergeMemoryPointerBlock,   // (existing: string, block: string) => string  // idempotent; replaces between MEMORY_POINTER_BEGIN/END
-} from '@onememory/adapter-claude';
+} from '@onememory-ai/adapter-claude';
 ```
 
 Scaffold decisions (all cite the Claude Code references; details in the module header):
@@ -134,7 +134,7 @@ Runtime env the hook honors: `ONEMEMORY_PROJECT_ID` (override), `ONEMEMORY_DAEMO
    per compaction would fabricate session churn. Context injection still proceeds (the compacted
    context is exactly when memory is most valuable).
 4. **Wire schemas re-declared in `discovery.ts`** (project.json, daemon.json) instead of importing
-   `@onememory/config` / `@onemory/api`. The hook spawns on **every matched tool call**; the
+   `@onememory-ai/config` / `@onemory/api`. The hook spawns on **every matched tool call**; the
    config/api import graphs (yaml, router, composition root) would multiply spawn latency for two
    tiny stable cross-process wire records. Field names there are the contract to update if either
    format evolves (both formats are owned by those packages — flagged as a follow-up).
@@ -169,7 +169,7 @@ Runtime env the hook honors: `ONEMEMORY_PROJECT_ID` (override), `ONEMEMORY_DAEMO
    fills missing `id`/`ingested_at`/`content_hash`/`redactions` before validation, exactly as the
    published contract describes; regression tests cover the stored draft, the duplicate by
    completed hash, and the payload-less dead-letter. The adapter's complete envelopes remain valid.
-3. **Shared wire-schema package** (project.json / daemon.json): both `@onememory/config` and
+3. **Shared wire-schema package** (project.json / daemon.json): both `@onememory-ai/config` and
    `apps/api` own formats the adapter re-declares. If either gains a field, update
    `discovery.ts` (strict schemas fail loud → visible, not silent).
 4. **`onemem doctor`** may want to surface adapter state (`.onememory/adapters/claude.json` —

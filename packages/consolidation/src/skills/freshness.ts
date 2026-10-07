@@ -22,9 +22,9 @@
  * Zero model calls, zero network — deterministic set arithmetic over durable rows.
  */
 
-import type { SkillRecord, SkillStatus, SkillStore, SkillFreshnessReport } from '@onememory/core';
-import { resolveSkillFreshnessConfig, type SkillFreshnessConfigInput } from '@onememory/core';
-import type { Store } from '@onememory/core';
+import type { SkillRecord, SkillStatus, SkillStore, SkillFreshnessReport } from '@onememory-ai/core';
+import { resolveSkillFreshnessConfig, type SkillFreshnessConfigInput } from '@onememory-ai/core';
+import type { Store } from '@onememory-ai/core';
 
 import { errorMessage } from '../util';
 
@@ -35,7 +35,7 @@ export const SERVED_SKILL_STATUSES: readonly SkillStatus[] = ['verified', 'promo
 const MAX_RECORDS = 50;
 
 export interface SkillFreshnessInput {
-  /** The storage port implementation (`createSkillStore(db)` from `@onememory/storage`). */
+  /** The storage port implementation (`createSkillStore(db)` from `@onememory-ai/storage`). */
   skills: SkillStore;
   /** The memory read used to resolve each cited failure's signature (`Store.getMemory`). */
   store: Pick<Store, 'getMemory'>;

@@ -1,5 +1,5 @@
 /**
- * `@onememory/consolidation` — the CONSOLIDATE / DECAY stages (memory-model.md §7–§9, §12–§14;
+ * `@onememory-ai/consolidation` — the CONSOLIDATE / DECAY stages (memory-model.md §7–§9, §12–§14;
  * ADR-0003): the "memory keeps itself accurate" loop.
  *
  *   1. near-duplicate merge — same scope + type, cosine ≥ 0.97 → one survivor, `merged` audit

@@ -38,7 +38,7 @@ describe('staged manifest', () => {
       main: './src/index.ts',
       types: './src/index.ts',
       scripts: { test: 'bun test' },
-      dependencies: { commander: '^15.0.0', '@onememory/core': 'workspace:*' },
+      dependencies: { commander: '^15.0.0', '@onememory-ai/core': 'workspace:*' },
       devDependencies: { '@types/bun': '^1.4.2' },
     });
 
@@ -54,7 +54,7 @@ describe('staged manifest', () => {
       bin: { onemem: './dist/bin.js' },
       files: ['dist'],
       engines: { node: '>=22' },
-      dependencies: { '@onememory/core': '^0.1.0', commander: '^15.0.0' },
+      dependencies: { '@onememory-ai/core': '^0.1.0', commander: '^15.0.0' },
     });
     // No dev-only field survives.
     expect(staged.private).toBeUndefined();
@@ -64,7 +64,7 @@ describe('staged manifest', () => {
 
   test('subpath exports are kept and scoped names get public access', () => {
     const staged = stagedManifest({
-      name: '@onememory/api',
+      name: '@onememory-ai/api',
       version: '0.1.0',
       exports: { '.': './src/index.ts', './runtime': './src/runtime/index.ts', './testing': './src/testing.ts' },
     });
@@ -79,7 +79,7 @@ describe('staged manifest', () => {
   test('a condition-object export target fails loudly instead of publishing something wrong', () => {
     expect(() =>
       stagedManifest({
-        name: '@onememory/x',
+        name: '@onememory-ai/x',
         version: '0.1.0',
         exports: { '.': { import: './src/index.ts' } },
       }),
@@ -87,27 +87,27 @@ describe('staged manifest', () => {
   });
 
   test('the version can be overridden at stage time (single-version workspace)', () => {
-    const staged = stagedManifest({ name: '@onememory/core', version: '0.1.0', exports: { '.': './src/index.ts' } }, '0.2.0');
+    const staged = stagedManifest({ name: '@onememory-ai/core', version: '0.1.0', exports: { '.': './src/index.ts' } }, '0.2.0');
     expect(staged.version).toBe('0.2.0');
   });
 
   test('a manifest can publish runtime assets beyond dist/ (storage ships its migrations)', () => {
     const staged = stagedManifest({
-      name: '@onememory/storage',
+      name: '@onememory-ai/storage',
       version: '0.1.0',
       exports: { '.': './src/index.ts' },
       files: ['dist', 'migrations'],
     });
     expect(staged.files).toEqual(['dist', 'migrations']);
-    expect(extraPublishedFiles({ name: '@onememory/storage', version: '0.1.0', files: ['dist', 'migrations'] })).toEqual([
+    expect(extraPublishedFiles({ name: '@onememory-ai/storage', version: '0.1.0', files: ['dist', 'migrations'] })).toEqual([
       'migrations',
     ]);
-    expect(extraPublishedFiles({ name: '@onememory/core', version: '0.1.0' })).toEqual([]);
+    expect(extraPublishedFiles({ name: '@onememory-ai/core', version: '0.1.0' })).toEqual([]);
   });
 
   test('a files list without dist/ is refused', () => {
     expect(() =>
-      stagedManifest({ name: '@onememory/x', version: '0.1.0', exports: { '.': './src/index.ts' }, files: ['migrations'] }),
+      stagedManifest({ name: '@onememory-ai/x', version: '0.1.0', exports: { '.': './src/index.ts' }, files: ['migrations'] }),
     ).toThrow(/must include 'dist'/);
   });
 });
@@ -119,14 +119,14 @@ describe('publish order', () => {
   });
 
   test('dependencies come before dependents, deterministically', () => {
-    const order = publishOrder([pkg('onememory', ['@onememory/api', '@onememory/core']), pkg('@onememory/api', ['@onememory/core']), pkg('@onememory/core')]);
-    expect(order).toEqual(['@onememory/core', '@onememory/api', 'onememory']);
+    const order = publishOrder([pkg('onememory', ['@onememory-ai/api', '@onememory-ai/core']), pkg('@onememory-ai/api', ['@onememory-ai/core']), pkg('@onememory-ai/core')]);
+    expect(order).toEqual(['@onememory-ai/core', '@onememory-ai/api', 'onememory']);
   });
 
   test('external dependencies are ignored; independent packages sort alphabetically', () => {
-    expect(publishOrder([pkg('@onememory/security', ['zod']), pkg('@onememory/core', ['zod'])])).toEqual([
-      '@onememory/core',
-      '@onememory/security',
+    expect(publishOrder([pkg('@onememory-ai/security', ['zod']), pkg('@onememory-ai/core', ['zod'])])).toEqual([
+      '@onememory-ai/core',
+      '@onememory-ai/security',
     ]);
   });
 
@@ -148,7 +148,7 @@ describe('the real workspace', () => {
     const order = publishOrder(packages);
     expect(order.length).toBe(packages.length);
     // The CLI is the entry point: it must come after everything it depends on.
-    expect(order.indexOf('onememory')).toBeGreaterThan(order.indexOf('@onememory/api'));
-    expect(order.indexOf('@onememory/api')).toBeGreaterThan(order.indexOf('@onememory/core'));
+    expect(order.indexOf('onememory')).toBeGreaterThan(order.indexOf('@onememory-ai/api'));
+    expect(order.indexOf('@onememory-ai/api')).toBeGreaterThan(order.indexOf('@onememory-ai/core'));
   });
 });

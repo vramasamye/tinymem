@@ -4,7 +4,7 @@
  * - provider packages are imported dynamically per resolved route: a deployment that configures
  *   only Ollama never imports (or bundles) `@ai-sdk/openai`/`anthropic`/`google`;
  * - the `ai` core module itself is imported lazily on the first generation, so loading
- *   `@onememory/llm` performs no I/O of any kind;
+ *   `@onememory-ai/llm` performs no I/O of any kind;
  * - structured output uses the current v6 API — `generateText({ output: Output.object({ schema }) })`
  *   (`generateObject` is deprecated) — then re-validates the result with Zod. A JSON-shaped
  *   response is not assumed to be a valid memory (ADR-0006 §2);

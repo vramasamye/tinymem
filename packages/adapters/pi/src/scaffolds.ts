@@ -130,7 +130,7 @@ export function buildPiMcpServerEntry(options: PiMcpOptions = {}): PiMcpServerEn
   }
   const entry: PiMcpStdioEntry = {
     command: options.command ?? 'bun',
-    args: options.args ?? ['node_modules/@onememory/mcp/src/bin.ts'],
+    args: options.args ?? ['node_modules/@onememory-ai/mcp/src/bin.ts'],
     cwd: options.cwd ?? '.',
     env: {
       ONEMEMORY_MCP_AGENT_ID: options.agentId ?? 'pi',
@@ -146,7 +146,7 @@ export function buildPiMcpServerEntry(options: PiMcpOptions = {}): PiMcpServerEn
 
 /** The default stdio args: workspace-relative, resolved against the session (project) directory. */
 export function defaultPiStdioArgs(): string[] {
-  return ['node_modules/@onememory/mcp/src/bin.ts'];
+  return ['node_modules/@onememory-ai/mcp/src/bin.ts'];
 }
 
 export type PiMcpMergeResult =
@@ -202,7 +202,7 @@ export const PI_EXTENSION_MARKER = 'onememory:generated (onemem init)';
 export const PI_EXTENSION_RELPATH = 'extensions/onememory.ts';
 
 /** The extension import specifier — the package the project already has installed. */
-export const PI_ADAPTER_PACKAGE = '@onememory/adapter-pi';
+export const PI_ADAPTER_PACKAGE = '@onememory-ai/adapter-pi';
 
 /**
  * The generated extension file. A single default-export factory (Pi's documented extension shape:

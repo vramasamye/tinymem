@@ -13,8 +13,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { NewMemory } from '@onememory/core';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import type { NewMemory } from '@onememory-ai/core';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 export const WORLD_NOW = () => new Date('2026-10-05T12:00:00.000Z');
 

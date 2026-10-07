@@ -4,13 +4,13 @@
  * storage primitives it drives.
  */
 
-import { NewEntitySchema, MergeEntitiesInputSchema, EntityBindingSchema, normalizeEntityName, uuidv7 } from '@onememory/core';
+import { NewEntitySchema, MergeEntitiesInputSchema, EntityBindingSchema, normalizeEntityName, uuidv7 } from '@onememory-ai/core';
 import type {
   EntityBinding,
   EntityRecord,
   MergeEntitiesInput,
   NewEntity,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { pgTextArray } from '../drivers/client';

@@ -15,9 +15,9 @@ import {
   type MemoryRecord,
   type MemoryStatus,
   type MemoryType,
-} from '@onememory/core';
-import type { ModelRouter, ResolvedRoute, ModelOperation, StructuredGenerationResult } from '@onememory/llm';
-import type { GenerateStructuredRequest } from '@onememory/llm';
+} from '@onememory-ai/core';
+import type { ModelRouter, ResolvedRoute, ModelOperation, StructuredGenerationResult } from '@onememory-ai/llm';
+import type { GenerateStructuredRequest } from '@onememory-ai/llm';
 import type { z } from 'zod';
 
 // ---------------------------------------------------------------------------

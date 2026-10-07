@@ -13,7 +13,7 @@ import { join } from 'node:path';
 
 import { main } from './bin';
 import { jsonOf } from './test-support';
-import type { RememberOutcome } from '@onememory/api/runtime';
+import type { RememberOutcome } from '@onememory-ai/api/runtime';
 
 /** Captured process seam: everything `main()` prints, split by stream. */
 interface Captured {

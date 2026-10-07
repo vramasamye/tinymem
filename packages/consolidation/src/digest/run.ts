@@ -28,8 +28,8 @@ import {
   type MemoryRecord,
   type ProjectDigestCandidate,
   type Store,
-} from '@onememory/core';
-import { digestRepo, searchRepo, type Database } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { digestRepo, searchRepo, type Database } from '@onememory-ai/storage';
 
 import { errorMessage } from '../util';
 import { buildProjectDigest, digestMemoryOf, type ProjectDigestBuildInput } from './rollup';

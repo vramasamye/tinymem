@@ -19,7 +19,7 @@ import {
   SnapshotMetadataSchema,
   SymbolTableSaveSchema,
   uuidv7,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   AdvanceCheckpoint,
   CheckpointAdvanceOutcome,
@@ -38,7 +38,7 @@ import type {
   StoredSymbol,
   SymbolTableSave,
   SymbolTableSaveResult,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { pgTextArray, pgUuidArray, toIso, toIsoOrNull } from '../drivers/client';

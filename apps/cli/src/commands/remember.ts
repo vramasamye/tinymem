@@ -6,8 +6,8 @@
  * including what the redactor removed (kinds and counts, never values).
  */
 
-import { DURABLE_MEMORY_TYPES } from '@onememory/core';
-import { BackendError, type RememberOutcome } from '@onememory/api/runtime';
+import { DURABLE_MEMORY_TYPES } from '@onememory-ai/core';
+import { BackendError, type RememberOutcome } from '@onememory-ai/api/runtime';
 
 import type { Io } from '../io';
 import { describeResolution, resolveBackend, type ResolveOptions } from '../resolve';

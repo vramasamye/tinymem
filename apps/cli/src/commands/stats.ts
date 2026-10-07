@@ -1,13 +1,13 @@
 /**
  * `onemem stats` — project counts, cache state, storage and router facts. Counts hit the read
  * cap when a status is large, which the report says (`truncated`); job counts are `null` until
- * `@onememory/storage` exposes a queue-count query (mission-13 report follow-up), and that gap is
+ * `@onememory-ai/storage` exposes a queue-count query (mission-13 report follow-up), and that gap is
  * printed rather than hidden.
  */
 
 import { describeResolution, resolveBackend, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';
-import type { StatsResult } from '@onememory/api/runtime';
+import type { StatsResult } from '@onememory-ai/api/runtime';
 
 export interface StatsOptions extends ResolveOptions {}
 
@@ -43,7 +43,7 @@ export function printStats(io: Io, stats: StatsResult): void {
   }
   io.out(
     stats.jobs === null
-      ? 'jobs:      queue counts unavailable (@onememory/storage has no job-count query yet)'
+      ? 'jobs:      queue counts unavailable (@onememory-ai/storage has no job-count query yet)'
       : `jobs:      ${stats.jobs.pending} pending, ${stats.jobs.running} running, ${stats.jobs.dead} dead`,
   );
   io.out(

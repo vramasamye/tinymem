@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/codememory",
+  "name": "@onememory-ai/codememory",
   "version": "0.1.0",
   "description": "Local code fingerprints: Git index/worktree snapshots, rename-aware changes, filesystem hash fallback, and tree-sitter symbol extraction",
   "license": "Apache-2.0",
@@ -16,8 +16,8 @@
     "bench": "bun run src/fingerprints.bench.ts"
   },
   "dependencies": {
-    "@onememory/core": "workspace:*",
-    "@onememory/security": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/security": "workspace:*",
     "tree-sitter-go": "0.25.0",
     "tree-sitter-javascript": "0.25.0",
     "tree-sitter-python": "0.25.0",
@@ -27,8 +27,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@onememory/extraction": "workspace:*",
-    "@onememory/storage": "workspace:*",
+    "@onememory-ai/extraction": "workspace:*",
+    "@onememory-ai/storage": "workspace:*",
     "@types/bun": "^1.4.2"
   }
 }

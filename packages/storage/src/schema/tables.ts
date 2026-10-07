@@ -30,7 +30,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
-import type { EvidenceSpan, OnememoryEvent } from '@onememory/core';
+import type { EvidenceSpan, OnememoryEvent } from '@onememory-ai/core';
 
 // ---------------------------------------------------------------------------
 // Column helpers

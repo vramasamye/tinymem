@@ -2,7 +2,7 @@
 # `web` profile). Mounted read-only at /data/onememory.yaml inside the image, so the
 # daemon's config_dir is /data — writable, which the daemon-lock needs.
 #
-# Keys are validated strictly by @onememory/config (an unknown key is a boot failure,
+# Keys are validated strictly by @onememory-ai/config (an unknown key is a boot failure,
 # not forward compatibility). Every value here is deliberate; the daemon's loopback
 # default is overridden because the web container reaches this process over the
 # compose network, and the REST API has no authentication of its own (ADR-0012) —

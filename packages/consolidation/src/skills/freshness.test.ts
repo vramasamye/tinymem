@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { MemoryRecord, SkillStatus } from '@onememory/core';
+import type { MemoryRecord, SkillStatus } from '@onememory-ai/core';
 
 import { SIG_OOM, FakeSkillStore, failureRecurrence, qualifiedPair } from './fixtures';
 import { runSkillFreshness } from './freshness';

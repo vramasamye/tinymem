@@ -29,7 +29,7 @@ function manifestOf(relativeDir: string): SourceManifest {
 
 describe('manifest target derivation', () => {
   test('a plain package exports src/index.ts only', () => {
-    expect(deriveTargets({ name: '@onememory/core', version: '0.1.0', exports: { '.': './src/index.ts' } })).toEqual({
+    expect(deriveTargets({ name: '@onememory-ai/core', version: '0.1.0', exports: { '.': './src/index.ts' } })).toEqual({
       entries: ['src/index.ts'],
       bins: [],
     });
@@ -37,7 +37,7 @@ describe('manifest target derivation', () => {
 
   test('subpath exports are entries; the ./testing family is not', () => {
     const targets = deriveTargets({
-      name: '@onememory/api',
+      name: '@onememory-ai/api',
       version: '0.1.0',
       exports: { '.': './src/index.ts', './runtime': './src/runtime/index.ts', './testing': './src/testing.ts' },
     });
@@ -65,7 +65,7 @@ describe('manifest target derivation', () => {
   test('condition objects flatten to every target they name', () => {
     expect(
       deriveTargets({
-        name: '@onememory/x',
+        name: '@onememory-ai/x',
         version: '0.1.0',
         exports: { '.': { types: './src/index.ts', import: './src/index.ts' } },
       }).entries,

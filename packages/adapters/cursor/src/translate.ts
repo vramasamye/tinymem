@@ -49,7 +49,7 @@ import {
   uuidv7,
   validateOnememoryEvent,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import {
   FILE_EDIT_TOOL_NAMES,

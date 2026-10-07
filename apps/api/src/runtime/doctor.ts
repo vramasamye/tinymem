@@ -22,17 +22,17 @@ import {
   type ConfigSummary,
   type LoadedConfig,
   type OnememoryConfig,
-} from '@onememory/config';
+} from '@onememory-ai/config';
 import {
   buildArchitectureDigest,
   DEFAULT_DIGEST_BUDGET_TOKENS,
   isCurrentArchitectureDigest,
   loadDigestInputs,
-} from '@onememory/codememory';
-import { memoryContentHash } from '@onememory/core';
-import { MODEL_OPERATIONS } from '@onememory/llm';
-import { PATTERN_GROUPS } from '@onememory/security';
-import { DEFAULT_VECTOR_CONFIG } from '@onememory/storage';
+} from '@onememory-ai/codememory';
+import { memoryContentHash } from '@onememory-ai/core';
+import { MODEL_OPERATIONS } from '@onememory-ai/llm';
+import { PATTERN_GROUPS } from '@onememory-ai/security';
+import { DEFAULT_VECTOR_CONFIG } from '@onememory-ai/storage';
 
 import type { OnememoryRuntime } from './composition';
 import { RUNTIME_AGENT_IDS, daemonMcpUrl, runtimeScaffoldChecks } from './runtime-scaffolds';
@@ -343,7 +343,7 @@ function jobsCheck(): DoctorCheck {
     'job-queue',
     'job queue',
     'warn',
-    'job queue statistics are unavailable: neither the JobQueue port nor @onememory/storage exposes a job-count query',
+    'job queue statistics are unavailable: neither the JobQueue port nor @onememory-ai/storage exposes a job-count query',
     'coordinator follow-up: add a read-only jobs statistic to the storage repository layer (the mission-13 report lists it)',
   );
 }

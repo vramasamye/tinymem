@@ -13,7 +13,7 @@
  *     description; ADR-0009 rule 5: files first).
  */
 
-import { SKILL_MD_SECTIONS, type SkillMdSection } from '@onememory/core';
+import { SKILL_MD_SECTIONS, type SkillMdSection } from '@onememory-ai/core';
 
 /** Bumped whenever the canonical byte layout changes (old files stay readable; regeneration
  * re-renders in the current template). */

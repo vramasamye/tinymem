@@ -139,11 +139,11 @@ makes sure they do not stay stale forever, and that the daemon does the work on 
   1055 pass / 22 skip / 0 fail, 1077 tests, 81 files → **+35 pass, +6 files, no regressions**.
 - The 22 skips are the pre-existing Postgres-server integration scenarios (they need a live
   server leg; unchanged by this mission — no schema change, no migration, existing tables only).
-- Offline invariant: every codememory test runs under `@onememory/security`'s network guard; the
+- Offline invariant: every codememory test runs under `@onememory-ai/security`'s network guard; the
   synthetic-event test proves the REAL heuristic extractor path needs zero network calls.
-- No new third-party dependencies. `bun.lock` records two workspace edges: `@onememory/api` →
-  `@onememory/codememory` (the runtime import) and `@onememory/codememory` devDep
-  `@onememory/extraction` (the composition test only — the package's runtime code depends on the
+- No new third-party dependencies. `bun.lock` records two workspace edges: `@onememory-ai/api` →
+  `@onememory-ai/codememory` (the runtime import) and `@onememory-ai/codememory` devDep
+  `@onememory-ai/extraction` (the composition test only — the package's runtime code depends on the
   core `Extractor` port, not on the implementation).
 - `main` has advanced past the base (`5c20159` → `25d419a`, mission 14a); the file sets are
   disjoint (`comm -12` is empty), so the merge is expected to be clean.

@@ -29,7 +29,7 @@ export type ScaffoldMergeResult =
 export const MCP_SERVER_NAME = 'onememory';
 
 /** Substrings that identify a hook handler as the onememory hook bin (default or published). */
-export const CLAUDE_HOOK_BIN_TOKENS: readonly string[] = ['@onememory/adapter-claude', 'onemem-claude-hook'];
+export const CLAUDE_HOOK_BIN_TOKENS: readonly string[] = ['@onememory-ai/adapter-claude', 'onemem-claude-hook'];
 
 const JsonObjectSchema = z.record(z.string(), z.unknown());
 

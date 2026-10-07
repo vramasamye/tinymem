@@ -14,8 +14,8 @@ import type {
   SkillStatus,
   SkillStore,
   SkillUsageEvent,
-} from '@onememory/core';
-import { InvalidSkillTransitionError, assertSkillTransition } from '@onememory/core';
+} from '@onememory-ai/core';
+import { InvalidSkillTransitionError, assertSkillTransition } from '@onememory-ai/core';
 
 import { memoryFixture } from '../testing';
 

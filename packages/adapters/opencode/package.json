@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/adapter-opencode",
+  "name": "@onememory-ai/adapter-opencode",
   "version": "0.1.0",
   "description": "onememory OpenCode adapter: plugin-signal translation (events, tool.execute.after, chat.message) to OnememoryEvent envelopes, daemon REST delivery, system-prompt context injection, opencode.json + .opencode/plugins + instructions scaffolds",
   "license": "Apache-2.0",
@@ -15,9 +15,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/config": "workspace:*",
-    "@onememory/core": "workspace:*",
-    "@onememory/security": "workspace:*",
+    "@onememory-ai/config": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/security": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

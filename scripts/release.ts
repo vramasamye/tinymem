@@ -67,7 +67,7 @@ function assertBuilt(pkg: PublishablePackage): void {
 /**
  * No bundle may import a package its manifest does not declare: the monorepo hoists everything
  * into one root `node_modules`, so a phantom dependency passes every test in the repo and then
- * breaks every install (ADR-0014 — the packed smoke caught exactly this in `@onememory/mcp`).
+ * breaks every install (ADR-0014 — the packed smoke caught exactly this in `@onememory-ai/mcp`).
  */
 function assertNoPhantomDependencies(pkg: PublishablePackage): void {
   const distDir = join(repoRoot, pkg.dir, 'dist');

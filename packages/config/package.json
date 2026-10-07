@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/config",
+  "name": "@onememory-ai/config",
   "version": "0.1.0",
   "description": "onememory configuration: discovery + strict Zod validation for .onememory/onememory.yaml (local-first defaults)",
   "license": "Apache-2.0",
@@ -15,8 +15,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/llm": "workspace:*",
-    "@onememory/security": "workspace:*",
+    "@onememory-ai/llm": "workspace:*",
+    "@onememory-ai/security": "workspace:*",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
   },

@@ -4,10 +4,10 @@
  */
 import { expect, test } from 'bun:test';
 
-import { translateRolloutSession } from '@onememory/adapter-codex';
-import { FIXTURE_PROJECT_ID, mcpToolResultsRollout } from '@onememory/adapter-codex/testing';
-import { createHeuristicExtractor, failureIncidentOf, normalizeEvent } from '@onememory/extraction';
-import type { ExtractionInput, SourceRef } from '@onememory/core';
+import { translateRolloutSession } from '@onememory-ai/adapter-codex';
+import { FIXTURE_PROJECT_ID, mcpToolResultsRollout } from '@onememory-ai/adapter-codex/testing';
+import { createHeuristicExtractor, failureIncidentOf, normalizeEvent } from '@onememory-ai/extraction';
+import type { ExtractionInput, SourceRef } from '@onememory-ai/core';
 
 test('named Codex opaque results reach M3c without invented failure incidents', async () => {
   const translated = translateRolloutSession(mcpToolResultsRollout(), {

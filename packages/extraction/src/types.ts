@@ -1,5 +1,5 @@
 /**
- * `@onememory/extraction` — the EXTRACT (stage 4) and CLASSIFY (stage 5) stage implementations
+ * `@onememory-ai/extraction` — the EXTRACT (stage 4) and CLASSIFY (stage 5) stage implementations
  * (memory-model.md §8, event-memory-schemas.md §3).
  *
  * Two extractors, one contract:
@@ -14,7 +14,7 @@
  * below the importance/confidence floor is discarded, not stored (event-memory-schemas.md §3).
  */
 
-import type { ExtractedMemoryType } from '@onememory/core';
+import type { ExtractedMemoryType } from '@onememory-ai/core';
 
 /**
  * `extraction_meta.prompt_version` for the heuristic extractor. Bumped to `heuristic-v2` when M3b

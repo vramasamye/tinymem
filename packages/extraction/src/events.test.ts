@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { eventContentHash, uuidv7, type StoredEvent } from '@onememory/core';
+import { eventContentHash, uuidv7, type StoredEvent } from '@onememory-ai/core';
 
 import {
   normalizeCommand,

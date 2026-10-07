@@ -11,13 +11,13 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { estimateTokens, type MemoryRecord, type NewMemory } from '@onememory/core';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import { estimateTokens, type MemoryRecord, type NewMemory } from '@onememory-ai/core';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
-import { FakeRouter } from '@onememory/consolidation/testing';
+import { FakeRouter } from '@onememory-ai/consolidation/testing';
 
 import { createConsolidationOrchestration, createConsolidationScheduler, DECAY_STAGES } from './consolidation';
-import type { SchedulerTimer } from '@onememory/codememory';
+import type { SchedulerTimer } from '@onememory-ai/codememory';
 
 const NOW = new Date('2026-10-01T00:00:00.000Z');
 

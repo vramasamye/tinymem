@@ -17,9 +17,9 @@
  *   /^<\d+ more refs>$/ as the summary marker, not a file.
  */
 
-import type { CodeRefEntry } from '@onememory/core';
+import type { CodeRefEntry } from '@onememory-ai/core';
 
-import type { HydratedCodeRef } from '@onememory/storage';
+import type { HydratedCodeRef } from '@onememory-ai/storage';
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

@@ -10,8 +10,8 @@ import {
   createModelRouter,
   type ModelProvider,
   type ModelProviderRequest,
-} from '@onememory/llm';
-import type { ExtractionInput, FailureSignature } from '@onememory/core';
+} from '@onememory-ai/llm';
+import type { ExtractionInput, FailureSignature } from '@onememory-ai/core';
 
 import { createFallbackExtractor } from '../fallback';
 import { failureSignatureHash } from '../enrichment/failure';

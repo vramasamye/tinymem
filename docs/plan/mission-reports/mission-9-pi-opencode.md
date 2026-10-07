@@ -1,8 +1,8 @@
 # Mission 9 report — Pi + OpenCode adapters
 
 **Branch:** `mission/9-pi-opencode` (worktree `onememory-m9`, base `main` @ `91d2b89`)
-**Scope delivered:** `@onememory/adapter-pi` (bin-less extension adapter) and
-`@onememory/adapter-opencode` (in-process plugin adapter) — the Pi and OpenCode arms of ADR-0010
+**Scope delivered:** `@onememory-ai/adapter-pi` (bin-less extension adapter) and
+`@onememory-ai/adapter-opencode` (in-process plugin adapter) — the Pi and OpenCode arms of ADR-0010
 §6: runtime-native capture into validated `OnememoryEvent` envelopes (`source.runtime: 'pi'` /
 `'opencode'`), session context injection, the daemon-backed MCP entries, the generated pointer
 files — all idempotent — plus the `--with-pi` / `--with-opencode` init wiring, the `runtime-pi` /
@@ -42,7 +42,7 @@ them through their public exports only).
 
 ## 2. Config/contract citations (research, all fetched 2026-10-06)
 
-**Pi** (`@onememory/adapter-pi`, landed earlier on this branch — citations for the record):
+**Pi** (`@onememory-ai/adapter-pi`, landed earlier on this branch — citations for the record):
 - Extensions: <https://pi.dev/docs/latest/extensions> — `pi.on(name, handler)` lifecycle events
   (`session_start`, `session_shutdown`, `before_agent_start`, `message_end`, `tool_result`);
   `pi.sendUserMessage(text, {deliverAs: 'steer'})` for the injection channel.
@@ -51,7 +51,7 @@ them through their public exports only).
 - Pointer: `APPEND_SYSTEM.md` under `.pi/`; `bash.ts` `structuredContent.exit_code`,
   `edit.ts` `{path, edits[]}`, `write.ts` `{path, content}` (no create/overwrite signal).
 
-**OpenCode** (`@onememory/adapter-opencode`):
+**OpenCode** (`@onememory-ai/adapter-opencode`):
 - Plugins: <https://opencode.ai/docs/plugins/> — a module "that exports one or more plugin
   functions", each receiving a context (`directory`, `worktree`, `client`, `$`, `project`) and
   returning hooks; **files in `.opencode/plugins/` are automatically loaded at startup** (so the
@@ -212,7 +212,7 @@ the union merge sees identical content on both sides) — `packages/adapters/cur
 5-runtime dispatch), `apps/cli/src/{bin.ts,commands/init.ts,commands/wire-runtimes.ts,init-wiring.test.ts}`,
 `apps/api/src/runtime/{runtime-scaffolds.ts,runtime-scaffolds.test.ts,runtime.test.ts,doctor-codememory.test.ts}`,
 `apps/cli/package.json`, `apps/api/package.json` (workspace deps), `bun.lock` (`bun install` —
-registers `@onememory/adapter-opencode` and the cli/api/eval edges),
+registers `@onememory-ai/adapter-opencode` and the cli/api/eval edges),
 `packages/adapters/{pi,opencode}/src/translate*.ts` (the Claude-baseline line-count alignment).
 
 ## 8. Deviations from the task sheet

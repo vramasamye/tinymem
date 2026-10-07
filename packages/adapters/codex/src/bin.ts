@@ -23,7 +23,7 @@
 
 import { readFileSync } from 'node:fs';
 
-import { isMainModule } from '@onememory/core';
+import { isMainModule } from '@onememory-ai/core';
 
 import type { CaptureOutcome } from './capture';
 

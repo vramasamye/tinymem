@@ -1,7 +1,7 @@
 # Mission 13 report — Config, CLI (`onemem`), REST API + runtime composition root & daemon
 
 **Branch:** `mission/13-cli-api`
-**Scope delivered:** `packages/config` (`@onememory/config`), `apps/api` (`@onememory/api` + `@onememory/api/runtime`), `apps/cli` (npm `onememory`, bin `onemem`), this report. No existing file was touched outside `bun.lock` (workspace entries + one new dependency).
+**Scope delivered:** `packages/config` (`@onememory-ai/config`), `apps/api` (`@onememory-ai/api` + `@onememory-ai/api/runtime`), `apps/cli` (npm `onememory`, bin `onemem`), this report. No existing file was touched outside `bun.lock` (workspace entries + one new dependency).
 **ADRs exercised:** 0002 (single-owner embedded storage → the daemon lock), 0003 (provenance mandatory, status tombstones), 0004 (token-budgeted retrieval), 0006 (local model router), 0007 (redaction/path exclusion/network guard), 0010 §5 (forget ≠ delete).
 
 ---
@@ -79,7 +79,7 @@ removes the lock.
    the store port has no `listProjects`. Same honesty rule in `stats`: job-queue count is `null`
    **with a warning naming the missing API**, not `0`.
 3. **zod-openapi `.openapi()` is not retroactive** across differently-resolved zod instances (the
-   CLI graph loads `@onememory/core` before the API surface; annotating imported schemas throws
+   CLI graph loads `@onememory-ai/core` before the API surface; annotating imported schemas throws
    `MemorySearchRequestSchema.openapi is not a function`). Imported schemas are used AS-IS
    (structural description in `openapi.json`; only cosmetic $ref names are lost). The import-order
    contract is documented at the annotation site.
@@ -116,7 +116,7 @@ removes the lock.
 - **MCP server (ADR-0010)** can be built directly on `OnememoryBackend` + the wire schemas here;
   the REST surface and the port agree by construction (app tests run the HTTP backend against the
   same app).
-- **M16 config extras** (more presets, `onemem config lint`) reuse `@onememory/config` schemas.
+- **M16 config extras** (more presets, `onemem config lint`) reuse `@onememory-ai/config` schemas.
 
 **Test totals:** worktree `bun test` **449 pass / 0 fail / 15 skip** (464 tests; config 30, api 34,
 cli 12 new). `tsc --noEmit` clean for `packages/config`, `apps/api`, `apps/cli`.

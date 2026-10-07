@@ -103,10 +103,10 @@ architecture digest. Proposed wording for the consolidation ADR (or an amendment
 
 ## Dependency and lockfile changes
 
-- `packages/consolidation/package.json`: `@onememory/storage` moved from devDependencies to
+- `packages/consolidation/package.json`: `@onememory-ai/storage` moved from devDependencies to
   dependencies, because the pass now reads through `searchRepo` and writes through `digestRepo`
-  at runtime. `@onememory/mcp` was added as a devDependency for the e2e read-back test only.
-- `bun.lock` reflects those edges. It also adds the `@onememory/config` workspace dependency of
+  at runtime. `@onememory-ai/mcp` was added as a devDependency for the e2e read-back test only.
+- `bun.lock` reflects those edges. It also adds the `@onememory-ai/config` workspace dependency of
   `packages/mcp`. That dependency was already declared in `packages/mcp/package.json` at base,
   but the committed lockfile did not record it. `bun install` fixed the drift, and the change is
   committed here so the lockfile matches the manifests.

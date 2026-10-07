@@ -21,7 +21,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { OnememoryEvent } from '@onememory/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 import { CONFORMANCE_QUERY, runAllPipelines, type PipelineResult } from './pipeline';
 import { SCENARIO, nativePayloads, translateScenario, type ScenarioContext } from './scenario';

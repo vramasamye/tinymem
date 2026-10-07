@@ -34,7 +34,7 @@ the test-wiring fixes those edits needed.
 ### `packages/config` + `apps/api` (`96a932e`) — the shared lock seam
 
 The daemon.json wire contract (`DaemonLockSchema`, read/write/clear, `isProcessAlive`, `probeDaemon`,
-`isLoopbackHost`) moved from `apps/api/src/runtime/lock.ts` into `@onememory/config`
+`isLoopbackHost`) moved from `apps/api/src/runtime/lock.ts` into `@onememory-ai/config`
 (`src/daemon-lock.ts`), because packages must never import apps and the MCP bin's owner guard
 needs the same probe. `daemonLockCandidateDirs` maps both real embedded data-dir layouts (the data
 dir IS the `.onememory` config dir, or is its `data/` child) to the lock's candidate config dirs.
@@ -50,7 +50,7 @@ clean it and proceed; live-pid lock → `EmbeddedStorageOwnerError` pointing the
 running daemon's MCP endpoint — including when the daemon answers health calls but the fetch fails
 (wedged-but-alive still owns the data dir). Server-profile storage (`ONEMEMORY_PG_URL`) is
 multi-process-safe and deliberately not guarded. Lock discovery covers both embedded layouts via
-`daemonLockCandidateDirs`. `@onememory/config` became a workspace dependency of `packages/mcp`.
+`daemonLockCandidateDirs`. `@onememory-ai/config` became a workspace dependency of `packages/mcp`.
 Tests: fake-lock unit tests with an injectable `fetch`, plus a bin-level test running `main()`
 against a real loopback HTTP fake daemon asserting PGlite is never opened.
 
@@ -61,7 +61,7 @@ against a real loopback HTTP fake daemon asserting PGlite is never opened.
 | `src/bin.ts` | `#!/usr/bin/env bun` shebang added (mode 100755 preserved). Load-bearing: the settings.json scaffold now points hooks at this bin through the published install's `node_modules/.bin/onemem-claude-hook` link, so without the shebang the link is not executable and every scaffolded hook fails. npm preserves the shebang and the 0755 mode in the published tarball. |
 | `src/scaffolds.ts` | `defaultHookCommand()` → `${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook` (exec form, `args: []`); `defaultMcpServerCommand()` → `${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp`. `defaultMcpServerArgs()`/`defaultHookArgs()` retired from the public surface. Custom `command`/`args`/`hook` options are honored verbatim (source-checkout installs). |
 | `src/index.ts` | Exports follow the rename. |
-| `src/scaffold-merge.ts`, `src/scaffold-inspect.ts` | Unchanged on purpose: the merge/doctor ownership predicate is token-based (`@onememory/adapter-claude`, `onemem-claude-hook`), a substring of both the previous `bun …/@onememory/adapter-claude/src/bin.ts` form and the new bin-link form — re-running init replaces stale handlers; the doctor keeps reporting pre-existing installs as wired. |
+| `src/scaffold-merge.ts`, `src/scaffold-inspect.ts` | Unchanged on purpose: the merge/doctor ownership predicate is token-based (`@onememory-ai/adapter-claude`, `onemem-claude-hook`), a substring of both the previous `bun …/@onememory-ai/adapter-claude/src/bin.ts` form and the new bin-link form — re-running init replaces stale handlers; the doctor keeps reporting pre-existing installs as wired. |
 | `src/scaffold-published.test.ts` (new) | The acceptance test — see §3. |
 | `README.md` | The scaffold section documents the published-link invocation. |
 
@@ -83,15 +83,15 @@ against a real loopback HTTP fake daemon asserting PGlite is never opened.
 
 | Artifact | Before (main) | After |
 |---|---|---|
-| Claude `.claude/settings.json` handler | `bun` + args [`${CLAUDE_PROJECT_DIR}/node_modules/@onememory/adapter-claude/src/bin.ts`] — a source path from THIS repository, and a bin with no shebang | `${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook`, `args: []` (exec form) |
-| Claude `.mcp.json` stdio `command` | `bun` + args [`${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory/mcp/src/bin.ts`] | `${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp`, no args |
+| Claude `.claude/settings.json` handler | `bun` + args [`${CLAUDE_PROJECT_DIR}/node_modules/@onememory-ai/adapter-claude/src/bin.ts`] — a source path from THIS repository, and a bin with no shebang | `${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook`, `args: []` (exec form) |
+| Claude `.mcp.json` stdio `command` | `bun` + args [`${CLAUDE_PROJECT_DIR:-.}/node_modules/@onememory-ai/mcp/src/bin.ts`] | `${CLAUDE_PROJECT_DIR:-.}/node_modules/.bin/onemem-mcp`, no args |
 | Codex `.codex/hooks.json` handler `command` | `onemem-codex-capture` (bare name, PATH-only) | `exec "$(git rev-parse --show-toplevel 2>/dev/null \|\| pwd)"/node_modules/.bin/onemem-codex-capture` |
 | Codex `.codex/config.toml` stdio `command` | `onemem-mcp` (bare name, PATH-only) | `./node_modules/.bin/onemem-mcp` |
 | Claude hook bin | executable but no shebang | `#!/usr/bin/env bun`, mode 0755 (both bins already carried shebangs in `packages/mcp` and `packages/adapters/codex`) |
 
 Migration is idempotent in both adapters: `mergeClaudeSettingsHooks` / `patchCodexHooksJson` replace
 their own stale handlers by token (a substring of every form ever scaffolded — the old
-`@onememory/adapter-claude` source path and the old bare Codex bin name included), never duplicate,
+`@onememory-ai/adapter-claude` source path and the old bare Codex bin name included), never duplicate,
 preserve user handlers and unrelated settings, and pass a third time unchanged. New tests pin the
 old-default → new-command migration explicitly (`scaffold-merge.test.ts`, `hooks-scaffold.test.ts`).
 User overrides (`command`/`args` on Claude, `captureCommand`/`mcpCommand` on Codex) are honored
@@ -108,7 +108,7 @@ install — `node_modules/.bin/<name>` symlinked to the real bin entrypoint, the
 - **Claude hooks**: every scaffolded handler (SessionStart, SessionEnd, Stop, PostToolUse,
   PostToolUseFailure) is spawned in exec form with the `${CLAUDE_PROJECT_DIR}` placeholders expanded
   the way Claude Code expands them (plain-string substitution). Each invocation resolves inside the
-  clean install's `node_modules/.bin`, contains no `src/` path and no `@onememory/` package path,
+  clean install's `node_modules/.bin`, contains no `src/` path and no `@onememory-ai/` package path,
   exits 0, and emits the fail-soft stderr diagnostics. The SessionStart handler's stdout JSON
   contract is asserted (empty-or-valid JSON with no daemon).
 - **Claude stdio MCP**: the generated `.mcp.json` entry's command and env (placeholders expanded over
@@ -200,7 +200,7 @@ take ~8–12s each).
    generated commands resolve. With pnpm's default strict layout, only DIRECT dependencies receive
    `.bin` links; a user installing `onemem` (not the adapter packages) under pnpm would not get
    `onemem-claude-hook`/`onemem-mcp` links. Options: document direct installation of the adapter
-   packages, or a `pnpm.public-hoist-pattern[]=@onememory/*` note. This belongs in the
+   packages, or a `pnpm.public-hoist-pattern[]=@onememory-ai/*` note. This belongs in the
    coordinator-owned user docs (root `README.md`).
 2. **Doctor cannot flag stale-but-wired invocation forms** (decision 3's trade-off): a
    `hooks.json`/`settings.json` written by an older `onemem init` still reports `complete`. If
@@ -211,7 +211,7 @@ take ~8–12s each).
 4. **Windows**: the bun shebangs and the Codex shell command are POSIX-only, consistent with the
    Phase-1 posture (`docs/research/dependency-verification.md` §10 pins argv-array spawning; no
    Windows CI exists to gate). No claim of Windows support is made anywhere.
-5. `bun.lock` gained only the `packages/mcp` → `@onememory/config` workspace edge (in `e0b879a`).
+5. `bun.lock` gained only the `packages/mcp` → `@onememory-ai/config` workspace edge (in `e0b879a`).
    Resolve with the coordinator's usual `--ours` + reinstall flow if it collides with a sibling
    merge.
 6. The two cold-boot acceptance tests add ~25s to the adapter suites (~8–12s each for a real PGlite

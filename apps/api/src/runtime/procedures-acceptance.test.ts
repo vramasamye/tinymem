@@ -41,16 +41,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { captureSnapshot, extractSymbolTable } from '@onememory/codememory';
+import { captureSnapshot, extractSymbolTable } from '@onememory-ai/codememory';
 import {
   createExtractHandler,
   createHeuristicClassifier,
   createHeuristicExtractor,
-} from '@onememory/extraction';
-import { createRetrievalEngine } from '@onememory/retrieval';
-import { installNetworkGuard } from '@onememory/security';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
+} from '@onememory-ai/extraction';
+import { createRetrievalEngine } from '@onememory-ai/retrieval';
+import { installNetworkGuard } from '@onememory-ai/security';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
 
 import { makeInput } from '../../../../packages/extraction/src/testing/transcripts';
 

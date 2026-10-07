@@ -17,8 +17,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { canTransitionSkill, resolveSkillsTarget, type SkillRecord } from '@onememory/core';
-import { loadSkillForReview } from '@onememory/consolidation';
+import { canTransitionSkill, resolveSkillsTarget, type SkillRecord } from '@onememory-ai/core';
+import { loadSkillForReview } from '@onememory-ai/consolidation';
 
 import type { OnememoryRuntime } from './composition';
 import { localUser, requireProject } from './memory-service';

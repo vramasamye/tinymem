@@ -6,7 +6,7 @@
 
 import { describeResolution, resolveBackend, type ResolveOptions } from '../resolve';
 import { shortDate, type Io } from '../io';
-import type { InspectResult } from '@onememory/api/runtime';
+import type { InspectResult } from '@onememory-ai/api/runtime';
 
 export interface InspectOptions extends ResolveOptions {
   memoryId: string;

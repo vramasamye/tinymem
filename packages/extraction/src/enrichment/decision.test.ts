@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { DecisionExtractionSchema } from '@onememory/core';
+import { DecisionExtractionSchema } from '@onememory-ai/core';
 
 import { DECISION_PATTERNS, firstMatch } from '../heuristic/patterns';
 

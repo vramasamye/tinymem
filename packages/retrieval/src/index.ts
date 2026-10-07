@@ -1,10 +1,10 @@
 /**
- * `@onememory/retrieval` — the core `Searcher` port implementation (ADR-0004): hybrid
+ * `@onememory-ai/retrieval` — the core `Searcher` port implementation (ADR-0004): hybrid
  * lexical/vector/graph candidate channels, hard temporal/status filtering, RRF fusion + additive
  * weighted scoring with an explain decomposition, optional rerank tier, token-budget packing,
  * session-context assembly, and explicit (never silent) degraded modes.
  *
- * The package also depends on `@onememory/storage` for the read-only candidate fetchers
+ * The package also depends on `@onememory-ai/storage` for the read-only candidate fetchers
  * (`searchRepo`) — SQL stays inside storage per AGENTS.md rule 5.
  */
 

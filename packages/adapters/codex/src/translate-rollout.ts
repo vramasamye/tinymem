@@ -32,7 +32,7 @@
 
 import { z } from 'zod';
 
-import type { EventPayload, OnememoryEvent } from '@onememory/core';
+import type { EventPayload, OnememoryEvent } from '@onememory-ai/core';
 
 import {
   buildEvent,
@@ -59,7 +59,7 @@ const HARNESS_CONTEXT_PREFIXES = [
 const SHELL_TOOL_NAMES = new Set(['shell', 'exec_command', 'container.exec']);
 
 /**
- * Mirrors `ConversationToolResultPayloadSchema.tool`'s `.max(80)` in `@onememory/core` (M3c).
+ * Mirrors `ConversationToolResultPayloadSchema.tool`'s `.max(80)` in `@onememory-ai/core` (M3c).
  * The bound is not exported by core, so a longer name is omitted (counted, never silent) rather
  * than letting core's validation dead-letter the whole result event.
  */

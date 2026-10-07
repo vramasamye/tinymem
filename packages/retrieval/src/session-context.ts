@@ -12,9 +12,9 @@
  * first — never a mid-sentence truncation), and unused share rolls forward to later sections.
  */
 
-import { searchRepo } from '@onememory/storage';
-import type { Database } from '@onememory/storage';
-import type { Store } from '@onememory/core';
+import { searchRepo } from '@onememory-ai/storage';
+import type { Database } from '@onememory-ai/storage';
+import type { Store } from '@onememory-ai/core';
 
 import { mergeConfig } from './config';
 import { estimateTokens, truncateAtWordBoundary } from './tokens';

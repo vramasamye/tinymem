@@ -7,8 +7,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { InvalidTransitionError, memoryContentHash } from '@onememory/core';
-import type { OnememoryEvent, SupersedeInput, SymbolFileInput, SymbolRecordInput } from '@onememory/core';
+import { InvalidTransitionError, memoryContentHash } from '@onememory-ai/core';
+import type { OnememoryEvent, SupersedeInput, SymbolFileInput, SymbolRecordInput } from '@onememory-ai/core';
 
 import { JobKindNotImplemented, createHandlerRegistry, createJobWorker } from '../jobs/worker';
 import { NotFoundError, ValidationError } from '../repositories/util';

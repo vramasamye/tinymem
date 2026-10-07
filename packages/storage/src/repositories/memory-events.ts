@@ -3,8 +3,8 @@
  * same transaction as the change (called by the memories repository).
  */
 
-import { NewMemoryEventSchema, uuidv7 } from '@onememory/core';
-import type { MemoryEventAuditDraft, MemoryEventRecord, NewMemoryEvent } from '@onememory/core';
+import { NewMemoryEventSchema, uuidv7 } from '@onememory-ai/core';
+import type { MemoryEventAuditDraft, MemoryEventRecord, NewMemoryEvent } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

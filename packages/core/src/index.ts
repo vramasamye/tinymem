@@ -1,5 +1,5 @@
 /**
- * `@onememory/core` — the engine core: canonical Zod schemas, the memory model (status machine,
+ * `@onememory-ai/core` — the engine core: canonical Zod schemas, the memory model (status machine,
  * hashing, temporal semantics, UUIDv7), and the lifecycle PORTS (pure interfaces).
  *
  * Core never imports agent-runtime code or implementations (repository-structure.md dependency

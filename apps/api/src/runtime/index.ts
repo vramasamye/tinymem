@@ -2,7 +2,7 @@
  * The runtime public surface: what `apps/cli` (and later `packages/mcp`) imports.
  *
  * `apps/api` owns this because the API server *is* the composition root's host process; the CLI
- * imports it as `@onememory/api/runtime` rather than duplicating wiring. See the M13 report for the
+ * imports it as `@onememory-ai/api/runtime` rather than duplicating wiring. See the M13 report for the
  * alternative (a dedicated `packages/sdk`) and why it was not created in this mission.
  */
 

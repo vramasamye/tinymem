@@ -1,7 +1,7 @@
 # Mission 8 report — Cursor adapter
 
 **Branch:** `mission/8-cursor` (worktree `onememory-m8`, base `main` @ `91d2b89`)
-**Scope delivered:** `@onememory/adapter-cursor` (bin `onemem-cursor-hook`) — the Cursor adapter of
+**Scope delivered:** `@onememory-ai/adapter-cursor` (bin `onemem-cursor-hook`) — the Cursor adapter of
 ADR-0010 §6: Cursor-native hook capture into validated `OnememoryEvent` envelopes
 (`source.runtime: 'cursor'`), SessionStart context injection, the `.cursor/mcp.json`
 `mcpServers.onememory` block, the `.cursor/hooks.json` capture handlers, the
@@ -43,7 +43,7 @@ them through their public exports only).
 - **Hooks:** <https://cursor.com/docs/hooks> — `.cursor/hooks.json`, `{"version": 1, "hooks":
   {"<event>": [{"command", "matcher"?, "timeout"?}]}}`; **project hooks run from the project
   root** (so the scaffolded command is the relative `bun
-  node_modules/@onememory/adapter-cursor/src/bin.ts`); env vars `CURSOR_PROJECT_DIR`,
+  node_modules/@onememory-ai/adapter-cursor/src/bin.ts`); env vars `CURSOR_PROJECT_DIR`,
   `CURSOR_TRANSCRIPT_PATH`; `sessionStart` may return `{"additional_context": …}` but Cursor runs
   it **fire-and-forget** ("the agent loop does not wait for or enforce a blocking response");
   MCP tools require approval.

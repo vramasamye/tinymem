@@ -4,7 +4,7 @@
  * The monorepo hoists dependencies into one root `node_modules`, so a package can import a module
  * it never declared and still pass every test in the repo — and then fail for every user with
  * `ERR_MODULE_NOT_FOUND` (this is exactly how `@modelcontextprotocol/client` hid in
- * `@onememory/mcp` until the packed smoke caught it). The check reads the BUILT bundles, which is
+ * `@onememory-ai/mcp` until the packed smoke caught it). The check reads the BUILT bundles, which is
  * what npm actually ships, and compares bare specifiers against the manifest's declared names.
  */
 

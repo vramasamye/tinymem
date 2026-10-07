@@ -19,7 +19,7 @@ export type ModelOperation = (typeof MODEL_OPERATIONS)[number];
  *
  * `ollama` is not a first-party AI SDK provider: it is routed through the OpenAI-compatible
  * provider against Ollama's `/v1` surface (ADR-0006 §2). Embeddings never go through that surface
- * — Ollama embeddings use the native `/api/embed` in `@onememory/embeddings`.
+ * — Ollama embeddings use the native `/api/embed` in `@onememory-ai/embeddings`.
  */
 export const PROVIDER_KINDS = [
   'openai',

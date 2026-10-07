@@ -12,11 +12,11 @@
  * - the OpenAPI document is generated from the same schemas (`GET /openapi.json`).
  */
 
-import { DURABLE_MEMORY_TYPES, type MemorySearchRequest } from '@onememory/core';
+import { DURABLE_MEMORY_TYPES, type MemorySearchRequest } from '@onememory-ai/core';
 import { OpenAPIHono, createRoute, z, type Hook, type RouteConfig, type RouteHandler } from '@hono/zod-openapi';
 import type { Context, Env } from 'hono';
 
-import type { DurableMemoryType } from '@onememory/core';
+import type { DurableMemoryType } from '@onememory-ai/core';
 
 import { BackendError, type MemoryPageInclude, type OnememoryBackend } from '../runtime/types';
 import {

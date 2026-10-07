@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { MemoryEventRecord, MemoryRecord, SkillRecord, Store } from '@onememory/core';
+import type { MemoryEventRecord, MemoryRecord, SkillRecord, Store } from '@onememory-ai/core';
 
 import { FakeSkillStore, qualifiedPair, fixtureUuid } from './fixtures';
 import { loadSkillForReview } from './review';

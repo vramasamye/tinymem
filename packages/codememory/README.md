@@ -1,11 +1,11 @@
-# @onememory/codememory
+# @onememory-ai/codememory
 
 The M4 slices implement the local fingerprint foundation and drift detection under ADR-0008. It
 uses system Git through argument-safe subprocesses and hashes file bytes locally. It never calls
 a model, fetches a remote, writes Git state, or returns source-file contents.
 
 ```ts
-import { captureSnapshot, detectChanges, extractSymbolTable, createDriftWatcher } from '@onememory/codememory';
+import { captureSnapshot, detectChanges, extractSymbolTable, createDriftWatcher } from '@onememory-ai/codememory';
 
 const baseline = await captureSnapshot('/absolute/project/root');
 const report = await detectChanges(baseline);
@@ -210,7 +210,7 @@ step at install — Bun blocks the grammar packages' `install` scripts, and an i
 compilation at all). The core runtime WASM resolves through `web-tree-sitter`'s exported
 `web-tree-sitter.wasm` subpath; grammar bytes come from the installed `tree-sitter-*` packages'
 prebuilt `.wasm` files via literal `require.resolve` calls, read with `fs` — nothing is fetched
-at install or runtime, and the symbol tests pin this with the `@onememory/security` network guard.
+at install or runtime, and the symbol tests pin this with the `@onememory-ai/security` network guard.
 Bun-from-source is the supported runtime; the extraction API also runs under Node LTS when
 resolved against an installed `node_modules` (the literal asset references make that a
 bundler-friendly packaging concern, not a silent failure).
@@ -245,7 +245,7 @@ stat and read are detected. Files outside the vocabulary skip with a structured 
 silent omission: `excluded`, `conflict`, `symlink`, `submodule`, `binary`, `too_large`, `missing`,
 `unreadable`, `unsupported_language`, `grammar_unavailable` (the runtime/grammar could not load),
 or `outside_root`. Persistence (`code_symbols`, `file_fingerprints.symbols_hash`) lives behind
-the `CodeMemoryStore` port in `@onememory/storage` — this package contains no SQL.
+the `CodeMemoryStore` port in `@onememory-ai/storage` — this package contains no SQL.
 
 ## Safety and completeness
 

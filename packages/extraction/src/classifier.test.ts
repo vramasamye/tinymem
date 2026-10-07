@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import type { ExtractedMemory } from '@onememory/core';
+import type { ExtractedMemory } from '@onememory-ai/core';
 
 import { createHeuristicClassifier, EXPLICIT_SEMANTIC_SUBTYPE } from './classifier';
 

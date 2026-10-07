@@ -11,7 +11,7 @@
  * - `mulberry32` + `randomWorld`: deterministic seeded randomness for property tests.
  */
 
-import type { Embedder } from '@onememory/core';
+import type { Embedder } from '@onememory-ai/core';
 
 /**
  * Deterministic hash-axis embedder: each known word lights up one axis (synonym groups share an

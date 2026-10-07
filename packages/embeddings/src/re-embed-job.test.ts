@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { uuidv7, type Embedder, type EmbeddingIndex, type VectorMatch } from '@onememory/core';
+import { uuidv7, type Embedder, type EmbeddingIndex, type VectorMatch } from '@onememory-ai/core';
 
 import { createReEmbedJobHandler, ReEmbedError, RE_EMBED_JOB_KIND } from './re-embed-job';
 import type { EmbedderMeta } from './types';

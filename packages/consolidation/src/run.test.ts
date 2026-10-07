@@ -11,8 +11,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { estimateTokens, type MemoryRecord, type NewMemory } from '@onememory/core';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import { estimateTokens, type MemoryRecord, type NewMemory } from '@onememory-ai/core';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import { runConsolidation } from './run';
 

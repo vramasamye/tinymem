@@ -35,8 +35,8 @@ import {
   renderConfigForProject,
   saveProjectState,
   type ProjectState,
-} from '@onememory/config';
-import { BackendError, daemonMcpUrl, openRuntime, probeDaemon } from '@onememory/api/runtime';
+} from '@onememory-ai/config';
+import { BackendError, daemonMcpUrl, openRuntime, probeDaemon } from '@onememory-ai/api/runtime';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';

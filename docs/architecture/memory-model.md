@@ -257,14 +257,14 @@ be queryable, a later migration adds the column; no query consumer exists today.
 - **Where the artifact lands** (as-built, M15 follow-up 3): `skills.path` on the row is the
   canonical project-relative identity (`skills/<slug>/SKILL.md`), while the *write* root is
   configurable per runtime. Precedence: `--dir <path>` → `--runtime <id>` (that runtime's own
-  skills root, from the `@onememory/core` runtime table) → `skills.dir` in the config →
+  skills root, from the `@onememory-ai/core` runtime table) → `skills.dir` in the config →
   `<project root>/skills`. The audit row records the chosen root and how it was chosen
   (`skills_root`, `skills_root_source`) beside `written_path`. Every runtime discovers skills by
   scanning a root for `<name>/SKILL.md` — none consumes a manifest — and the rendered
   `name`/`description` frontmatter with a directory named after the skill satisfies all five.
 - **Review surfaces** (as-built, M15 follow-up 4): the CLI, the REST API and the web explorer
   share one service (`apps/api/src/runtime/skills-service.ts`) and one write-root resolver
-  (`resolveSkillsTarget` in `@onememory/core`). REST: `GET /v1/projects/{id}/skills` (the
+  (`resolveSkillsTarget` in `@onememory-ai/core`). REST: `GET /v1/projects/{id}/skills` (the
   queue), `GET .../skills/{skillId}` (row + SKILL.md bytes + audit), `POST .../promote`
   (artifact first, then the audited `candidate → verified` flip; needs evidence) and `POST
   .../deprecate` (terminal, reason required; a repeat is a 409). Every route is scoped to the

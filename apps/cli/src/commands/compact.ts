@@ -14,10 +14,10 @@
  * forever (database-schema.md §6) — only the summarize tier runs.
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { EventsCompactionConfigSchema, type EventsCompactionReport } from '@onememory/core';
-import { runEventsCompaction } from '@onememory/consolidation';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, openRuntime } from '@onememory-ai/api/runtime';
+import { EventsCompactionConfigSchema, type EventsCompactionReport } from '@onememory-ai/core';
+import { runEventsCompaction } from '@onememory-ai/consolidation';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';

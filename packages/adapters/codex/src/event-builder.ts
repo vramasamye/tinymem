@@ -14,7 +14,7 @@ import {
   type EventPayload,
   type EventRuntime,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { CODEX_ADAPTER_VERSION } from './version';
 

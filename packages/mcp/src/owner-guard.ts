@@ -10,7 +10,7 @@
  * runs before any storage is opened and refuses loudly, pointing at the running daemon's MCP
  * endpoint.
  *
- * Semantics (the shared `probeDaemon` from `@onememory/config`):
+ * Semantics (the shared `probeDaemon` from `@onememory-ai/config`):
  * - no lock → proceed;
  * - stale lock (pid gone) → the lock is cleaned up, proceed;
  * - lock pid alive + health OK → refuse with the daemon's MCP endpoint;
@@ -28,7 +28,7 @@
 
 import { isAbsolute, resolve } from 'node:path';
 
-import { daemonLockCandidateDirs, daemonLockPath, probeDaemon } from '@onememory/config';
+import { daemonLockCandidateDirs, daemonLockPath, probeDaemon } from '@onememory-ai/config';
 
 export interface EmbeddedOwnerGuardOptions {
   /** Working directory for relative data dirs (default: `process.cwd()` — the launch dir). */

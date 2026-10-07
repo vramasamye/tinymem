@@ -1,5 +1,5 @@
 /**
- * `@onememory/config` — discovery + strict Zod validation for `.onememory/onememory.yaml`
+ * `@onememory-ai/config` — discovery + strict Zod validation for `.onememory/onememory.yaml`
  * (AGENTS.md rule 4: the default install is 100% local).
  *
  * The package is deliberately I/O-light and component-free: it parses, validates, and *decides*

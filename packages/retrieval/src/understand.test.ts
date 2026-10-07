@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { EntityRecord } from '@onememory/core';
+import type { EntityRecord } from '@onememory-ai/core';
 
 import { EntityIndex } from './entity-index';
 import { classifyIntent, extractKeywords, parseTimeScope, understandQuery } from './understand';

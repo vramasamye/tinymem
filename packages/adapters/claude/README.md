@@ -1,4 +1,4 @@
-# @onememory/adapter-claude
+# @onememory-ai/adapter-claude
 
 The Claude Code adapter for [onememory](../../../README.md) — the local-first persistent memory
 engine for AI coding agents. It turns Claude Code's **hook events** into validated
@@ -85,13 +85,13 @@ Claude Code asks you to approve project-scoped `.mcp.json` servers the first tim
 ## Install
 
 `onemem init --with-claude` wires all three scaffolds; start the daemon (`onemem serve`) before
-launching Claude Code. Manual wiring: `bun add @onememory/adapter-claude`, then register
+launching Claude Code. Manual wiring: `bun add @onememory-ai/adapter-claude`, then register
 `onemem-claude-hook` under the hook events above and the http server under
 `mcpServers.onememory` in `.mcp.json`.
 
 ## Package facts
 
-- Depends only on `@onememory/core` + `zod` — the hook spawns on every tool call, so the import
+- Depends only on `@onememory-ai/core` + `zod` — the hook spawns on every tool call, so the import
   graph stays minimal (the two cross-process wire formats, `project.json` and `daemon.json`, are
   re-declared as tiny strict schemas here rather than importing the config/api packages; see
   mission-6.md for the rationale).

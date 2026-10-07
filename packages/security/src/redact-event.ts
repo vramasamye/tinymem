@@ -12,8 +12,8 @@
  * the whole event before redaction.
  */
 
-import { OnememoryEventSchema, eventContentHash, validateOnememoryEvent } from '@onememory/core';
-import type { DeadLetterIssue, OnememoryEvent, Redaction } from '@onememory/core';
+import { OnememoryEventSchema, eventContentHash, validateOnememoryEvent } from '@onememory-ai/core';
+import type { DeadLetterIssue, OnememoryEvent, Redaction } from '@onememory-ai/core';
 
 import { detectorFor, walkValue } from './redactor';
 import type { RedactorConfig } from './patterns';

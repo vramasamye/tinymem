@@ -43,7 +43,7 @@
  * this is the only place they can be observed. Documented, not guessed.
  */
 
-import type { OnememoryEvent } from '@onememory/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 import {
   buildEvent,

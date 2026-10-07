@@ -4,7 +4,7 @@
  * Contract (ADR-0010):
  * - reads ride the retrieval engine (`memory_search`, `memory_project_context`) or the Store
  *   port (`memory_get`, `memory_related`, curated lists) — retrieval is NEVER reimplemented here;
- * - writes redact BEFORE persisting (ADR-0007 via @onememory/security) and enforce the
+ * - writes redact BEFORE persisting (ADR-0007 via @onememory-ai/security) and enforce the
  *   provenance gate (memory-model.md §6: no source + evidence → not durable);
  * - `memory_store` outcomes are new|merged|superseded — dedupe is NEVER silent;
  * - `memory_update` is revision-checked (optimistic concurrency) and append-mostly: a corrected
@@ -21,16 +21,16 @@ import {
   memoryContentHash,
   normalizeEntityName,
   uuidv7,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   DurableMemoryType,
   EvidenceSpan,
   MemoryRecord,
   MemorySearchRequest,
   MemorySearchResponse,
-} from '@onememory/core';
-import { buildSessionContext, deriveSummary } from '@onememory/retrieval';
-import { searchRepo } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { buildSessionContext, deriveSummary } from '@onememory-ai/retrieval';
+import { searchRepo } from '@onememory-ai/storage';
 
 import type { OnememoryMcpContext } from './context';
 import { ToolError } from './errors';

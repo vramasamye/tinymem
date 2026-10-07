@@ -12,10 +12,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { installNetworkGuard } from '@onememory/security';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
-import { uuidv7 } from '@onememory/core';
+import { installNetworkGuard } from '@onememory-ai/security';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
+import { uuidv7 } from '@onememory-ai/core';
 
 import { captureSnapshot, createDriftApplier, createDriftWatcher, readCheckpointBasis } from './index';
 import type { RepositorySnapshot } from './index';

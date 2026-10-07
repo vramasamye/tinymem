@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { validateOnememoryEvent } from '@onememory/core';
+import { validateOnememoryEvent } from '@onememory-ai/core';
 
 import { parseHookInput } from './hook-input';
 import { translateHookInput } from './translate';

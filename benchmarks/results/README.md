@@ -54,7 +54,7 @@ same per-query formulas the aggregate `retrieval` metric uses. Estimates pool on
 
 The oracle is the token cost of the packer's most compact representation of exactly the golden
 answer set: `Σ estimateTokens(deriveLabel(title, content))` over the expected facts, computed with
-the engine's own estimator (`@onememory/core`) and label derivation (`@onememory/retrieval`) — the
+the engine's own estimator (`@onememory-ai/core`) and label derivation (`@onememory-ai/retrieval`) — the
 same path the titles-only overflow line uses. `oracle_gap = used / oracle_min_tokens`; 1.0 means
 the response was exactly the golden answer at its tightest packing. The dataset files carry the
 committed oracle annotation (`oracle_min_tokens` per typed query); the harness recomputes it on

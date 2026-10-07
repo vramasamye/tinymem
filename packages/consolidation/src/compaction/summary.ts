@@ -4,12 +4,12 @@
  * exactly like the event line the pipeline already knows, never a new vocabulary.
  *
  * Reuse before build: the per-kind formats, the envelope rebuild, and the whitespace collapse
- * all come from `@onememory/extraction`; only the bound lives here (extraction's `excerpt` is
+ * all come from `@onememory-ai/extraction`; only the bound lives here (extraction's `excerpt` is
  * module-private and this pass wants a documented, wider cap for terminal/tool output).
  */
 
-import type { NewEventDigest, StoredEvent } from '@onememory/core';
-import { eventTextForMatching, storedEventToEnvelope } from '@onememory/extraction';
+import type { NewEventDigest, StoredEvent } from '@onememory-ai/core';
+import { eventTextForMatching, storedEventToEnvelope } from '@onememory-ai/extraction';
 
 /** The digest summary bound — the payload's one-line stand-in must itself stay one line. */
 export const DIGEST_SUMMARY_MAX_CHARS = 400;

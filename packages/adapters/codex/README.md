@@ -1,4 +1,4 @@
-# @onememory/adapter-codex
+# @onememory-ai/adapter-codex
 
 The [OpenAI Codex CLI](https://developers.openai.com/codex/overview) adapter for
 **onememory** — the self-hosted, local-first persistent memory engine for AI coding agents.
@@ -86,7 +86,7 @@ re-running a rollout backfill is safe.
 
 ### Secrets never enter memory
 
-The capture pipeline runs every event through `@onememory/security`'s path exclusion
+The capture pipeline runs every event through `@onememory-ai/security`'s path exclusion
 (`.env`, key files, … are never ingested) and `redactEvent` (credential-shaped strings become
 `[REDACTED:…]`) **before delivery**; the daemon redacts again on arrival — two boundaries.
 Redaction is a fixpoint: already-redacted text is stable, never nested.
@@ -175,8 +175,8 @@ hook events, and config keys above follow the current published contracts.
 
 ## Architecture notes
 
-- Depends only on **public surfaces**: `@onememory/core` (event schemas, validation),
-  `@onememory/security` (redaction, path exclusion), `@onememory/config` (project discovery).
+- Depends only on **public surfaces**: `@onememory-ai/core` (event schemas, validation),
+  `@onememory-ai/security` (redaction, path exclusion), `@onememory-ai/config` (project discovery).
   Delivery speaks the daemon's public REST API and reads the documented `daemon.json` lock —
   no engine internals.
 - TOML is rendered and patched as **text** (never parse→stringify, which would destroy user
@@ -200,8 +200,8 @@ import {
   patchCodexConfigToml, renderCodexMcpServerToml,
   patchCodexHooksJson, buildCodexHooksFile,
   patchAgentsMd, renderOnememoryAgentsBlock,
-} from '@onememory/adapter-codex';
+} from '@onememory-ai/adapter-codex';
 ```
 
-`@onememory/adapter-codex/testing` exports verified-shape fixtures (hook inputs, bash tool
+`@onememory-ai/adapter-codex/testing` exports verified-shape fixtures (hook inputs, bash tool
 responses, a golden rollout) and a loopback fake daemon for integration tests.

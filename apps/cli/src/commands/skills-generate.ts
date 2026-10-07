@@ -10,10 +10,10 @@
  * of opening a second owner. Direct mode opens the composition root without the job worker.
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { runSkillGeneration } from '@onememory/consolidation';
-import type { SkillGenerationReport } from '@onememory/core';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, openRuntime } from '@onememory-ai/api/runtime';
+import { runSkillGeneration } from '@onememory-ai/consolidation';
+import type { SkillGenerationReport } from '@onememory-ai/core';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';

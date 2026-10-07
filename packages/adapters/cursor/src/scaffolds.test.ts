@@ -57,7 +57,7 @@ describe('cursor mcp.json', () => {
     const entry = document.mcpServers.onememory;
     expect(entry).toMatchObject({ type: 'stdio', command: 'bun' });
     if (!('type' in entry) || entry.type !== 'stdio') throw new Error('expected a stdio entry');
-    expect(entry.args?.[0]).toBe('${workspaceFolder}/node_modules/@onememory/mcp/src/bin.ts');
+    expect(entry.args?.[0]).toBe('${workspaceFolder}/node_modules/@onememory-ai/mcp/src/bin.ts');
     expect(entry.env?.['ONEMEMORY_MCP_AGENT_ID']).toBe('cursor');
     expect(entry.env?.['ONEMEMORY_DATA_DIR']).toBe('${workspaceFolder}/.onememory');
     expect(entry.env?.['ONEMEMORY_MCP_PROFILE']).toBeUndefined();
@@ -136,7 +136,7 @@ describe('cursor hooks.json', () => {
 
   test('project hooks use a project-root-relative command (Cursor runs project hooks from the root)', () => {
     const entry = buildCursorHooksFile().hooks['sessionStart']?.[0];
-    expect(entry?.command).toBe('bun node_modules/@onememory/adapter-cursor/src/bin.ts');
+    expect(entry?.command).toBe('bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts');
     expect(entry?.timeout).toBe(10);
   });
 
@@ -153,7 +153,7 @@ describe('cursor hooks.json', () => {
     const document = JSON.parse(patched.content) as { hooks: Record<string, Array<{ command: string }>> };
     expect(document.hooks['sessionStart']?.map((entry) => entry.command)).toEqual([
       './my-audit.sh',
-      'bun node_modules/@onememory/adapter-cursor/src/bin.ts',
+      'bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts',
     ]);
     expect(document.hooks['stop']).toEqual([{ command: './stop.sh' }]);
     const again = patchCursorHooksJson(patched.content, {});

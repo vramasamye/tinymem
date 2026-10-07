@@ -13,7 +13,7 @@
  * rank. Type affinity's weight lives in the matrix cell (the §5 table shows a 0.01–0.15 range).
  */
 
-import type { MemoryType, ScoreFactor, SearchIntent } from '@onememory/core';
+import type { MemoryType, ScoreFactor, SearchIntent } from '@onememory-ai/core';
 
 import type { RetrievalCandidate } from './candidates';
 import type { RetrievalConfig } from './config';

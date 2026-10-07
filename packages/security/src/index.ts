@@ -1,5 +1,5 @@
 /**
- * `@onememory/security` — the security core (ADR-0007): secret detection & redaction at the
+ * `@onememory-ai/security` — the security core (ADR-0007): secret detection & redaction at the
  * ingest boundary, path exclusions for credential files, and the 100%-local privacy gate.
  *
  * Callers:

@@ -13,7 +13,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import { parseDriftScanJobPayload, parseReindexJobPayload } from './orchestration';
 

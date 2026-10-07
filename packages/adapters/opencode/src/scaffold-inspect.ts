@@ -4,7 +4,7 @@
  *
  * Reports what is on disk — never judges it: the doctor compares the MCP URL against the
  * configured daemon URL and decides the status (via `evaluateRuntimeScaffold` in
- * `@onememory/api/runtime`, whose `RuntimeScaffoldState` this normalizes to). Content-level
+ * `@onememory-ai/api/runtime`, whose `RuntimeScaffoldState` this normalizes to). Content-level
  * functions are pure so each state is unit-tested without a filesystem.
  */
 

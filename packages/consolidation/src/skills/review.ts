@@ -8,7 +8,7 @@
  * renderer, over the same rows (canonical form — AC2's idempotency holds end to end).
  */
 
-import type { MemoryEventRecord, SkillRecord, SkillStore, Store } from '@onememory/core';
+import type { MemoryEventRecord, SkillRecord, SkillStore, Store } from '@onememory-ai/core';
 
 import { buildSkillDocument, observationFromMemory } from './generate';
 import type { FailureObservation } from './match';

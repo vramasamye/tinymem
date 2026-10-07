@@ -17,7 +17,7 @@
  * a *live* lock behind (a crashed process leaves a stale file, which `probeDaemon` detects by pid).
  */
 
-import { loadConfig, type LoadedConfig } from '@onememory/config';
+import { loadConfig, type LoadedConfig } from '@onememory-ai/config';
 import {
   buildOnememoryProtectedResourceMetadata,
   createBearerGate,
@@ -29,7 +29,7 @@ import {
   onememoryOauthMetadataResponse,
   type BearerGate,
   type OAuthMetadata,
-} from '@onememory/mcp';
+} from '@onememory-ai/mcp';
 
 import { createApiApp } from '../server/app';
 import { openRuntime, type OnememoryRuntime, type OpenRuntimeOptions } from './composition';

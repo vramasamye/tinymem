@@ -17,7 +17,7 @@
  * work-in-progress channel — `memory_vectors` stores vectors, not text.
  */
 
-import type { EmbeddingIndex, Embedder } from '@onememory/core';
+import type { EmbeddingIndex, Embedder } from '@onememory-ai/core';
 import { z } from 'zod';
 
 import { EmbedderError, assertVectorDim, type EmbedderMeta } from './types';

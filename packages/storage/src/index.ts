@@ -1,5 +1,5 @@
 /**
- * `@onememory/storage` — the Postgres-dialect port implementation (ADR-0002): PGlite (embedded,
+ * `@onememory-ai/storage` — the Postgres-dialect port implementation (ADR-0002): PGlite (embedded,
  * experimental behind the GATE-1 acceptance gate) and Postgres+pgvector (server/cloud/SaaS), one
  * committed drizzle-kit migration set, and the only package with SQL.
  */

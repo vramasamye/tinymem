@@ -43,7 +43,7 @@ addon) plus the prebuilt grammar packages `tree-sitter-typescript` 0.23.2 (TS + 
   nothing is fetched at install or runtime. The grammar packages have no `exports` map, so the
   wasm files are resolvable subpaths, and the literals give bundlers a static asset reference.
 - The offline invariant is pinned by a test running the full extraction under the
-  `@onememory/security` network guard: zero network calls, extraction succeeds.
+  `@onememory-ai/security` network guard: zero network calls, extraction succeeds.
 - Runtime support: Bun-from-source is the repo's supported runtime (the whole suite proves it).
   Node LTS compatibility is proven by a bundled smoke — `bun build --target=node`, executed by
   Node 26.1.0 from the installed package tree, extracts symbols correctly; an artifact moved

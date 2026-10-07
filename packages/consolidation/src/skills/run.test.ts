@@ -8,7 +8,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { FailureRecurrence } from '@onememory/core';
+import type { FailureRecurrence } from '@onememory-ai/core';
 
 import { SIG_CONN, SIG_OOM, FakeSkillStore, failureRecurrence, qualifiedPair } from './fixtures';
 import { observationOf } from './match';

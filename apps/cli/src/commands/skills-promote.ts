@@ -12,12 +12,12 @@
  *
  * Where the file lands (M15 follow-up 3 — configurable write surface). Precedence, first wins:
  *   1. `--dir <path>`              — an explicit directory;
- *   2. `--runtime <id>`            — that runtime's canonical skills root (`@onememory/core`'s
+ *   2. `--runtime <id>`            — that runtime's canonical skills root (`@onememory-ai/core`'s
  *                                    runtime table; e.g. `.claude/skills` for Claude Code);
  *   3. `skills.dir` in the config  — e.g. `.claude/skills`, or `~/.claude/skills` for a global root;
  *   4. `<project root>/skills`     — the documented default (ADR-0009 rule 5).
  *
- * The precedence resolver lives in `@onememory/core` (`resolveSkillsTarget`), shared with the REST
+ * The precedence resolver lives in `@onememory-ai/core` (`resolveSkillsTarget`), shared with the REST
  * API so the CLI and the web review surface agree on where a skill lands.
  *
  * Every runtime discovers skills by scanning its skills root for `<name>/SKILL.md` — none
@@ -29,10 +29,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, localUser, openRuntime } from '@onememory/api/runtime';
-import { loadSkillForReview } from '@onememory/consolidation';
-import { isAgentRuntimeId, resolveSkillsTarget, type SkillsTarget } from '@onememory/core';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, localUser, openRuntime } from '@onememory-ai/api/runtime';
+import { loadSkillForReview } from '@onememory-ai/consolidation';
+import { isAgentRuntimeId, resolveSkillsTarget, type SkillsTarget } from '@onememory-ai/core';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';

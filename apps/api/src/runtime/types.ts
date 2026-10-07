@@ -12,9 +12,9 @@
  * per-command tests able to inject a fake.
  */
 
-import type { MemorySearchRequest, MemorySearchResponse } from '@onememory/core';
-import type { LlmProfileSummary } from '@onememory/config';
-import type { SkillStatus, SkillsTargetSource } from '@onememory/core';
+import type { MemorySearchRequest, MemorySearchResponse } from '@onememory-ai/core';
+import type { LlmProfileSummary } from '@onememory-ai/config';
+import type { SkillStatus, SkillsTargetSource } from '@onememory-ai/core';
 import type {
   DurableMemoryType,
   EntityRecord,
@@ -23,8 +23,8 @@ import type {
   MemoryRecord,
   ProjectRecord,
   Redaction,
-} from '@onememory/core';
-import type { SessionContext } from '@onememory/retrieval';
+} from '@onememory-ai/core';
+import type { SessionContext } from '@onememory-ai/retrieval';
 
 import type { DoctorOptions, DoctorReport } from './doctor';
 
@@ -169,7 +169,7 @@ export interface StatsResult {
     truncated: boolean;
   };
   working_memory: { session_id: string; depth: number } | null;
-  /** `null` while `@onememory/storage` has no job-count API (see the M13 report follow-ups). */
+  /** `null` while `@onememory-ai/storage` has no job-count API (see the M13 report follow-ups). */
   jobs: { pending: number; running: number; dead: number } | null;
   cache: { embeddings: number; results: number; entityScopes: number };
   llm: LlmProfileSummary;

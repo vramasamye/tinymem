@@ -6,14 +6,14 @@
  * `re_embed` jobs (nothing exists to embed). That is the configuration `onemem doctor` must pass in.
  */
 
-import type { EmbedderSelection } from '@onememory/config';
+import type { EmbedderSelection } from '@onememory-ai/config';
 import {
   createLocalTransformersEmbedder,
   createOllamaEmbedder,
   createOpenAiCompatibleEmbedder,
   type EmbedderHandle,
   type LocalTransformersEmbedderOptions,
-} from '@onememory/embeddings';
+} from '@onememory-ai/embeddings';
 
 /** Injectable seams for tests (no network, no model download). */
 export interface EmbedderFactoryOptions {

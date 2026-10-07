@@ -48,7 +48,7 @@ describe('buildPiMcpServerEntry', () => {
     const entry = buildPiMcpServerEntry({ transport: 'stdio', projectId: 'pid', agentId: 'pi' });
     expect(entry).toMatchObject({
       command: 'bun',
-      args: ['node_modules/@onememory/mcp/src/bin.ts'],
+      args: ['node_modules/@onememory-ai/mcp/src/bin.ts'],
       cwd: '.',
       exposure: DEFAULT_EXPOSURE,
       enabled: true,
@@ -126,7 +126,7 @@ describe('the extension shim', () => {
   test('is the documented default-export factory and carries the generated marker', () => {
     const file = buildPiExtensionFile();
     expect(file).toContain(PI_EXTENSION_MARKER);
-    expect(file).toContain("import { createPiExtension } from '@onememory/adapter-pi'");
+    expect(file).toContain("import { createPiExtension } from '@onememory-ai/adapter-pi'");
     expect(file).toContain('export default function onememory(');
   });
 });

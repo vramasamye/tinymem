@@ -37,7 +37,7 @@ import {
 } from './event-builder';
 import { parseApplyPatch } from './apply-patch';
 
-import type { OnememoryEvent } from '@onememory/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 export type { TranslationResult } from './event-builder';
 

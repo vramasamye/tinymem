@@ -1,4 +1,4 @@
-# @onememory/adapter-opencode
+# @onememory-ai/adapter-opencode
 
 The [OpenCode](https://opencode.ai) adapter for **onememory** — the self-hostable, local-first
 persistent memory engine for AI coding agents.
@@ -49,7 +49,7 @@ The generated plugin shim is three lines — it imports `createOpenCodePlugin` f
 separate hook process:
 
 ```ts
-import { createOpenCodePlugin } from '@onememory/adapter-opencode';
+import { createOpenCodePlugin } from '@onememory-ai/adapter-opencode';
 
 export const onememory = createOpenCodePlugin();
 ```

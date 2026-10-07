@@ -11,12 +11,12 @@
  * sessions need exactly that), and the loopback receiver on 127.0.0.1 captures the redirect.
  *
  * The flow itself is the official MCP client SDK's `auth()` orchestrator driven by
- * `@onememory/mcp`'s `runLoopbackOAuthFlow` — PKCE S256, the state nonce check, RFC 7591
+ * `@onememory-ai/mcp`'s `runLoopbackOAuthFlow` — PKCE S256, the state nonce check, RFC 7591
  * dynamic client registration, and refresh are all the SDK's, not ours.
  */
 
-import { loadConfig } from '@onememory/config';
-import { OAuthCredentialStore, oauthStatus, runLoopbackOAuthFlow } from '@onememory/mcp';
+import { loadConfig } from '@onememory-ai/config';
+import { OAuthCredentialStore, oauthStatus, runLoopbackOAuthFlow } from '@onememory-ai/mcp';
 
 import type { Io } from '../io';
 

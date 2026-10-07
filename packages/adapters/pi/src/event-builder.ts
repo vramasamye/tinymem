@@ -1,6 +1,6 @@
 /**
  * Canonical event construction shared by the Pi translator (mirrors
- * `@onememory/adapter-codex/src/event-builder.ts`, mission 7 — the established adapter pattern).
+ * `@onememory-ai/adapter-codex/src/event-builder.ts`, mission 7 — the established adapter pattern).
  *
  * Every event produced here passes `validateOnememoryEvent` before it leaves the adapter (the
  * task contract: never coerce, never emit an envelope the engine would dead-letter). `content_hash`
@@ -15,7 +15,7 @@ import {
   type EventPayload,
   type EventRuntime,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { PI_ADAPTER_VERSION } from './version';
 

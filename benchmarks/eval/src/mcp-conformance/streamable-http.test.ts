@@ -29,7 +29,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DEFAULT_TOOLS } from '@onememory/mcp';
+import { DEFAULT_TOOLS } from '@onememory-ai/mcp';
 
 import { runAllPipelines, type PipelineResult } from '../adapter-conformance/pipeline';
 import {

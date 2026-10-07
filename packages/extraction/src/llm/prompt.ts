@@ -8,7 +8,7 @@
  * §6) is not negotiable.
  */
 
-import { EXTRACTED_MEMORY_TYPES, WORKING_MEMORY_KINDS } from '@onememory/core';
+import { EXTRACTED_MEMORY_TYPES, WORKING_MEMORY_KINDS } from '@onememory-ai/core';
 import { z } from 'zod';
 
 import { normalizedDigestLine, type NormalizedEvent } from '../events';

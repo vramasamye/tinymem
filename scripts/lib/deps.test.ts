@@ -11,17 +11,17 @@ describe('bareSpecifiers', () => {
   test('finds imports, re-exports, side-effect imports and column-0 dynamic imports', () => {
     const bundle = [
       'import { z } from "zod";',
-      'import { a as a2, b } from "@onememory/core";',
+      'import { a as a2, b } from "@onememory-ai/core";',
       'import "node:crypto";',
-      'export { x } from "@onememory/config";',
+      'export { x } from "@onememory-ai/config";',
       'import("@modelcontextprotocol/client");',
       'import("hono");',
       'import("smol-toml");',
     ].join('\n');
     expect(bareSpecifiers(bundle)).toEqual([
       '@modelcontextprotocol/client',
-      '@onememory/config',
-      '@onememory/core',
+      '@onememory-ai/config',
+      '@onememory-ai/core',
       'hono',
       'smol-toml',
       'zod',

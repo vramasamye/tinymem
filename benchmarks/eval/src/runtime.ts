@@ -2,12 +2,12 @@
  * The benchmark runtime: composes the real workspace packages exactly the way
  * `apps/api/src/runtime/composition.ts` does for the offline default, but for embedded PGlite only.
  *
- * Why compose directly instead of depending on `@onememory/api/runtime`: the dependency direction
+ * Why compose directly instead of depending on `@onememory-ai/api/runtime`: the dependency direction
  * is one-way (`apps` depend on `packages`, never the reverse — repository-structure.md rule 1), and
  * a benchmark must never reach into an application. The pieces here are the same ones the daemon
- * wires: `@onememory/storage` (PGlite + migrations), `@onememory/extraction` (heuristic extractor +
- * classifier + job handler), `@onememory/retrieval` (the real search engine), and — for datasets
- * that opt in — `@onememory/consolidation` (the M14 automatic lifecycle).
+ * wires: `@onememory-ai/storage` (PGlite + migrations), `@onememory-ai/extraction` (heuristic extractor +
+ * classifier + job handler), `@onememory-ai/retrieval` (the real search engine), and — for datasets
+ * that opt in — `@onememory-ai/consolidation` (the M14 automatic lifecycle).
  *
  * Offline by construction: no embedder and no model router are wired, so retrieval runs the
  * documented lexical + graph default, extraction is the heuristic (no-LLM) baseline, and the
@@ -20,7 +20,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { runConsolidation, type ConsolidationReport } from '@onememory/consolidation';
+import { runConsolidation, type ConsolidationReport } from '@onememory-ai/consolidation';
 import {
   eventContentHash,
   uuidv7,
@@ -28,16 +28,16 @@ import {
   type EventPayload,
   type MemoryRecord,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import {
   createExtractHandler,
   createHeuristicClassifier,
   createHeuristicExtractor,
   type ExtractHandlerResult,
-} from '@onememory/extraction';
-import { createRetrievalEngine, type RetrievalEngine } from '@onememory/retrieval';
-import { installNetworkGuard, type NetworkGuard } from '@onememory/security';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+} from '@onememory-ai/extraction';
+import { createRetrievalEngine, type RetrievalEngine } from '@onememory-ai/retrieval';
+import { installNetworkGuard, type NetworkGuard } from '@onememory-ai/security';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import {
   GLOBAL_PROJECT_KEY,

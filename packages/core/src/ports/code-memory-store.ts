@@ -1,6 +1,6 @@
 /**
  * Code-memory persistence port (ADR-0008): the only writer of `repositories`,
- * `file_fingerprints`, and `code_symbols`. Core declares the contract; `@onememory/storage`
+ * `file_fingerprints`, and `code_symbols`. Core declares the contract; `@onememory-ai/storage`
  * implements it with the engine's only SQL; the M4 pipeline persists codememory snapshots and
  * symbol tables through it.
  *

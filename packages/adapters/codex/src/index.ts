@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-codex` — the OpenAI Codex CLI adapter (ADR-0010 §6–§7).
+ * `@onememory-ai/adapter-codex` — the OpenAI Codex CLI adapter (ADR-0010 §6–§7).
  *
  * A translator, nothing more: Codex-native activity (hook payloads, rollout session logs) →
  * validated `OnememoryEvent` envelopes → the daemon's public REST surface. It never imports engine
@@ -10,7 +10,7 @@
  * Consumers:
  * - `onemem init` calls `scaffoldCodex` (the init-wiring seam, mission-13/coordinator).
  * - Codex hooks invoke the `onemem-codex-capture` bin (scaffolded `.codex/hooks.json`).
- * - Tests/fixtures live in `@onememory/adapter-codex/testing`.
+ * - Tests/fixtures live in `@onememory-ai/adapter-codex/testing`.
  */
 
 // Wire contract (verified mirrors of the published Codex hook schemas)

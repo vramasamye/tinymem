@@ -15,8 +15,8 @@
  * conflict downstream (never silently picked as truth).
  */
 
-import { isValidAt, CURRENT_QUERY_STATUSES, PIT_EXCLUDED_STATUSES } from '@onememory/core';
-import type { MemoryStatus } from '@onememory/core';
+import { isValidAt, CURRENT_QUERY_STATUSES, PIT_EXCLUDED_STATUSES } from '@onememory-ai/core';
+import type { MemoryStatus } from '@onememory-ai/core';
 
 import type { TimeScope } from './understand';
 

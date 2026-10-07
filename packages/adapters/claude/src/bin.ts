@@ -15,7 +15,7 @@
  * SessionStart `additionalContext` object).
  */
 
-import { isMainModule } from '@onememory/core';
+import { isMainModule } from '@onememory-ai/core';
 
 import { runHook } from './hook-bin';
 

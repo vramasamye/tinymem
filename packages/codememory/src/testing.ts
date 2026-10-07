@@ -10,7 +10,7 @@ import type {
   ExtractionInput,
   ExtractionResult,
   Extractor,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { ReindexClassification } from './reindex';
 import type { SkippedSymbolFile, SymbolTable } from './schema';

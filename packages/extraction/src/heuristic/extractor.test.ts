@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { ExtractionResultSchema, type ExtractedMemory } from '@onememory/core';
+import { ExtractionResultSchema, type ExtractedMemory } from '@onememory-ai/core';
 
 import { failureSignatureHash } from '../enrichment/failure';
 import {

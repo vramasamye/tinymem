@@ -7,7 +7,7 @@
  * breaks a probe and fails the gate — the benchmark is a CI contract, not a smoke test.
  */
 
-import type { FailureObservation } from '@onememory/consolidation';
+import type { FailureObservation } from '@onememory-ai/consolidation';
 
 /** The char bound a generated SKILL.md must stay under (token-efficiency rule 7: a skill is a
  * retrieval artifact, never a transcript — the bound keeps the floor honest while the templated

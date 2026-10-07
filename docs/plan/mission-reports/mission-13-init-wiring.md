@@ -27,7 +27,7 @@ Codex" and the doctor's "detected runtimes" validation. No ADR, root-config, `AG
 ### The URL rule (one source of truth)
 
 `daemonMcpUrl(daemon)` in `apps/api/src/runtime/runtime-scaffolds.ts` (exported from
-`@onememory/api/runtime`) returns `http://${daemon.host}:${daemon.port}/mcp` from the loaded
+`@onememory-ai/api/runtime`) returns `http://${daemon.host}:${daemon.port}/mcp` from the loaded
 config's `daemon` section. `onemem init` uses it to build both adapters' entries; the doctor uses
 it as the expected value. Both adapters additionally refuse any URL that is not loopback `http:`
 (Phase 1 has no authentication, so no headers or tokens are emitted).
@@ -37,7 +37,7 @@ it as the expected value. Both adapters additionally refuse any URL that is not 
 | File | Change |
 |---|---|
 | `scaffolds.ts` | `McpServerEntrySchema` is now `z.union([McpHttpServerEntrySchema, McpStdioServerEntrySchema])`. The http entry is `{type: 'http', url}` with `url` validated by `LoopbackHttpUrlSchema` (`http:` + loopback host). `McpJsonOptions` gains `transport?: 'stdio' \| 'http'` and `url?`; absent `transport` keeps the stdio entry byte-for-byte. New `buildMcpServerEntry` (the entry alone); `buildMcpJson` / `buildMcpServerEntry` have overloads so stdio callers keep the narrow stdio type. New `isLoopbackHostname`. |
-| `scaffold-merge.ts` (new) | `mergeMcpJson(existing, options)` inserts or replaces only `mcpServers.onememory` (an existing key keeps its position; other servers and top-level keys are preserved). `mergeClaudeSettingsHooks(existing, options)` removes onememory's own handlers from every group of each subscribed event (identified by the bin tokens `@onememory/adapter-claude` / `onemem-claude-hook` or the exact configured invocation), keeps user handlers that shared a group, drops only groups that become empty, then appends the generated groups. Both return `{ok: true, content, action: created\|patched\|unchanged}` or `{ok: false, error}`; malformed JSON or a wrong structure (`mcpServers`/`hooks` not an object, an event value not an array) is an error and the file is never rewritten. Both are byte-idempotent. |
+| `scaffold-merge.ts` (new) | `mergeMcpJson(existing, options)` inserts or replaces only `mcpServers.onememory` (an existing key keeps its position; other servers and top-level keys are preserved). `mergeClaudeSettingsHooks(existing, options)` removes onememory's own handlers from every group of each subscribed event (identified by the bin tokens `@onememory-ai/adapter-claude` / `onemem-claude-hook` or the exact configured invocation), keeps user handlers that shared a group, drops only groups that become empty, then appends the generated groups. Both return `{ok: true, content, action: created\|patched\|unchanged}` or `{ok: false, error}`; malformed JSON or a wrong structure (`mcpServers`/`hooks` not an object, an event value not an array) is an error and the file is never rewritten. Both are byte-idempotent. |
 | `scaffold-inspect.ts` (new) | `inspectClaudeScaffold(root)` reports `.mcp.json` (`absent \| invalid \| no_entry \| http(url) \| stdio \| unrecognized`; accepts Claude Code's documented `streamable-http` alias), `.claude/settings.json` hooks (`absent \| invalid \| no_entry \| partial(missing_events) \| complete`) and the `CLAUDE.md` pointer block. Pure content-level functions are exported for tests. |
 | `index.ts`, `README.md` | Exports and the scaffold section updated. |
 
@@ -60,7 +60,7 @@ it as the expected value. Both adapters additionally refuse any URL that is not 
 | `bin.ts` | `--with-claude` and `--with-codex` on `onemem init`. |
 | `prompt.ts` | The `Prompt` port gains `multiselect` (clack `multiselect` with `required: false`; the non-interactive implementation returns the initial values, but init only calls it when `io.interactive` is true). |
 | `commands/doctor.ts` | Prints the runtimes group under its own heading, labels `info` checks `[info]` with a `hint:` line, and adds the informational count to the summary line. |
-| `package.json` | `@onememory/adapter-claude` and `@onememory/adapter-codex` (`workspace:*`); `smol-toml` as a devDependency for the TOML assertions in tests. |
+| `package.json` | `@onememory-ai/adapter-claude` and `@onememory-ai/adapter-codex` (`workspace:*`); `smol-toml` as a devDependency for the TOML assertions in tests. |
 
 ### `apps/api`
 
@@ -107,7 +107,7 @@ The examples use the default `daemon.host: 127.0.0.1` and `daemon.port: 7331`.
 
 `.claude/settings.json`: the unchanged M6 `buildClaudeHooksConfig()` hooks (SessionStart,
 SessionEnd with `timeout: 5`, Stop, PostToolUse matcher `Bash|PowerShell|Edit|Write|NotebookEdit`,
-PostToolUseFailure matcher `*`; exec form `bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory/adapter-claude/src/bin.ts`),
+PostToolUseFailure matcher `*`; exec form `bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory-ai/adapter-claude/src/bin.ts`),
 merged per event into the user's settings.
 
 `CLAUDE.md`: the M6 `buildMemoryPointerBlock({projectName})` block between
@@ -166,7 +166,7 @@ Required-review lines printed by init (emitted only when they apply):
    logic (TOML parsing, hook ownership tokens). Duplicating it in `apps/api` would split one
    format between two owners. The dependency direction is adapters -> core/config/security, and
    api -> adapters. That creates no cycle, and the engine core still imports no adapter code.
-4. **`smol-toml` became a runtime dependency of `@onememory/adapter-codex`.** M7 §5 already
+4. **`smol-toml` became a runtime dependency of `@onememory-ai/adapter-codex`.** M7 §5 already
    anticipated keeping it under dependencies. Production code still writes TOML as text; only
    the inspection parses it.
 5. **The server preset scaffolds HTTP, as the brief directs.** The ADR-0010 amendment calls stdio
@@ -228,7 +228,7 @@ Required-review lines printed by init (emitted only when they apply):
    scope, so it was left unchanged. Per-runtime agent identity over HTTP needs a decision: a
    query parameter on the URL, or headers in a later phase.
 2. **Hook invocation paths.** The Claude hooks call
-   `bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory/adapter-claude/src/bin.ts` (the M6
+   `bun ${CLAUDE_PROJECT_DIR}/node_modules/@onememory-ai/adapter-claude/src/bin.ts` (the M6
    default), which needs the adapter installed in the project's `node_modules`. Codex calls
    `onemem-codex-capture` from `PATH`. Decide the published-bin invocation for both. Note that
    the Claude bin has no shebang, even though it is now executable.

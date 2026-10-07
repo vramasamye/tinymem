@@ -17,16 +17,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { installNetworkGuard } from '@onememory/security';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
+import { installNetworkGuard } from '@onememory-ai/security';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
 import {
   uuidv7,
   type CodeMemoryStore,
   type ExtractedMemory,
   type ExtractionInput,
   type Extractor,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import {
   createReindexer,

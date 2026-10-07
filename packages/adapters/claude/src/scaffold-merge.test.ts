@@ -184,7 +184,7 @@ describe('mergeClaudeSettingsHooks', () => {
   });
 
   test('replaces stale onememory handlers (old bin path) and keeps user handlers sharing their group', () => {
-    const stale = { type: 'command', command: 'bun', args: ['/old/node_modules/@onememory/adapter-claude/src/bin.ts'] };
+    const stale = { type: 'command', command: 'bun', args: ['/old/node_modules/@onememory-ai/adapter-claude/src/bin.ts'] };
     const existing = JSON.stringify({
       hooks: {
         SessionStart: [{ hooks: [stale] }],

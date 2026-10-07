@@ -7,7 +7,7 @@
  * only thing consumed. Offline invariant: the core runtime WASM is resolved through
  * `web-tree-sitter`'s exported `web-tree-sitter.wasm` subpath and `Language.load` reads grammar
  * bytes from the installed packages — never fetched; symbol tests pin this with the
- * `@onememory/security` network guard.
+ * `@onememory-ai/security` network guard.
  */
 
 import { createRequire } from 'node:module';

@@ -6,7 +6,7 @@
  * is now a signature-preserving re-export shim): the daemon writes the lock, the CLI probes it
  * before opening storage, and the standalone `onemem-mcp` stdio bin probes it before opening
  * embedded storage — a package must never import an app, so the wire record lives with the other
- * cross-process formats (`project.json`) in `@onememory/config`.
+ * cross-process formats (`project.json`) in `@onememory-ai/config`.
  *
  * Why a file: the embedded database is single-owner (ADR-0002), so any process must know whether
  * a daemon already owns the data dir *before* it opens storage. The pid is a hint, not the truth:

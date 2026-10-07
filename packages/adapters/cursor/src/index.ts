@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-cursor` — the Cursor adapter (ADR-0010 §6–§7).
+ * `@onememory-ai/adapter-cursor` — the Cursor adapter (ADR-0010 §6–§7).
  *
  * A translator, nothing more: Cursor-native hook activity → validated `OnememoryEvent` envelopes
  * (runtime: 'cursor') → the daemon's public REST surface. It never imports engine internals

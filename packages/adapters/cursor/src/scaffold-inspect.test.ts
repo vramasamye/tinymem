@@ -42,7 +42,7 @@ describe('inspectCursorScaffold (content)', () => {
     expect(inspectCursorHooksContent(null)).toEqual({ state: 'absent' });
     expect(inspectCursorHooksContent('{"hooks":{}}')).toEqual({ state: 'no_entry' });
     const partial = inspectCursorHooksContent(
-      '{"version":1,"hooks":{"sessionStart":[{"command":"bun node_modules/@onememory/adapter-cursor/src/bin.ts"}]}}',
+      '{"version":1,"hooks":{"sessionStart":[{"command":"bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts"}]}}',
     );
     expect(partial.state).toBe('partial');
     if (partial.state === 'partial') {

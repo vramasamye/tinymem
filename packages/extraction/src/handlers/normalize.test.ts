@@ -7,8 +7,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
-import type { OnememoryEvent } from '@onememory/core';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 import { createNormalizeHandler } from './normalize';
 import { FIXTURE_PROJECT_ID, FIXTURE_SESSION_ID, goldenSession } from '../testing/transcripts';

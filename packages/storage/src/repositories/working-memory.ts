@@ -4,14 +4,14 @@
  * preserved by the partial index predicate (database-schema.md §2). Deletion is allowed here only.
  */
 
-import { NewSessionSchema, NewWorkingMemorySchema, uuidv7 } from '@onememory/core';
+import { NewSessionSchema, NewWorkingMemorySchema, uuidv7 } from '@onememory-ai/core';
 import type {
   NewSession,
   NewWorkingMemory,
   SessionRecord,
   WorkingMemoryRecord,
   WorkingSweepResult,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

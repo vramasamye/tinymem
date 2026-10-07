@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { EvidenceSpan } from '@onememory/core';
+import type { EvidenceSpan } from '@onememory-ai/core';
 
 import {
   DERIVATION_LLM_PROMPT_VERSION,

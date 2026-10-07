@@ -6,7 +6,7 @@
  * deviations in mission-2.md.
  */
 
-import { DEFAULT_HALF_LIFE_DAYS, type MemoryType, type SearchIntent } from '@onememory/core';
+import { DEFAULT_HALF_LIFE_DAYS, type MemoryType, type SearchIntent } from '@onememory-ai/core';
 
 export { DEFAULT_HALF_LIFE_DAYS };
 
