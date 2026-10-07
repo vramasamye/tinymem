@@ -19,6 +19,7 @@ a decision, write a new ADR that supersedes the old one — never edit history s
 | 0011 | [SaaS path without open-core rot](0011-saas-path.md) | Accepted |
 | 0012 | [OAuth 2.1 deployment posture: local loopback, hosted OIDC, proxy for SaaS](0012-oauth-deployment-posture.md) | Accepted |
 | 0013 | [Markdown export surface: `onemem export`, canonical store, capped `MEMORY.md`](0013-markdown-export-surface.md) | Accepted |
+| 0014 | [npm distribution: built `dist/` artifacts, staged publish manifests, Node LTS bins](0014-npm-distribution.md) | Accepted |
 
 ADR-0010 is grounded in `docs/research/mcp-memory-implementations.md` (MCP 2026-07-28 facts,
 per-runtime integration matrix, memory-server survey).

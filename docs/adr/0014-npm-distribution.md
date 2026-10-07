@@ -38,6 +38,13 @@ declarations.**
   plus every `bin` target. `@onememory/api` therefore ships both `dist/index.js` and
   `dist/runtime/index.js` (the subpath the CLI imports), and no hand-maintained build table can
   drift from the manifests.
+- **Runtime assets ship with the code.** A manifest may list files beyond `dist/` in `files`
+  (`@onememory/storage` ships `migrations/`, the SQL set every install needs to create its own
+  database). The staging step copies exactly what the manifest declares, and the build anchors such
+  paths at the *package root* rather than at a module's own depth: the published bundle inlines
+  every module into `dist/index.js`, so a `../../migrations` written for `src/drivers/` resolved
+  one level outside the installed package — invisible in the repo, fatal on the first user install
+  (caught by the packed smoke).
 
 **2. Repo manifests stay dev-oriented; publishing goes through a staged manifest.**
 
@@ -79,6 +86,15 @@ outside the repo with **npm + Node** (no Bun on the PATH), then runs `npx onemem
 `workspace:` specifier or a `bun` shebang. CI runs it on every push. This replaces the ADR-0001
 "CI runs package tests under Vitest" wording as the operative Node gate: the unit suites import
 `bun:test`, so the honest Node check is the artifact one, end to end.
+
+**6. Dependency completeness is checked against the built bundles.**
+
+Because the monorepo hoists one `node_modules`, a package can import something it never declared
+and still pass every test in the repo — then break every install. The release pre-flight reads the
+dist bundles, extracts real import specifiers (column-0 anchored, so template-embedded scaffold
+code is not mistaken for imports) and refuses to stage a package whose imports are not all
+declared in `dependencies`/`peerDependencies`/`optionalDependencies`. It found
+`@modelcontextprotocol/client` hidden in `@onememory/mcp`'s devDependencies on its first run.
 
 ## Options considered
 

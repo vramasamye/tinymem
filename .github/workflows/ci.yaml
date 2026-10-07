@@ -41,3 +41,22 @@ jobs:
       - run: bun test
         env:
           ONEMEMORY_PG_URL: postgresql://onememory:onememory@localhost:5432/onememory
+
+  # The Node-compatibility gate (ADR-0014): the unit suites run under Bun and import bun:test, so
+  # they cannot prove what a user gets. This job builds, stages, packs and installs the tarballs
+  # with npm + Node (Bun is stripped from PATH inside the smoke) and drives the real CLI.
+  packed-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run scripts/release.ts stage
+      - run: bun run scripts/release.ts pack
+      - run: bun run scripts/smoke-packed.ts
