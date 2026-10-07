@@ -19,6 +19,7 @@ coverage/
 *.db-shm
 .pgdata/
 *.pglite/
+.onememory/
 
 # Logs
 *.log
