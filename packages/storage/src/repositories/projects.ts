@@ -51,6 +51,39 @@ export async function getProject(db: Database, id: string): Promise<ProjectRecor
   return row ? mapProjectRow(row) : null;
 }
 
+/** Split a path into non-empty POSIX segments ('' and '/' → no segments → never matches). */
+function pathSegments(path: string): string[] {
+  return path.split('/').filter((segment) => segment.length > 0);
+}
+
+/**
+ * The cwd→project lookup (M17 — mission-5's named follow-up): the deepest registered
+ * `root_path` containing `path` wins, so a nested directory resolves to its own project in a
+ * multi-project data dir. Segment-precise containment (`/tmp/x-2` is NOT inside `/tmp/x`); a
+ * `root_path IS NULL` project never matches; no match is an honest null, never a guess.
+ */
+export async function findProjectByPath(db: Database, path: string): Promise<ProjectRecord | null> {
+  const target = pathSegments(path);
+  if (target.length === 0) return null;
+  const result = await db.query('SELECT * FROM projects WHERE root_path IS NOT NULL');
+  let best: { project: ProjectRecord; depth: number } | null = null;
+  for (const row of result.rows) {
+    const root = pathSegments(String(row.root_path));
+    if (root.length === 0 || root.length > target.length) continue;
+    let contained = true;
+    for (let index = 0; index < root.length; index += 1) {
+      if (root[index] !== target[index]) {
+        contained = false;
+        break;
+      }
+    }
+    if (contained && (best === null || root.length > best.depth)) {
+      best = { project: mapProjectRow(row), depth: root.length };
+    }
+  }
+  return best === null ? null : best.project;
+}
+
 export async function createSource(db: Database, rawInput: NewSource): Promise<SourceRef> {
   const input = parseInput(NewSourceSchema, rawInput, 'createSource');
   const result = await db.query<{ id: string; kind: string; uri: string | null; title: string | null }>(

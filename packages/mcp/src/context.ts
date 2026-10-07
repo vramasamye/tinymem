@@ -39,8 +39,12 @@ export interface OnememoryMcpContext {
 
   // -- resolved helpers used by every write path ------------------------------------------
 
-  /** Project id for unscoped operations, resolved per call: input → config. */
-  resolveProjectId(inputProjectId?: string): string | undefined;
+  /**
+   * Project id for unscoped operations, resolved per call: input → config → the workspace hint's
+   * project (the M17 cwd→project lookup: the deepest registered root containing the hint wins).
+   * Async because the lookup is a store read.
+   */
+  resolveProjectId(inputProjectId?: string): Promise<string | undefined>;
   /** Redact any JSON value (deep) — the write-path ingest duty. Returns the clean value. */
   redact<T>(value: T): { value: T; redactions: Redaction[] };
   /** Audited-actor string for status transitions (database-schema.md §2 vocabulary). */
@@ -132,8 +136,14 @@ export async function createOnememoryMcpContext(
     workspaceHint,
     serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
     actor,
-    resolveProjectId(inputProjectId?: string): string | undefined {
-      return inputProjectId ?? config.projectId;
+    async resolveProjectId(inputProjectId?: string): Promise<string | undefined> {
+      if (inputProjectId !== undefined) return inputProjectId;
+      if (config.projectId !== undefined) return config.projectId;
+      if (workspaceHint === null) return undefined;
+      // cwd→project lookup (M17): the deepest registered root containing the client's launch
+      // dir wins, so a nested project resolves to itself in a multi-project data dir.
+      const project = await storage.store.findProjectByPath(workspaceHint);
+      return project === null ? undefined : project.id;
     },
     redact<T>(value: T): { value: T; redactions: Redaction[] } {
       const result = redactValue(value, config.redactor);

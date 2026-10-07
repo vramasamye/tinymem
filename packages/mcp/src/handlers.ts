@@ -185,9 +185,10 @@ export async function handleMemorySearch(
   ctx: OnememoryMcpContext,
   input: MemorySearchInput,
 ): Promise<MemorySearchOutput> {
+  const projectId = input.project_id !== undefined ? await ctx.resolveProjectId(input.project_id) : undefined;
   const request: MemorySearchRequest = {
     query: input.query,
-    ...(input.project_id !== undefined ? { project_id: ctx.resolveProjectId(input.project_id) } : {}),
+    ...(projectId !== undefined ? { project_id: projectId } : {}),
     ...(input.kind !== undefined ? { types: typesForKind(input.kind) } : {}),
     ...(input.max_tokens !== undefined ? { max_tokens: input.max_tokens } : ctx.config.searchMaxTokens !== undefined ? { max_tokens: ctx.config.searchMaxTokens } : {}),
     ...(input.max_memories !== undefined ? { max_memories: input.max_memories } : {}),
@@ -326,7 +327,7 @@ export async function handleMemoryStore(
   } else if (input.scope === 'user') {
     userId = await ctx.localUserId();
   } else if (input.scope === 'project') {
-    projectId = ctx.resolveProjectId();
+    projectId = await ctx.resolveProjectId();
     if (projectId === undefined) {
       throw new ToolError(
         'project_required',
@@ -335,7 +336,7 @@ export async function handleMemoryStore(
       );
     }
   } else {
-    projectId = ctx.resolveProjectId();
+    projectId = await ctx.resolveProjectId();
     if (projectId === undefined) {
       warnings.push('stored without project scope (no project configured) — pass project_id to scope it');
     }
@@ -798,7 +799,7 @@ export async function handleMemoryProjectContext(
   ctx: OnememoryMcpContext,
   input: MemoryProjectContextInput,
 ): Promise<MemoryProjectContextOutput> {
-  const projectId = ctx.resolveProjectId(input.project_id);
+  const projectId = await ctx.resolveProjectId(input.project_id);
   if (projectId === undefined) {
     throw new ToolError(
       'project_required',
@@ -845,7 +846,7 @@ function currentFilter(ctx: OnememoryMcpContext, projectId: string, asOf?: strin
 }
 
 async function requireProject(ctx: OnememoryMcpContext, input: { project_id?: string }): Promise<string> {
-  const projectId = ctx.resolveProjectId(input.project_id);
+  const projectId = await ctx.resolveProjectId(input.project_id);
   if (projectId === undefined) {
     throw new ToolError(
       'project_required',

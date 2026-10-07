@@ -60,6 +60,7 @@ export function createStore(db: Database): Store {
     createUser: (input: NewUser) => projectsRepo.createUser(db, input),
     createProject: (input: NewProject) => projectsRepo.createProject(db, input),
     getProject: (id: string) => projectsRepo.getProject(db, id),
+    findProjectByPath: (path: string) => projectsRepo.findProjectByPath(db, path),
 
     createSource: (input: NewSource) => projectsRepo.createSource(db, input),
     getSource: (id: string) => projectsRepo.getSource(db, id),
