@@ -24,7 +24,7 @@ import type {
   DriftReport,
   DriftWatcher,
   MemoryCodeRef,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { DetectDriftInputSchema } from './schema';
 

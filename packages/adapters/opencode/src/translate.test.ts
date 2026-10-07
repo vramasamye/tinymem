@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { validateOnememoryEvent } from '@onememory/core';
+import { validateOnememoryEvent } from '@onememory-ai/core';
 
 import { createOpenCodeTranslator, type OpenCodeTranslateContext } from './translate';
 import {

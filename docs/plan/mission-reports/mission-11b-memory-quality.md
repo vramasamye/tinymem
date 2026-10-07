@@ -35,9 +35,9 @@ a documented schema, and this report. Nothing outside `benchmarks/**` and this r
 | Results | `benchmarks/results/` — regenerated `baseline.{json,md}`, three dated metric files, `README.md` |
 
 **Reuse before build (cited):** the per-query precision/recall formulas reuse the M11a
-`computeRetrievalMetrics` definitions; the oracle reuses `estimateTokens` (`@onememory/core`) and
-`deriveLabel` (`@onememory/retrieval`) — the exact estimator and label path the packer's titles-only
-line uses; duplicate cosine reuses `cosineSimilarity` from `@onememory/storage`; the 0.97 threshold
+`computeRetrievalMetrics` definitions; the oracle reuses `estimateTokens` (`@onememory-ai/core`) and
+`deriveLabel` (`@onememory-ai/retrieval`) — the exact estimator and label path the packer's titles-only
+line uses; duplicate cosine reuses `cosineSimilarity` from `@onememory-ai/storage`; the 0.97 threshold
 mirrors the M14 `DEFAULT_CONSOLIDATION_CONFIG.nearDuplicate.cosineThreshold`; the pollution fixture's
 decay uses the existing `consolidation_pass` config knob. No new runner was invented — everything
 runs through the existing `runDataset`/`runBenchmark`/`evaluateGates` pipeline and the existing

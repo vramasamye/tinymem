@@ -13,8 +13,8 @@ import {
   createHandlerRegistry,
   createJobWorker,
   type OnememoryStorage,
-} from '@onememory/storage';
-import { memoryContentHash, type Extractor, type OnememoryEvent } from '@onememory/core';
+} from '@onememory-ai/storage';
+import { memoryContentHash, type Extractor, type OnememoryEvent } from '@onememory-ai/core';
 
 import { createHeuristicClassifier } from '../classifier';
 import { createHeuristicExtractor } from '../heuristic/extractor';

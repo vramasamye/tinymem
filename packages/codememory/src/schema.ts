@@ -1,7 +1,7 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
-import { SYMBOL_KINDS, SYMBOL_LANGUAGES } from '@onememory/core';
+import { SYMBOL_KINDS, SYMBOL_LANGUAGES } from '@onememory-ai/core';
 
 /** Portable repository-relative paths; never a shell expression or a filesystem escape. */
 export const RepositoryPathSchema = z.string().min(1).refine((path) =>
@@ -147,7 +147,7 @@ export type ApplyDriftInput = z.input<typeof ApplyDriftInputSchema>;
 // Symbol extraction (tree-sitter — ADR-0008 "Symbol tables re-extract only changed files")
 // ---------------------------------------------------------------------------
 
-/** The shared cross-language kind vocabulary (single source: `@onememory/core` persistence). */
+/** The shared cross-language kind vocabulary (single source: `@onememory-ai/core` persistence). */
 export const SymbolKindSchema = z.enum(SYMBOL_KINDS);
 export type SymbolKind = z.infer<typeof SymbolKindSchema>;
 

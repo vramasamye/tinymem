@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { writeDaemonLock } from '@onememory/api/runtime';
+import { writeDaemonLock } from '@onememory-ai/api/runtime';
 
 import { jsonOf, runMain, type Captured } from './test-support';
 

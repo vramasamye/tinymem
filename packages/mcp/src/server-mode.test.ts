@@ -32,8 +32,8 @@ import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Client, StreamableHTTPClientTransport, type JSONRPCMessage } from '@modelcontextprotocol/client';
-import { installNetworkGuard, NetworkGuardError } from '@onememory/security';
-import { daemonLockPath, writeDaemonLock } from '@onememory/config';
+import { installNetworkGuard, NetworkGuardError } from '@onememory-ai/security';
+import { daemonLockPath, writeDaemonLock } from '@onememory-ai/config';
 
 import { EmbeddedStorageOwnerError } from './owner-guard';
 import { main } from './bin';

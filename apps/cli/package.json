@@ -19,22 +19,22 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.8.1",
-    "@onememory/adapter-claude": "workspace:*",
-    "@onememory/adapter-codex": "workspace:*",
-    "@onememory/adapter-cursor": "workspace:*",
-    "@onememory/adapter-opencode": "workspace:*",
-    "@onememory/adapter-pi": "workspace:*",
-    "@onememory/api": "workspace:*",
-    "@onememory/config": "workspace:*",
-    "@onememory/consolidation": "workspace:*",
-    "@onememory/core": "workspace:*",
-    "@onememory/mcp": "workspace:*",
+    "@onememory-ai/adapter-claude": "workspace:*",
+    "@onememory-ai/adapter-codex": "workspace:*",
+    "@onememory-ai/adapter-cursor": "workspace:*",
+    "@onememory-ai/adapter-opencode": "workspace:*",
+    "@onememory-ai/adapter-pi": "workspace:*",
+    "@onememory-ai/api": "workspace:*",
+    "@onememory-ai/config": "workspace:*",
+    "@onememory-ai/consolidation": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/mcp": "workspace:*",
     "commander": "^15.0.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@onememory/storage": "workspace:*",
+    "@onememory-ai/storage": "workspace:*",
     "@types/bun": "^1.4.2",
     "smol-toml": "^1.9.0"
   }

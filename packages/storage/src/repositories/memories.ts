@@ -21,7 +21,7 @@ import {
   memoryContentHash,
   transition,
   uuidv7,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   DeleteMemoryOptions,
   DurableMemoryType,
@@ -34,7 +34,7 @@ import type {
   SourceRef,
   StatusChangeOptions,
   SupersedeResult,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database, QueryResult } from '../drivers/client';
 import { pgTextArray, pgUuidArray, toIso } from '../drivers/client';

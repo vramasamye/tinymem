@@ -7,8 +7,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { NewSkill } from '@onememory/core';
-import { renderDefaultConfigYaml } from '@onememory/config';
+import type { NewSkill } from '@onememory-ai/core';
+import { renderDefaultConfigYaml } from '@onememory-ai/config';
 
 import { BackendError, createLocalBackend, openRuntime, type OnememoryBackend, type OnememoryRuntime } from './index';
 

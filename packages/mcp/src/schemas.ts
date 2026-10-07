@@ -21,7 +21,7 @@ import {
   EVIDENCE_SPAN_KINDS,
   MemoryRecordSchema,
   SKILL_STATUSES,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 // ---------------------------------------------------------------------------
 // Tool names + profiles

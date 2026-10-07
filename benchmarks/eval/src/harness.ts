@@ -7,9 +7,9 @@
  * numbers across runs (only `generated_at` differs, and it is injectable).
  */
 
-import type { MemorySearchRequest } from '@onememory/core';
-import type { ExtractHandlerResult } from '@onememory/extraction';
-import { deriveLabel, estimateTokens } from '@onememory/retrieval';
+import type { MemorySearchRequest } from '@onememory-ai/core';
+import type { ExtractHandlerResult } from '@onememory-ai/extraction';
+import { deriveLabel, estimateTokens } from '@onememory-ai/retrieval';
 
 import { GLOBAL_PROJECT_KEY, loadDatasets, type GoldenDataset } from './dataset';
 import { evaluateGates, type AggregateMetrics, type GateEvaluation } from './gates';

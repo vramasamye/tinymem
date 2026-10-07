@@ -25,8 +25,8 @@ import {
   type NewMemory,
   type OnememoryEvent,
   type StoredEvent,
-} from '@onememory/core';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import { runEventsCompaction } from './run';
 

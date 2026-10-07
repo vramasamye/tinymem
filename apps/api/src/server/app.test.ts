@@ -23,8 +23,8 @@ import type {
   SkillSummary,
   StatsResult,
 } from '../runtime/types';
-import type { MemorySearchRequest, MemorySearchResponse, ProjectRecord } from '@onememory/core';
-import type { SessionContext } from '@onememory/retrieval';
+import type { MemorySearchRequest, MemorySearchResponse, ProjectRecord } from '@onememory-ai/core';
+import type { SessionContext } from '@onememory-ai/retrieval';
 import { createApiApp } from './app';
 
 const PROJECT_ID = '0195a7f0-9f5e-7a1d-bc2d-000000000001';

@@ -21,8 +21,8 @@ import {
   groupFailuresBySignature,
   renderSkillMarkdown,
   type SignatureGroup,
-} from '@onememory/consolidation';
-import { MAX_SKILL_EVIDENCE_FAILURES, SKILL_MD_SECTIONS } from '@onememory/core';
+} from '@onememory-ai/consolidation';
+import { MAX_SKILL_EVIDENCE_FAILURES, SKILL_MD_SECTIONS } from '@onememory-ai/core';
 
 import {
   SKILLS_GOLDEN_DATASET,

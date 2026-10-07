@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/embeddings",
+  "name": "@onememory-ai/embeddings",
   "version": "0.1.0",
   "description": "onememory embedding providers: Ollama /api/embed, OpenAI-compatible /v1/embeddings, optional local transformers.js (ADR-0006)",
   "license": "Apache-2.0",
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/core": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
     "zod": "^4.6.5"
   },
   "peerDependencies": {

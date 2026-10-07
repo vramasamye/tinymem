@@ -371,7 +371,7 @@ describe('--with-cursor', () => {
     expect(document.version).toBe(1);
     expect(document.hooks['afterFileEdit']?.map((entry) => entry.command)).toEqual([
       './format.sh',
-      'bun node_modules/@onememory/adapter-cursor/src/bin.ts',
+      'bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts',
     ]);
     expect(document.hooks['sessionStart']).toBeDefined();
     expect(document.hooks['sessionEnd']).toBeDefined();

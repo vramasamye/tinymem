@@ -1,5 +1,5 @@
 /**
- * `@onememory/embeddings` — `Embedder` implementations (ADR-0006 §3).
+ * `@onememory-ai/embeddings` — `Embedder` implementations (ADR-0006 §3).
  *
  * Provider preference order: Ollama native `/api/embed` → OpenAI-compatible `/v1/embeddings`
  * (LM Studio / llama.cpp / vLLM, hosted only when opted in) → optional local transformers.js

@@ -8,8 +8,8 @@
  */
 
 import { z } from 'zod';
-import { DocumentAddedPayloadSchema, FileChangedPayloadSchema } from '@onememory/core';
-import type { OnememoryEvent } from '@onememory/core';
+import { DocumentAddedPayloadSchema, FileChangedPayloadSchema } from '@onememory-ai/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 /**
  * Default exclusion globs. `*` matches any characters INCLUDING `/`, so `*credentials*`

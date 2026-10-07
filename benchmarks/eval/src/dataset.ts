@@ -6,7 +6,7 @@
  * the query expectations each metric is computed from.
  *
  * Datasets opting in via `consolidation_pass` additionally run the M14 automatic consolidation
- * lifecycle (`@onememory/consolidation`) after extraction and declared supersessions, so their
+ * lifecycle (`@onememory-ai/consolidation`) after extraction and declared supersessions, so their
  * contradiction groups measure automatic authority resolution instead of declared outcomes.
  * Datasets without the field keep the pre-M14 harness behavior byte-for-byte.
  *
@@ -19,8 +19,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-import { ConsolidationConfigSchema } from '@onememory/consolidation';
-import { MEMORY_TYPES } from '@onememory/core';
+import { ConsolidationConfigSchema } from '@onememory-ai/consolidation';
+import { MEMORY_TYPES } from '@onememory-ai/core';
 import { z } from 'zod';
 
 /** Reserved project key: events scoped to it are user-global (`project_id IS NULL`). */

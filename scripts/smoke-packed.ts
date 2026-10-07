@@ -85,7 +85,7 @@ async function run(cmd: string[], cwd: string): Promise<{ exitCode: number; stdo
 /** The installed copies of OUR packages (third-party packages are none of our business). */
 function installedOnememoryPackages(nodeModules: string): string[] {
   const dirs = [join(nodeModules, 'onememory')];
-  const scope = join(nodeModules, '@onememory');
+  const scope = join(nodeModules, '@onememory-ai');
   if (existsSync(scope)) {
     for (const entry of readdirSync(scope, { withFileTypes: true })) {
       if (entry.isDirectory()) dirs.push(join(scope, entry.name));

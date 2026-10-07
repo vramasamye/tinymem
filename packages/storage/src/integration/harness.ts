@@ -12,14 +12,14 @@ import {
   eventContentHash,
   uuidv7,
   validateOnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   NewMemory,
   NewSession,
   NewSource,
   NewWorkingMemory,
   OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { createEmbeddedDb } from '../drivers/embedded';
 import type { OnememoryStorage } from '../drivers/types';

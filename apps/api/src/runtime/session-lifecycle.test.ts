@@ -19,8 +19,8 @@ import {
   type EvidenceSpan,
   type WorkingMemoryKind,
   type WorkingMemoryRecord,
-} from '@onememory/core';
-import { renderDefaultConfigYaml } from '@onememory/config';
+} from '@onememory-ai/core';
+import { renderDefaultConfigYaml } from '@onememory-ai/config';
 
 import { openRuntime, type OnememoryRuntime } from './index';
 import { ingestEvents } from './memory-service';

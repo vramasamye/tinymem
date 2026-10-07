@@ -8,7 +8,7 @@
  * degraded runs are visible in provenance rather than hidden.
  */
 
-import type { ExtractionInput, ExtractionResult, Extractor } from '@onememory/core';
+import type { ExtractionInput, ExtractionResult, Extractor } from '@onememory-ai/core';
 
 export interface FallbackExtractorOptions {
   /** Observability hook: called with the primary's error before degrading. */

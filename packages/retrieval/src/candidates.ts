@@ -8,13 +8,13 @@
  * (entity-bound = 1.0, decayed by hops); `graphSource` is the explain provenance of the best boost.
  */
 
-import { memoryContentHash } from '@onememory/core';
+import { memoryContentHash } from '@onememory-ai/core';
 import type {
   MemoryRecord,
   MemoryStatus,
   MemoryType,
   WorkingMemoryRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 export interface ChannelRanks {
   /** Rank in the vector KNN channel, best first. */

@@ -1,8 +1,8 @@
 /**
  * Explicit "remember" utterance detection for user prompts.
  *
- * DELIBERATE DUPLICATE of `@onememory/adapter-claude/src/remember.ts` (mission-8 reuse note):
- * adapters depend on `@onememory/core` only, so an adapter may not import a sibling adapter's
+ * DELIBERATE DUPLICATE of `@onememory-ai/adapter-claude/src/remember.ts` (mission-8 reuse note):
+ * adapters depend on `@onememory-ai/core` only, so an adapter may not import a sibling adapter's
  * helper, and the alternative — a new shared package — is a coordinator-level change outside this
  * mission's file lane. The semantics are kept byte-identical on purpose: the same utterance must
  * mint the same `explicit.remember` content in every runtime, which is exactly what the

@@ -13,8 +13,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { loadConfig } from '@onememory/config';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import { loadConfig } from '@onememory-ai/config';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import { jsonOf, runMain, type Captured } from './test-support';
 

@@ -12,8 +12,8 @@
 
 import { join } from 'node:path';
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, exportProject, openRuntime, type ExportProjectReport } from '@onememory/api/runtime';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, exportProject, openRuntime, type ExportProjectReport } from '@onememory-ai/api/runtime';
 
 import { findLiveDaemonUrl, resolveProjectIdForCwd, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';

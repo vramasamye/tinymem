@@ -31,7 +31,7 @@ import type {
   DriftReport,
   MemoryStatus,
   Store,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { createDriftWatcher } from './drift';
 import {

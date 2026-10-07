@@ -143,7 +143,7 @@ payload — a maintenance pass never loses an event's lineage over it.
 | `bun.lock` | pre-existing drift repair only (see below) — NOT a mission dependency change |
 
 **`bun.lock` (documented per the mission brief):** the committed lockfile was missing the
-`@onememory/config` workspace edge under `@onememory/mcp` even though `packages/mcp/package.json`
+`@onememory-ai/config` workspace edge under `@onememory-ai/mcp` even though `packages/mcp/package.json`
 declares it; `bun install` in this worktree repaired the lockfile to match the committed
 manifests. No new workspace package and no new dependency were added by this mission. Committed
 separately as `a690007` — the same drift was already flagged as a recurring merge issue in the M9

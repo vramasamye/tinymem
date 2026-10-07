@@ -32,7 +32,7 @@ export interface CursorHooksScaffoldOptions {
 }
 
 /** Substrings that identify a hook entry as onememory's (default or published bin). */
-export const CURSOR_HOOK_BIN_TOKENS: readonly string[] = ['@onememory/adapter-cursor', 'onemem-cursor-hook'];
+export const CURSOR_HOOK_BIN_TOKENS: readonly string[] = ['@onememory-ai/adapter-cursor', 'onemem-cursor-hook'];
 
 export const CursorHookEntrySchema = z.looseObject({
   command: z.string().min(1),
@@ -48,7 +48,7 @@ export type CursorHooksFile = z.infer<typeof CursorHooksFileSchema>;
 
 /** The default capture command: Bun runs the adapter bin from the project root. */
 export function defaultCaptureCommand(): string {
-  return 'bun node_modules/@onememory/adapter-cursor/src/bin.ts';
+  return 'bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts';
 }
 
 /** Build the generated hooks.json object (validated before it leaves). */

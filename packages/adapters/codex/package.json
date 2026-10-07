@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/adapter-codex",
+  "name": "@onememory-ai/adapter-codex",
   "version": "0.1.0",
   "description": "onememory adapter for OpenAI Codex CLI: config.toml MCP scaffold, AGENTS.md bootstrap, hook + rollout session capture, fail-soft daemon delivery (ADR-0010)",
   "license": "Apache-2.0",
@@ -19,9 +19,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/config": "workspace:*",
-    "@onememory/core": "workspace:*",
-    "@onememory/security": "workspace:*",
+    "@onememory-ai/config": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
+    "@onememory-ai/security": "workspace:*",
     "smol-toml": "^1.9.0",
     "zod": "^4.6.5"
   },

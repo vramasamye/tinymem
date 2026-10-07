@@ -1,7 +1,7 @@
 # Mission 5 report — MCP server
 
 **Branch:** `mission/5-mcp-server` (worktree `onemem-m5`, base `8a88e1d`)
-**Scope delivered:** `@onememory/mcp` (CLI bin `onemem-mcp`), the model-facing protocol surface of
+**Scope delivered:** `@onememory-ai/mcp` (CLI bin `onemem-mcp`), the model-facing protocol surface of
 ADR-0010: 8-tool default profile + `full11`, stdio primary, optional stateless Streamable HTTP,
 progressive disclosure, never-silent write outcomes, redaction-on-write, unit + wire-level e2e
 tests, this report. No ADR, root-config, or architecture-doc changes.
@@ -38,7 +38,7 @@ published tarball — see `docs/research/dependency-verification.md`), plus the 
 | `context.ts` | `createOnememoryMcpContext`: opens storage (embedded PGlite with vector dimension matched to the injected embedder, or server Postgres), wires `createRetrievalEngine`, the redactor (security), the audited actor, and the post-write cache invalidation. Storage can be injected (tests, M13) or built from `storageConfig`. |
 | `stdio.ts` / `bin.ts` | `serveOnememoryStdio` + the env-only `onemem-mcp` bin (signal handling; diagnostics on stderr). |
 | `http.ts` | `createOnememoryStreamableHttpHandler` (SDK `createMcpHandler`, stateless shared-server mode — one server per request, no sessions, no `Mcp-Session-Id`) + `createOnememoryHttpServer` (Bun `Bun.serve` wrapper). |
-| `testing.ts` | `@onememory/mcp/testing`: `openMcpTestWorld` (fresh real PGlite in a temp dir per test + retrieval's deterministic test embedder + fixed clock `MCP_TEST_NOW` = 2027-01-15, `projectId: null` = explicitly unconfigured) and `seedFixtureMemory`. |
+| `testing.ts` | `@onememory-ai/mcp/testing`: `openMcpTestWorld` (fresh real PGlite in a temp dir per test + retrieval's deterministic test embedder + fixed clock `MCP_TEST_NOW` = 2027-01-15, `projectId: null` = explicitly unconfigured) and `seedFixtureMemory`. |
 
 ### Error taxonomy (`structuredContent.error = { code, message, … }`, always `isError: true`)
 
@@ -192,7 +192,7 @@ import {
   okResult, errorResult, makeToolCallback, ToolError, asToolError,
   // the maintained description artifact
   SERVER_INSTRUCTIONS, TOOL_DESCRIPTIONS, TOOL_ANNOTATIONS, TOOL_TITLES,
-} from '@onememory/mcp';
+} from '@onememory-ai/mcp';
 
 // context options (all optional): { config | partial config fields, storage? (injected
 // OnememoryStorage), storageConfig?, embedder?, now?, serverInfo? }
@@ -233,5 +233,5 @@ map 1:1 onto the handlers via `TOOL_HANDLERS` (same Zod in/out), so the CLI inhe
 contract and its tests for free; `createOnememoryHttpServer` is the self-hosted shared-mode
 server behind any future `onemem serve`.
 
-**Test doubles:** `@onememory/mcp/testing` exports `openMcpTestWorld` (fresh PGlite + deterministic
+**Test doubles:** `@onememory-ai/mcp/testing` exports `openMcpTestWorld` (fresh PGlite + deterministic
 embedder + fixed clock) and `seedFixtureMemory` — the pattern every suite in this package uses.

@@ -124,7 +124,7 @@ and shutdown — `assertZeroCalls()` passes at every stage, `attempts == []`. Re
 driven as real `Request` objects through the serve entry's `handle` (the same shape
 `Bun.serve` receives) because the guard correctly blocks even loopback fetch — an SDK CLIENT
 over the socket is an outbound call by definition; the server side, which is what the
-default-profile claim is about, is fully exercised. `@onememory/mcp` joined packages/security
+default-profile claim is about, is fully exercised. `@onememory-ai/mcp` joined packages/security
 as a test-only devDependency (the same pattern as the storage devDep its taint integration
 test already uses).
 

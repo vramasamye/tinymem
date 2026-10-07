@@ -112,8 +112,8 @@ auto-configures any of them in a fresh project.
 - M6 (Claude Code adapter, `mission/6-claude`, merged 2024-era) — Phase 1.
 - M7 (Codex adapter, `mission/7-codex`, merged Phase 1).
 - M8 (`mission/8-cursor`, merged `2dd3c9f`) — Cursor adapter; see `mission-8-cursor.md`.
-- M9 (`mission/9-pi-opencode`, merged `d95efc4`) — Pi extension adapter (`@onememory/adapter-pi`,
-  96 tests) + OpenCode plugin adapter (`@onememory/adapter-opencode`, 147 tests). Both byte-identical
+- M9 (`mission/9-pi-opencode`, merged `d95efc4`) — Pi extension adapter (`@onememory-ai/adapter-pi`,
+  96 tests) + OpenCode plugin adapter (`@onememory-ai/adapter-opencode`, 147 tests). Both byte-identical
   to the Claude conformance baseline. Mission report: `mission-9-pi-opencode.md`.
 - M5b (`mission/5b-mcp-hardening`, fast-forwarded onto main 2026-10-06) — Streamable HTTP
   transport (`packages/mcp/src/streamable-http/`) + OAuth 2.1 PKCE loopback
@@ -187,6 +187,7 @@ everything the engine claims.
 | Mission | Branch | Scope | Key deps |
 |---|---|---|---|
 | M16 Distribution | `mission/16-distribution` | publish every workspace package to npm; make `npx onememory init` the real install path; version + release process; published-artifact smoke in CI — ADR-0014: bundled `dist/` artifacts, staged publish manifests, Node-LTS bins, packed smoke in CI | ADR-0002, ADR-0014 |
+| M19 Scope rename | `mission/19-scope-rename` | the npm org `onememory` was already claimed (zero packages) — move the 17 internal packages to `@onememory-ai`, keep the unscoped `onememory` CLI name so `npx onememory init` survives; guard test + re-verify | ADR-0014 (amendment); unblocks M16's publish |
 | M17 Scope & identity wiring | `mission/17-scope-identity` | user-scope wiring (`user_id` on durable writes, user-level memories answering cross-project); cwd→project lookup (nested directories resolve to their project); per-runtime MCP identity (each runtime's client stamps its own `agent_id`) | ADR-0003, ADR-0011 |
 | M18 Markdown export surface | `mission/18-export` | ADR-0013: the canonical-store rule (the DB stays canonical, export is an idempotent projection); `onemem export` rendering a `MEMORY.md` index + per-layer topic files with cross-links and evidence pointers; `MEMORY.md` session-index artifact with a hard cap (200 lines / 25KB) and error-forcing rewrite | comparison §5 items 1–2; M13 |
 

@@ -2,7 +2,7 @@
  * Daemon discovery: `.onememory/daemon.json` plus a health probe — the ONE owner check for
  * embedded storage (ADR-0002 — concurrent PGlite processes in one data dir are unsafe).
  *
- * The implementation moved to `@onememory/config` (`daemon-lock.ts`) so the standalone
+ * The implementation moved to `@onememory-ai/config` (`daemon-lock.ts`) so the standalone
  * `onemem-mcp` stdio bin can share the exact lock schema + probe semantics without importing an
  * app (packages never depend on apps — the shared wire-format home owns `project.json` and now
  * `daemon.json`). This module is a signature-preserving re-export shim: every export below keeps
@@ -12,7 +12,7 @@
  * `DaemonHealthReport`, which is what makes the delegation type-safe without a cast.
  */
 
-import { probeDaemon as probeDaemonShared, type DaemonLock as SharedDaemonLock } from '@onememory/config';
+import { probeDaemon as probeDaemonShared, type DaemonLock as SharedDaemonLock } from '@onememory-ai/config';
 
 import type { HealthReport } from './types';
 
@@ -25,9 +25,9 @@ export {
   isProcessAlive,
   readDaemonLock,
   writeDaemonLock,
-} from '@onememory/config';
+} from '@onememory-ai/config';
 
-export type { DaemonLock, DaemonHealthReport } from '@onememory/config';
+export type { DaemonLock, DaemonHealthReport } from '@onememory-ai/config';
 
 export interface DaemonProbe {
   lock: SharedDaemonLock;

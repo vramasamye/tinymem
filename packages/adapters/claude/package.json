@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/adapter-claude",
+  "name": "@onememory-ai/adapter-claude",
   "version": "0.1.0",
   "description": "onememory Claude Code adapter: hook payload → OnememoryEvent translation, daemon REST delivery, session-start context injection, .mcp.json + settings.json scaffolds",
   "license": "Apache-2.0",
@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/core": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

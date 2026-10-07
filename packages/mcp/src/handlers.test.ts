@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import type { MemoryRecord } from '@onememory/core';
+import type { MemoryRecord } from '@onememory-ai/core';
 
 import { TOOL_HANDLERS } from './handlers';
 import { makeToolCallback } from './results';
@@ -19,7 +19,7 @@ import { MCP_TEST_NOW, openMcpTestWorld, seedFixtureMemory } from './testing';
 
 /**
  * Synthetic credential fixtures for the redaction tests — assembled at runtime exactly like
- * @onememory/security's own redact-event.test.ts (`ghp_${A(36)}`), so no credential-shaped
+ * @onememory-ai/security's own redact-event.test.ts (`ghp_${A(36)}`), so no credential-shaped
  * literal is ever committed to the tree. These are NOT real credentials.
  */
 const A = (n: number, char = 'a'): string => char.repeat(n);

@@ -1,7 +1,7 @@
 # Mission 2 report — Retrieval engine
 
 **Branch:** `mission/2-retrieval` (worktree `onemem-m2`, base `d26b3e5`)
-**Scope delivered:** `@onememory/retrieval` (the core `Searcher` port), read-only storage search
+**Scope delivered:** `@onememory-ai/retrieval` (the core `Searcher` port), read-only storage search
 repositories, unit + integration tests, this report.
 
 **Commits**
@@ -47,7 +47,7 @@ authoritative gate.
 | `packing.ts` | 7. Token packer (default 800): summaries by density, then content upgrades, then title-only overflow; `used ≤ budget` is enforced and the packer throws otherwise; never cuts mid-sentence |
 | `engine.ts` | 8. Response build (Zod-validated in and out), fire-and-forget `reinforce`, caches (embedding, result, entity) |
 | `session-context.ts` | `buildSessionContext`: digest / decisions / failures / procedures / preferences under a 750-token budget, packed line by line with unused share rolling forward |
-| `testing.ts` | Test-only subpath `@onememory/retrieval/testing`: `createTestEmbedder` (deterministic keyword-axis embedder, dim 384), `mulberry32` |
+| `testing.ts` | Test-only subpath `@onememory-ai/retrieval/testing`: `createTestEmbedder` (deterministic keyword-axis embedder, dim 384), `mulberry32` |
 
 Degraded modes are never silent. Each of these produces an explicit `warnings[]` entry and the
 search still answers: no embedder, no embedding index, model mismatch, dimension mismatch, vector
@@ -132,7 +132,7 @@ concurrently.
 8. **Request `project_id` is a scoring factor, not a hard filter.** Same project = 1.0,
    cross-project = 0.7, user-global = 0.4. This lets cross-project knowledge surface at a
    discount, as the scoring section describes.
-9. **Package dependency:** retrieval depends on `@onememory/storage` (for `searchRepo` and the
+9. **Package dependency:** retrieval depends on `@onememory-ai/storage` (for `searchRepo` and the
    `Database` type) in addition to core. The dependency diagram shows retrieval → core only, but
    rule 5 (no SQL outside storage) forces the edge. Coordinator: please reflect this in
    `docs/architecture/`.
@@ -165,9 +165,9 @@ concurrently.
 
 ```ts
 import { createRetrievalEngine, buildSessionContext, mergeConfig, DEFAULT_RETRIEVAL_CONFIG }
-  from '@onememory/retrieval';
+  from '@onememory-ai/retrieval';
 import type { RetrievalEngine, RetrievalConfig, RetrievalConfigInput, SessionContext }
-  from '@onememory/retrieval';
+  from '@onememory-ai/retrieval';
 
 // Construction — OnememoryStorage ({ store, client, vectors }) satisfies RetrievalStorage.
 function createRetrievalEngine(
@@ -211,7 +211,7 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig;
 ```
 
 `MemorySearchRequest` / `MemorySearchResponse` are core's wire schemas
-(`@onememory/core`, event-memory-schemas.md §6). Request fields: `query`, `project_id?`,
+(`@onememory-ai/core`, event-memory-schemas.md §6). Request fields: `query`, `project_id?`,
 `session_id?`, `types?`, `entities?`, `as_of?`, `temporal_mode?`, `include?`, `max_tokens?`
 (default 800), `max_memories?` (default 10), `explain?` (default false; when false `explain` is
 `[]`). Response: `query_understanding`, `memories[]` (`id`, `type`, `title?`, `summary`,
@@ -238,4 +238,4 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig;
 
 The pure stage functions (`understandQuery`, `resolveTemporalPolicy`, `passesTemporalFilter`,
 `dedupeCandidates`, `scoreCandidates`, `applyRerank`, `packResults`, token helpers) are also
-exported for SDK composition and tests. Test doubles come from `@onememory/retrieval/testing`.
+exported for SDK composition and tests. Test doubles come from `@onememory-ai/retrieval/testing`.

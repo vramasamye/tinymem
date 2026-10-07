@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-opencode` internal fixtures — payloads built from VERIFIED OpenCode wire
+ * `@onememory-ai/adapter-opencode` internal fixtures — payloads built from VERIFIED OpenCode wire
  * shapes (the mirrors in `wire.ts`; nothing here is a real session, and no secrets are embedded —
  * AGENTS.md rule 6).
  *
@@ -20,7 +20,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { join } from 'node:path';
 
-import { renderConfigForProject } from '@onememory/config';
+import { renderConfigForProject } from '@onememory-ai/config';
 
 import type { z } from 'zod';
 

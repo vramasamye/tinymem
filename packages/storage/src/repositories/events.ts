@@ -3,8 +3,8 @@
  * redactions passthrough. Ingest must never throw on duplicates and never block the agent.
  */
 
-import { OnememoryEventSchema } from '@onememory/core';
-import type { EventIngestResult, OnememoryEvent, StoredEvent } from '@onememory/core';
+import { OnememoryEventSchema } from '@onememory-ai/core';
+import type { EventIngestResult, OnememoryEvent, StoredEvent } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { isUniqueViolation } from '../drivers/client';

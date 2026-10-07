@@ -13,7 +13,7 @@
 
 import { toSql } from 'pgvector';
 
-import type { EmbeddingBackend, EmbeddingIndex, EmbeddingIndexOptions, VectorMatch } from '@onememory/core';
+import type { EmbeddingBackend, EmbeddingIndex, EmbeddingIndexOptions, VectorMatch } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

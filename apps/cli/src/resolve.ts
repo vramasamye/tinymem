@@ -8,7 +8,7 @@
  * (queued `normalize`/`extract` jobs drain once `onemem serve` runs).
  */
 
-import { ConfigError, ConfigNotFoundError, loadConfig, type LoadedConfig } from '@onememory/config';
+import { ConfigError, ConfigNotFoundError, loadConfig, type LoadedConfig } from '@onememory-ai/config';
 import {
   BackendError,
   createHttpBackend,
@@ -16,7 +16,7 @@ import {
   openRuntime,
   probeDaemon,
   type OnememoryBackend,
-} from '@onememory/api/runtime';
+} from '@onememory-ai/api/runtime';
 
 export interface ResolveOptions {
   cwd?: string;

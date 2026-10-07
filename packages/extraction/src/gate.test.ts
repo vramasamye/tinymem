@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import type { ExtractedMemory, ExtractionResult } from '@onememory/core';
+import type { ExtractedMemory, ExtractionResult } from '@onememory-ai/core';
 
 import { createFutureValueGate } from './gate';
 

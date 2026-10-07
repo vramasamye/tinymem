@@ -9,7 +9,7 @@
  *   5. a tie is reported as a tie — never resolved by picking silently (both `disputed`).
  */
 
-import type { MemoryRecord } from '@onememory/core';
+import type { MemoryRecord } from '@onememory-ai/core';
 
 import type { AuthorityRule } from './types';
 

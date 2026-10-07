@@ -14,9 +14,9 @@ import type {
   MemorySearchResponse,
   NewMemory,
   Reranker,
-} from '@onememory/core';
-import { MemorySearchResponseSchema } from '@onememory/core';
-import { sourcesRepo } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { MemorySearchResponseSchema } from '@onememory-ai/core';
+import { sourcesRepo } from '@onememory-ai/storage';
 
 import { createRetrievalEngine } from './engine';
 import type { RetrievalEngine, RetrievalStorage } from './engine';

@@ -40,7 +40,7 @@ import {
   type NewMemory,
   type ProjectDigestCandidate,
   type ProjectDigestSections,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { derivedScores, derivedTemporals, mergeSourceOf, unionEvidence, type MergeSourceView } from '../derive';
 
@@ -54,7 +54,7 @@ function costOf(line: string): number {
 
 /**
  * Word-boundary clamp — the retrieval layer's `truncateAtWordBoundary` twin (not exported from
- * `@onememory/core`; mirrored here so the digest never cuts mid-word).
+ * `@onememory-ai/core`; mirrored here so the digest never cuts mid-word).
  */
 export function clampAtWordBoundary(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { installNetworkGuard } from '@onememory/security';
+import { installNetworkGuard } from '@onememory-ai/security';
 
 import { captureSnapshot, compareSnapshots, detectChanges } from './index';
 import type { RepositorySnapshot } from './index';

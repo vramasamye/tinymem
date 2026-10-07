@@ -12,7 +12,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { createOnememoryMcpContext, handleMemoryProjectContext } from '@onememory/mcp';
+import { createOnememoryMcpContext, handleMemoryProjectContext } from '@onememory-ai/mcp';
 
 import { runDigest } from './run';
 import { seedDigestWorld, WORLD_NOW } from './fixtures';

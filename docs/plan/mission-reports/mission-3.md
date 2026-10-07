@@ -1,8 +1,8 @@
 # Mission 3 report — Model router, embeddings, extraction
 
 **Branch:** `mission/3-extraction` (from `d26b3e5`; main has since advanced — see §6)
-**Scope delivered:** (A) `@onememory/llm` (model router, ADR-0006 §1–§2), (B) `@onememory/embeddings`
-(§3–§5), (C) `@onememory/extraction` (EXTRACT stage 4 + CLASSIFY stage 5 + NORMALIZE stage 3 handlers),
+**Scope delivered:** (A) `@onememory-ai/llm` (model router, ADR-0006 §1–§2), (B) `@onememory-ai/embeddings`
+(§3–§5), (C) `@onememory-ai/extraction` (EXTRACT stage 4 + CLASSIFY stage 5 + NORMALIZE stage 3 handlers),
 (D) tests, (E) this report. No files outside the three new packages + this report + `bun.lock` were touched.
 
 ---
@@ -23,7 +23,7 @@ in all three packages.
 
 ---
 
-## 2. `@onememory/llm` — the model router (ADR-0006 §1–§2)
+## 2. `@onememory-ai/llm` — the model router (ADR-0006 §1–§2)
 
 - **Internal `ModelProvider` seam** (`src/provider.ts`): `generate<T>({ operation, schema, prompt, … })`
   → `{ value, raw }`, validated against the caller's Zod schema at the provider boundary. The router,
@@ -46,7 +46,7 @@ in all three packages.
 - **21 tests**: routing resolution per operation, profile gating, loopback enforcement, retry-with-instruction,
   invalid-output typed failure, unconfigured failure, config parse (strict routes, api_key_env resolution).
 
-## 3. `@onememory/embeddings` — `Embedder` implementations (ADR-0006 §3–§5)
+## 3. `@onememory-ai/embeddings` — `Embedder` implementations (ADR-0006 §3–§5)
 
 - **`createOllamaEmbedder`** — native `POST /api/embed` (not the OpenAI-compatible `/v1/embeddings`),
   loopback default `http://127.0.0.1:11434`, `keep_alive` support, batch + order restoration.
@@ -67,7 +67,7 @@ in all three packages.
 - **31 tests + 1 env-gated skip**: happy paths against fake `fetch`, error taxonomy, order restoration,
   provenance agreement (every mismatch rejected), re_embed payload validation + batching.
 
-## 4. `@onememory/extraction` — NORMALIZE / EXTRACT / CLASSIFY + handlers
+## 4. `@onememory-ai/extraction` — NORMALIZE / EXTRACT / CLASSIFY + handlers
 
 - **`src/events.ts` (NORMALIZE, pure)**: `normalizeEvent` parses each event payload through core's
   canonical `PayloadSchemaByKind` into a structured `NormalizedEvent` (command + exit code + normalized
@@ -191,7 +191,7 @@ packages/extraction` → 111 pass / 1 skip / 0 fail.
 
 ## 9. What M12/M13/M16 can rely on now (API surface)
 
-### `@onememory/llm`
+### `@onememory-ai/llm`
 
 | Export | Purpose |
 |---|---|
@@ -202,7 +202,7 @@ packages/extraction` → 111 pass / 1 skip / 0 fail.
 | `RouterUnavailableError`, `ModelProviderError`, `StructuredOutputError` | typed failure taxonomy |
 | `isLoopbackBaseUrl`, `isHostedProviderKind`, `MODEL_OPERATIONS`, `PROVIDER_KINDS`, `ROUTER_PROFILES` | vocabulary |
 
-### `@onememory/embeddings`
+### `@onememory-ai/embeddings`
 
 | Export | Purpose |
 |---|---|
@@ -212,7 +212,7 @@ packages/extraction` → 111 pass / 1 skip / 0 fail.
 | `ReEmbedJobPayloadSchema`, `RE_EMBED_JOB_KIND`, `ReEmbedError` | payload contract + failures |
 | `EmbedderMeta` (`{ provider, model, dim, revision? }`) | the provenance record the config must match |
 
-### `@onememory/extraction`
+### `@onememory-ai/extraction`
 
 | Export | Purpose |
 |---|---|
@@ -281,5 +281,5 @@ llm:
 
 `profile: local` rejects hosted kinds and non-loopback base URLs; an unset route for an operation fails
 closed with `RouterUnavailableError` — the caller (e.g. `createFallbackExtractor`) degrades to heuristics.
-`embedding:` routes are for future classify-side embeddings; the `@onememory/embeddings` package is the
+`embedding:` routes are for future classify-side embeddings; the `@onememory-ai/embeddings` package is the
 primary embedder path and does not go through the router.

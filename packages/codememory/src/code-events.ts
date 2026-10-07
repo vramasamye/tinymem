@@ -1,6 +1,6 @@
 /**
  * Synthetic code-document events: the bridge between a re-read source file and the existing
- * extraction pipeline (`@onememory/extraction` is composed, never edited — M4f).
+ * extraction pipeline (`@onememory-ai/extraction` is composed, never edited — M4f).
  *
  * A re-index re-reads exactly the drifted paths and hands their current text to the SAME
  * `Extractor` the `extract` job uses, in the shape that pipeline already understands: a
@@ -21,7 +21,7 @@ import {
   validateOnememoryEvent,
   type EvidenceSpan,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 export { MAX_DOCUMENT_CHARS };
 

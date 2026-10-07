@@ -31,12 +31,12 @@
  *   user's parts are claimed by that channel, so the part channel never double-captures them).
  */
 
-import { translateCodexHook } from '@onememory/adapter-codex';
-import { translateHookInput as translateClaudeHook, type TranscriptTextEntry } from '@onememory/adapter-claude';
-import { translateHookInput as translateCursorHook } from '@onememory/adapter-cursor';
-import { translatePiEvent } from '@onememory/adapter-pi';
-import { createOpenCodeTranslator } from '@onememory/adapter-opencode';
-import type { OnememoryEvent } from '@onememory/core';
+import { translateCodexHook } from '@onememory-ai/adapter-codex';
+import { translateHookInput as translateClaudeHook, type TranscriptTextEntry } from '@onememory-ai/adapter-claude';
+import { translateHookInput as translateCursorHook } from '@onememory-ai/adapter-cursor';
+import { translatePiEvent } from '@onememory-ai/adapter-pi';
+import { createOpenCodeTranslator } from '@onememory-ai/adapter-opencode';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 export type RuntimeName = 'claude-code' | 'codex' | 'cursor' | 'pi' | 'opencode';
 export const RUNTIMES: readonly RuntimeName[] = ['claude-code', 'codex', 'cursor', 'pi', 'opencode'];

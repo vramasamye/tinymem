@@ -42,7 +42,7 @@ export class NetworkGuardError extends Error {
   }
 }
 
-const GUARD_FLAG = Symbol.for('@onememory/security.networkGuard');
+const GUARD_FLAG = Symbol.for('@onememory-ai/security.networkGuard');
 
 /** Structural fetch stand-in — no DOM/bun types required (Node LTS and Bun both ship fetch). */
 type AnyFetch = (input: unknown, init?: unknown) => unknown;

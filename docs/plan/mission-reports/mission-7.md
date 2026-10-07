@@ -1,7 +1,7 @@
 # Mission 7 report — Codex adapter
 
 **Branch:** `mission/7-codex-adapter` (worktree `onemem-m7`, base `8a6a2f3`)
-**Scope delivered:** `@onememory/adapter-codex` (bin `onemem-codex-capture`) — the OpenAI Codex
+**Scope delivered:** `@onememory-ai/adapter-codex` (bin `onemem-codex-capture`) — the OpenAI Codex
 CLI adapter of ADR-0010 §6: live hook capture into validated `OnememoryEvent` envelopes,
 SessionStart context injection, rollout backfill, the `[mcp_servers.onememory]` config.toml
 block, the hooks.json capture handlers, the AGENTS.md pointer block, all idempotent, plus unit +
@@ -22,11 +22,11 @@ adapter or `apps/cli` files touched (the init wiring is a seam, §6).
 
 ### `packages/adapters/codex` (new package)
 
-Dependencies: `@onememory/core` (schemas + `validateOnememoryEvent`), `@onememory/security`
-(`redactEvent`, `isEventPathExcluded` — the documented adapter contract), `@onememory/config`
+Dependencies: `@onememory-ai/core` (schemas + `validateOnememoryEvent`), `@onememory-ai/security`
+(`redactEvent`, `isEventPathExcluded` — the documented adapter contract), `@onememory-ai/config`
 (project discovery), `smol-toml` (test-only TOML round-trip verification, §5), `zod`. Exports
 `.` and `./testing`. Bin: `onemem-codex-capture`. No SQL (rule 5), no engine internals — the
-package deliberately does **not** import `@onememory/api/runtime`; it speaks the daemon's
+package deliberately does **not** import `@onememory-ai/api/runtime`; it speaks the daemon's
 public REST API and reads the documented `daemon.json` v1 lock directly.
 
 | Module | Contents |
@@ -43,7 +43,7 @@ public REST API and reads the documented `daemon.json` v1 lock directly.
 | `agents-md.ts` | `renderOnememoryAgentsBlock` — ~0.7 KiB pointer (tool flow: `memory_search` → `memory_get`, `memory_store`, `memory_project_context` note, "remember that …" is captured automatically, "do not maintain a duplicate knowledge base"). Comment-fenced, project-id-tagged; `patchAgentsMd` is idempotent and refuses to touch a file with an orphaned marker (no blind clobbering). |
 | `scaffold.ts` | `scaffoldCodex` — the init seam (§3). Project scope writes `.codex/config.toml`, `.codex/hooks.json`, `AGENTS.md`; user scope writes the same three under `$CODEX_HOME`. Returns per-file actions + operator warnings (trust review, `AGENTS.override.md`, unparseable files). `dryRun` returns exact bytes without touching disk. |
 | `bin.ts` | `onemem-codex-capture`: stdin hook mode (SessionStart prints **only** the hook output JSON on stdout — that is the only stdout this bin ever produces), `--rollout <file>` backfill, `--project/--cwd/--context-budget/--timeout` flags. Exit 0 for every capture outcome (fail-soft), exit 2 for operator errors only. |
-| `testing.ts` | `@onememory/adapter-codex/testing`: verified-shape fixtures (all six hook inputs, `bashToolResponse` with the real header shape, a 16-record golden rollout incl. harness context/own-tool/noise lines, a noise rollout) + the test world: `writeOnememoryProject` (real `onememory.yaml` template + `project.json` + `daemon.json` v1 lock), `writeProjectWithoutDaemon`, `writeConfigWithoutProject`, `startFakeDaemon` — a loopback `node:http` fake of the daemon REST surface (ingest with content-hash duplicate detection, context, health; runs identically under Bun and Node LTS). |
+| `testing.ts` | `@onememory-ai/adapter-codex/testing`: verified-shape fixtures (all six hook inputs, `bashToolResponse` with the real header shape, a 16-record golden rollout incl. harness context/own-tool/noise lines, a noise rollout) + the test world: `writeOnememoryProject` (real `onememory.yaml` template + `project.json` + `daemon.json` v1 lock), `writeProjectWithoutDaemon`, `writeConfigWithoutProject`, `startFakeDaemon` — a loopback `node:http` fake of the daemon REST surface (ingest with content-hash duplicate detection, context, health; runs identically under Bun and Node LTS). |
 
 ### Capture → event mapping (the honest table)
 
@@ -63,7 +63,7 @@ public REST API and reads the documented `daemon.json` v1 lock directly.
 ## 2. The scaffold — `onemem init` seam (M13/M14 wiring)
 
 ```ts
-import { scaffoldCodex } from '@onememory/adapter-codex';
+import { scaffoldCodex } from '@onememory-ai/adapter-codex';
 
 const result = scaffoldCodex({
   scope: 'project' | 'user',

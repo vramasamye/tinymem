@@ -6,7 +6,7 @@
  * vector-table scans.
  */
 
-import type { EmbeddingIndex, MemoryRecord } from '@onememory/core';
+import type { EmbeddingIndex, MemoryRecord } from '@onememory-ai/core';
 
 /** Stable unordered pair key. */
 export function pairKey(aId: string, bId: string): string {

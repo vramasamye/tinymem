@@ -21,7 +21,7 @@ import {
   MemorySearchRequestSchema,
   MemorySearchResponseSchema,
   sha256Hex,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   CodeRefEntry,
   DurableMemoryType,
@@ -33,9 +33,9 @@ import type {
   Reranker,
   SearchIntent,
   Store,
-} from '@onememory/core';
-import { codeMemoryRepo, cosineSimilarity, searchRepo } from '@onememory/storage';
-import type { Database } from '@onememory/storage';
+} from '@onememory-ai/core';
+import { codeMemoryRepo, cosineSimilarity, searchRepo } from '@onememory-ai/storage';
+import type { Database } from '@onememory-ai/storage';
 
 import { candidateFromMemory, candidateFromWorking, mergeCandidates } from './candidates';
 import type { RetrievalCandidate } from './candidates';

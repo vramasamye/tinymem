@@ -29,7 +29,7 @@ import {
   type SourceRef,
   type Store,
   type StoredEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Classifier } from '../classifier';
 import { normalizeEvent, sourceKindForEvent, storedEventToEnvelope } from '../events';

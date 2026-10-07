@@ -1,9 +1,9 @@
 /**
  * Explicit "remember" utterance detection for Pi user messages.
  *
- * The canonical pattern is `@onememory/adapter-claude/src/remember.ts` (mission 6); adapters do
+ * The canonical pattern is `@onememory-ai/adapter-claude/src/remember.ts` (mission 6); adapters do
  * not import each other (repository-structure rule 2), so the same contract is reimplemented here
- * — as `@onememory/adapter-codex` did (its `EXPLICIT_REMEMBER` regex). Only imperative remember
+ * — as `@onememory-ai/adapter-codex` did (its `EXPLICIT_REMEMBER` regex). Only imperative remember
  * requests anchored at the START of a user utterance qualify: a conversational "do you remember
  * yesterday?" must not mint an `explicit.remember` (the extractor stores those at importance 0.9 /
  * confidence 0.95, so a loose pattern is a pollution risk — AGENTS.md rule 8). A matching

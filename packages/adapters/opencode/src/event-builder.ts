@@ -1,6 +1,6 @@
 /**
  * Canonical event construction shared by the OpenCode translator (mirrors
- * `@onememory/adapter-pi/src/event-builder.ts`, which mirrors the codex adapter — the established
+ * `@onememory-ai/adapter-pi/src/event-builder.ts`, which mirrors the codex adapter — the established
  * adapter pattern).
  *
  * Every event produced here passes `validateOnememoryEvent` before it leaves the adapter (the
@@ -15,7 +15,7 @@ import {
   type EventPayload,
   type EventRuntime,
   type OnememoryEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { OPENCODE_ADAPTER_VERSION } from './version';
 

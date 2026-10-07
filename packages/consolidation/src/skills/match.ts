@@ -18,11 +18,11 @@
  * reported with a typed reason — never silently dropped.
  */
 
-import type { EvidenceSpan, FailureRecurrence, SkillBlockReason } from '@onememory/core';
+import type { EvidenceSpan, FailureRecurrence, SkillBlockReason } from '@onememory-ai/core';
 import {
   MIN_SKILL_FAILURES,
   DEFAULT_SOLUTION_SIMILARITY,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { pairKey, scopeKeyOf } from '../cluster';
 

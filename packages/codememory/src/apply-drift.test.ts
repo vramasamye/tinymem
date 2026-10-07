@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { InvalidTransitionError, uuidv7 } from '@onememory/core';
+import { InvalidTransitionError, uuidv7 } from '@onememory-ai/core';
 import type {
   AdvanceCheckpoint,
   CheckpointAdvanceResult,
@@ -13,7 +13,7 @@ import type {
   MemoryStatus,
   RetargetCodeRef,
   StatusChangeOptions,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { createDriftApplier } from './index';
 import type { DriftApplyStore } from './index';

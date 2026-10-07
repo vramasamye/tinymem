@@ -1,5 +1,5 @@
 /**
- * `@onememory/benchmarks` — the memory-quality evaluation harness (spec §25 subset, backlog M11).
+ * `@onememory-ai/benchmarks` — the memory-quality evaluation harness (spec §25 subset, backlog M11).
  *
  * Public surface: the Zod-validated golden-dataset loader, the harness that drives the real engine,
  * the pure metric math, and the CI gate evaluation. See `benchmarks/eval/README.md` for how to run

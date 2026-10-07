@@ -19,8 +19,8 @@ import {
   type ExtractionResult,
   type Extractor,
   type WorkingCandidate,
-} from '@onememory/core';
-import { RouterUnavailableError, type ModelOperation, type ModelRouter } from '@onememory/llm';
+} from '@onememory-ai/core';
+import { RouterUnavailableError, type ModelOperation, type ModelRouter } from '@onememory-ai/llm';
 
 import { buildEvidence, normalizeEvent, type NormalizedEvent } from '../events';
 import { parseDecisionPayload } from '../enrichment/decision';

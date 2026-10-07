@@ -9,8 +9,8 @@
  * the displayed counts cover every check shown (backlog #12).
  */
 
-import { ConfigError, ConfigNotFoundError } from '@onememory/config';
-import { finalizeDoctorReport, type DoctorCheck, type DoctorReport } from '@onememory/api/runtime';
+import { ConfigError, ConfigNotFoundError } from '@onememory-ai/config';
+import { finalizeDoctorReport, type DoctorCheck, type DoctorReport } from '@onememory-ai/api/runtime';
 
 import type { Io } from '../io';
 import { printConfigError, resolveBackend } from '../resolve';

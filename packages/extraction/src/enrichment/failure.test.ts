@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { FailureSignatureSchema } from '@onememory/core';
+import { FailureSignatureSchema } from '@onememory-ai/core';
 
 import { normalizeEvent } from '../events';
 import { makeInput } from '../testing/transcripts';

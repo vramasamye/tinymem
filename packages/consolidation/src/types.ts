@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 
-import { DEFAULT_HALF_LIFE_DAYS, type MemoryStatus } from '@onememory/core';
+import { DEFAULT_HALF_LIFE_DAYS, type MemoryStatus } from '@onememory-ai/core';
 
 import type { ContradictionTier } from './contradiction';
 

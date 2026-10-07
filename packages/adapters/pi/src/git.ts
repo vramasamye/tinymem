@@ -1,7 +1,7 @@
 /**
  * Commit-message enrichment for `bash`/`powershell` tool results that ran `git commit`.
  *
- * Ported from `@onememory/adapter-claude/src/git.ts` (mission 6 — the same enrichment gate the
+ * Ported from `@onememory-ai/adapter-claude/src/git.ts` (mission 6 — the same enrichment gate the
  * Claude adapter uses; adapters do not import each other, repository-structure rule 2). The
  * `git.commit` event schema REQUIRES `sha`, `message`, `author_name`, and `files`, but a Pi tool
  * result only proves that a commit command ran (the command line) and carries git's summary stdout

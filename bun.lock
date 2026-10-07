@@ -10,27 +10,27 @@
       },
     },
     "apps/api": {
-      "name": "@onememory/api",
+      "name": "@onememory-ai/api",
       "version": "0.1.0",
       "dependencies": {
         "@hono/zod-openapi": "^1.6.3",
         "@modelcontextprotocol/server": "2.3.0",
-        "@onememory/adapter-claude": "workspace:*",
-        "@onememory/adapter-codex": "workspace:*",
-        "@onememory/adapter-cursor": "workspace:*",
-        "@onememory/adapter-opencode": "workspace:*",
-        "@onememory/adapter-pi": "workspace:*",
-        "@onememory/codememory": "workspace:*",
-        "@onememory/config": "workspace:*",
-        "@onememory/consolidation": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/embeddings": "workspace:*",
-        "@onememory/extraction": "workspace:*",
-        "@onememory/llm": "workspace:*",
-        "@onememory/mcp": "workspace:*",
-        "@onememory/retrieval": "workspace:*",
-        "@onememory/security": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/adapter-claude": "workspace:*",
+        "@onememory-ai/adapter-codex": "workspace:*",
+        "@onememory-ai/adapter-cursor": "workspace:*",
+        "@onememory-ai/adapter-opencode": "workspace:*",
+        "@onememory-ai/adapter-pi": "workspace:*",
+        "@onememory-ai/codememory": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/consolidation": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/embeddings": "workspace:*",
+        "@onememory-ai/extraction": "workspace:*",
+        "@onememory-ai/llm": "workspace:*",
+        "@onememory-ai/mcp": "workspace:*",
+        "@onememory-ai/retrieval": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "hono": "^4.13.12",
         "zod": "^4.6.5",
       },
@@ -46,28 +46,28 @@
       },
       "dependencies": {
         "@clack/prompts": "^1.8.1",
-        "@onememory/adapter-claude": "workspace:*",
-        "@onememory/adapter-codex": "workspace:*",
-        "@onememory/adapter-cursor": "workspace:*",
-        "@onememory/adapter-opencode": "workspace:*",
-        "@onememory/adapter-pi": "workspace:*",
-        "@onememory/api": "workspace:*",
-        "@onememory/config": "workspace:*",
-        "@onememory/consolidation": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/mcp": "workspace:*",
+        "@onememory-ai/adapter-claude": "workspace:*",
+        "@onememory-ai/adapter-codex": "workspace:*",
+        "@onememory-ai/adapter-cursor": "workspace:*",
+        "@onememory-ai/adapter-opencode": "workspace:*",
+        "@onememory-ai/adapter-pi": "workspace:*",
+        "@onememory-ai/api": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/consolidation": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/mcp": "workspace:*",
         "commander": "^15.0.0",
         "yaml": "^2.9.1",
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "@types/bun": "^1.4.2",
         "smol-toml": "^1.9.0",
       },
     },
     "apps/web": {
-      "name": "@onememory/web",
+      "name": "@onememory-ai/web",
       "version": "0.1.0",
       "dependencies": {
         "react": "^19.3.0",
@@ -76,7 +76,7 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "@types/bun": "^1.4.2",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
@@ -86,22 +86,22 @@
       },
     },
     "benchmarks/eval": {
-      "name": "@onememory/benchmarks",
+      "name": "@onememory-ai/benchmarks",
       "version": "0.1.0",
       "dependencies": {
         "@modelcontextprotocol/client": "2.3.0",
-        "@onememory/adapter-claude": "workspace:*",
-        "@onememory/adapter-codex": "workspace:*",
-        "@onememory/adapter-cursor": "workspace:*",
-        "@onememory/adapter-opencode": "workspace:*",
-        "@onememory/adapter-pi": "workspace:*",
-        "@onememory/consolidation": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/extraction": "workspace:*",
-        "@onememory/mcp": "workspace:*",
-        "@onememory/retrieval": "workspace:*",
-        "@onememory/security": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/adapter-claude": "workspace:*",
+        "@onememory-ai/adapter-codex": "workspace:*",
+        "@onememory-ai/adapter-cursor": "workspace:*",
+        "@onememory-ai/adapter-opencode": "workspace:*",
+        "@onememory-ai/adapter-pi": "workspace:*",
+        "@onememory-ai/consolidation": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/extraction": "workspace:*",
+        "@onememory-ai/mcp": "workspace:*",
+        "@onememory-ai/retrieval": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -109,13 +109,13 @@
       },
     },
     "packages/adapters/claude": {
-      "name": "@onememory/adapter-claude",
+      "name": "@onememory-ai/adapter-claude",
       "version": "0.1.0",
       "bin": {
         "onemem-claude-hook": "./src/bin.ts",
       },
       "dependencies": {
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -123,15 +123,15 @@
       },
     },
     "packages/adapters/codex": {
-      "name": "@onememory/adapter-codex",
+      "name": "@onememory-ai/adapter-codex",
       "version": "0.1.0",
       "bin": {
         "onemem-codex-capture": "./src/bin.ts",
       },
       "dependencies": {
-        "@onememory/config": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/security": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
         "smol-toml": "^1.9.0",
         "zod": "^4.6.5",
       },
@@ -140,13 +140,13 @@
       },
     },
     "packages/adapters/cursor": {
-      "name": "@onememory/adapter-cursor",
+      "name": "@onememory-ai/adapter-cursor",
       "version": "0.1.0",
       "bin": {
         "onemem-cursor-hook": "./src/bin.ts",
       },
       "dependencies": {
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -154,12 +154,12 @@
       },
     },
     "packages/adapters/opencode": {
-      "name": "@onememory/adapter-opencode",
+      "name": "@onememory-ai/adapter-opencode",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/config": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/security": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -167,12 +167,12 @@
       },
     },
     "packages/adapters/pi": {
-      "name": "@onememory/adapter-pi",
+      "name": "@onememory-ai/adapter-pi",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/config": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/security": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -180,11 +180,11 @@
       },
     },
     "packages/codememory": {
-      "name": "@onememory/codememory",
+      "name": "@onememory-ai/codememory",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
-        "@onememory/security": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
         "tree-sitter-go": "0.25.0",
         "tree-sitter-javascript": "0.25.0",
         "tree-sitter-python": "0.25.0",
@@ -194,17 +194,17 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/extraction": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/extraction": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
     "packages/config": {
-      "name": "@onememory/config",
+      "name": "@onememory-ai/config",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/llm": "workspace:*",
-        "@onememory/security": "workspace:*",
+        "@onememory-ai/llm": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
         "yaml": "^2.9.1",
         "zod": "^4.6.5",
       },
@@ -213,22 +213,22 @@
       },
     },
     "packages/consolidation": {
-      "name": "@onememory/consolidation",
+      "name": "@onememory-ai/consolidation",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
-        "@onememory/extraction": "workspace:*",
-        "@onememory/llm": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/extraction": "workspace:*",
+        "@onememory-ai/llm": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/mcp": "workspace:*",
+        "@onememory-ai/mcp": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
     "packages/core": {
-      "name": "@onememory/core",
+      "name": "@onememory-ai/core",
       "version": "0.1.0",
       "dependencies": {
         "zod": "^4.6.5",
@@ -238,10 +238,10 @@
       },
     },
     "packages/embeddings": {
-      "name": "@onememory/embeddings",
+      "name": "@onememory-ai/embeddings",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -255,20 +255,20 @@
       ],
     },
     "packages/extraction": {
-      "name": "@onememory/extraction",
+      "name": "@onememory-ai/extraction",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
-        "@onememory/llm": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/llm": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
     "packages/llm": {
-      "name": "@onememory/llm",
+      "name": "@onememory-ai/llm",
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/anthropic": "^2.0.108",
@@ -283,7 +283,7 @@
       },
     },
     "packages/mcp": {
-      "name": "@onememory/mcp",
+      "name": "@onememory-ai/mcp",
       "version": "0.1.0",
       "bin": {
         "onemem-mcp": "./src/bin.ts",
@@ -291,11 +291,11 @@
       "dependencies": {
         "@modelcontextprotocol/client": "2.3.0",
         "@modelcontextprotocol/server": "2.3.0",
-        "@onememory/config": "workspace:*",
-        "@onememory/core": "workspace:*",
-        "@onememory/retrieval": "workspace:*",
-        "@onememory/security": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/config": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/retrieval": "workspace:*",
+        "@onememory-ai/security": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "jose": "^6.1.3",
         "zod": "^4.6.5",
       },
@@ -304,36 +304,36 @@
       },
     },
     "packages/retrieval": {
-      "name": "@onememory/retrieval",
+      "name": "@onememory-ai/retrieval",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
       },
     },
     "packages/security": {
-      "name": "@onememory/security",
+      "name": "@onememory-ai/security",
       "version": "0.1.0",
       "dependencies": {
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@onememory/mcp": "workspace:*",
-        "@onememory/storage": "workspace:*",
+        "@onememory-ai/mcp": "workspace:*",
+        "@onememory-ai/storage": "workspace:*",
         "@types/bun": "^1.4.2",
       },
     },
     "packages/storage": {
-      "name": "@onememory/storage",
+      "name": "@onememory-ai/storage",
       "version": "0.1.0",
       "dependencies": {
         "@electric-sql/pglite": "^0.5.8",
         "@electric-sql/pglite-pgvector": "^0.0.9",
-        "@onememory/core": "workspace:*",
+        "@onememory-ai/core": "workspace:*",
         "drizzle-kit": "^0.31.11",
         "drizzle-orm": "^0.45.3",
         "pg": "^8.23.1",
@@ -447,43 +447,43 @@
 
     "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.3.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.3.0", "zod": "^4.2.0" } }, "sha512-+6b0LdsQLmHsvS7J6sQJ4weTpzUn61fU1JKS+321/+IyDYoHW5CR2Tgqcs6GgAAQvlesCo6yX3xttgmx+XGtJw=="],
 
-    "@onememory/adapter-claude": ["@onememory/adapter-claude@workspace:packages/adapters/claude"],
+    "@onememory-ai/adapter-claude": ["@onememory-ai/adapter-claude@workspace:packages/adapters/claude"],
 
-    "@onememory/adapter-codex": ["@onememory/adapter-codex@workspace:packages/adapters/codex"],
+    "@onememory-ai/adapter-codex": ["@onememory-ai/adapter-codex@workspace:packages/adapters/codex"],
 
-    "@onememory/adapter-cursor": ["@onememory/adapter-cursor@workspace:packages/adapters/cursor"],
+    "@onememory-ai/adapter-cursor": ["@onememory-ai/adapter-cursor@workspace:packages/adapters/cursor"],
 
-    "@onememory/adapter-opencode": ["@onememory/adapter-opencode@workspace:packages/adapters/opencode"],
+    "@onememory-ai/adapter-opencode": ["@onememory-ai/adapter-opencode@workspace:packages/adapters/opencode"],
 
-    "@onememory/adapter-pi": ["@onememory/adapter-pi@workspace:packages/adapters/pi"],
+    "@onememory-ai/adapter-pi": ["@onememory-ai/adapter-pi@workspace:packages/adapters/pi"],
 
-    "@onememory/api": ["@onememory/api@workspace:apps/api"],
+    "@onememory-ai/api": ["@onememory-ai/api@workspace:apps/api"],
 
-    "@onememory/benchmarks": ["@onememory/benchmarks@workspace:benchmarks/eval"],
+    "@onememory-ai/benchmarks": ["@onememory-ai/benchmarks@workspace:benchmarks/eval"],
 
-    "@onememory/codememory": ["@onememory/codememory@workspace:packages/codememory"],
+    "@onememory-ai/codememory": ["@onememory-ai/codememory@workspace:packages/codememory"],
 
-    "@onememory/config": ["@onememory/config@workspace:packages/config"],
+    "@onememory-ai/config": ["@onememory-ai/config@workspace:packages/config"],
 
-    "@onememory/consolidation": ["@onememory/consolidation@workspace:packages/consolidation"],
+    "@onememory-ai/consolidation": ["@onememory-ai/consolidation@workspace:packages/consolidation"],
 
-    "@onememory/core": ["@onememory/core@workspace:packages/core"],
+    "@onememory-ai/core": ["@onememory-ai/core@workspace:packages/core"],
 
-    "@onememory/embeddings": ["@onememory/embeddings@workspace:packages/embeddings"],
+    "@onememory-ai/embeddings": ["@onememory-ai/embeddings@workspace:packages/embeddings"],
 
-    "@onememory/extraction": ["@onememory/extraction@workspace:packages/extraction"],
+    "@onememory-ai/extraction": ["@onememory-ai/extraction@workspace:packages/extraction"],
 
-    "@onememory/llm": ["@onememory/llm@workspace:packages/llm"],
+    "@onememory-ai/llm": ["@onememory-ai/llm@workspace:packages/llm"],
 
-    "@onememory/mcp": ["@onememory/mcp@workspace:packages/mcp"],
+    "@onememory-ai/mcp": ["@onememory-ai/mcp@workspace:packages/mcp"],
 
-    "@onememory/retrieval": ["@onememory/retrieval@workspace:packages/retrieval"],
+    "@onememory-ai/retrieval": ["@onememory-ai/retrieval@workspace:packages/retrieval"],
 
-    "@onememory/security": ["@onememory/security@workspace:packages/security"],
+    "@onememory-ai/security": ["@onememory-ai/security@workspace:packages/security"],
 
-    "@onememory/storage": ["@onememory/storage@workspace:packages/storage"],
+    "@onememory-ai/storage": ["@onememory-ai/storage@workspace:packages/storage"],
 
-    "@onememory/web": ["@onememory/web@workspace:apps/web"],
+    "@onememory-ai/web": ["@onememory-ai/web@workspace:apps/web"],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 

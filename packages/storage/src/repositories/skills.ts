@@ -28,7 +28,7 @@ import {
   type SkillStatus,
   type SkillStore,
   type SkillUsageEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { pgTextArray, pgUuidArray, toIso } from '../drivers/client';

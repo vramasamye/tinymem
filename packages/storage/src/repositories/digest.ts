@@ -17,7 +17,7 @@
  * caller (consolidation's digest pass) owns WHEN this runs; this repo owns HOW it is stored.
  */
 
-import { ProjectDigestEntriesSchema, type ProjectDigestEntries, type ProjectRecord } from '@onememory/core';
+import { ProjectDigestEntriesSchema, type ProjectDigestEntries, type ProjectRecord } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

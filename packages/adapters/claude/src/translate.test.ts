@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { eventContentHash, validateOnememoryEvent, type OnememoryEvent } from '@onememory/core';
+import { eventContentHash, validateOnememoryEvent, type OnememoryEvent } from '@onememory-ai/core';
 
 import { translateHookInput, type TranslateContext } from './translate';
 

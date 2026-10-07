@@ -17,10 +17,10 @@
  * so a stale cache would serve a superseded memory.
  */
 
-import { createCodeMemoryScheduler, type SchedulerTimer } from '@onememory/codememory';
-import type { Embedder, EmbeddingIndex, Store } from '@onememory/core';
-import { runConsolidation, type ConsolidationReport, type ConsolidationStage } from '@onememory/consolidation';
-import type { ModelRouter } from '@onememory/llm';
+import { createCodeMemoryScheduler, type SchedulerTimer } from '@onememory-ai/codememory';
+import type { Embedder, EmbeddingIndex, Store } from '@onememory-ai/core';
+import { runConsolidation, type ConsolidationReport, type ConsolidationStage } from '@onememory-ai/consolidation';
+import type { ModelRouter } from '@onememory-ai/llm';
 
 /** Default consolidation interval: hourly. Overridable via `daemon.consolidate_interval_ms`. */
 export const DEFAULT_CONSOLIDATE_INTERVAL_MS = 3_600_000;

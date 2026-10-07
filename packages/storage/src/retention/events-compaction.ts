@@ -16,7 +16,7 @@ import {
   type EventsCompactor,
   type NewEventDigest,
   type StoredEvent,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { pgUuidArray, toIso } from '../drivers/client';

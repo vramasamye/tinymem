@@ -2,10 +2,10 @@
  * Hook-side runtime support: where is this project's onememory state, which project is it, is a
  * daemon answering, and how do we talk to it — plus the session-start context fetch.
  *
- * Wire formats (deliberate re-declaration — the same call as `@onememory/adapter-claude`): the
- * readers are tiny strict schemas pinned to the formats owned by `@onememory/config`
- * (`.onememory/project.json`) and `@onememory/api` (`.onememory/daemon.json`). The hook binary
- * must spawn in milliseconds on EVERY tool call, so it depends on `@onememory/core` only
+ * Wire formats (deliberate re-declaration — the same call as `@onememory-ai/adapter-claude`): the
+ * readers are tiny strict schemas pinned to the formats owned by `@onememory-ai/config`
+ * (`.onememory/project.json`) and `@onememory-ai/api` (`.onememory/daemon.json`). The hook binary
+ * must spawn in milliseconds on EVERY tool call, so it depends on `@onememory-ai/core` only
  * (importing the config/api packages would pull the router, yaml, and composition graphs into each
  * spawn). Both formats are stable cross-process wire records.
  *

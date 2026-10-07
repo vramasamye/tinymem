@@ -11,9 +11,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { eventContentHash, uuidv7, validateOnememoryEvent } from '@onememory/core';
-import { createEmbeddedDb } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
+import { eventContentHash, uuidv7, validateOnememoryEvent } from '@onememory-ai/core';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
 
 import { installNetworkGuard, isEventPathExcluded, redactEvent } from './index';
 

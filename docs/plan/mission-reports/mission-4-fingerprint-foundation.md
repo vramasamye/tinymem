@@ -24,7 +24,7 @@ and lazy object fetches/remote protocols are disabled.
 ## Dependency reuse
 
 The system Git choice reuses ADR-0008 and the dependency-verification verdict, rather than
-reimplementing Git. The package reuses `@onememory/security` exclusions and Zod. Native Node
+reimplementing Git. The package reuses `@onememory-ai/security` exclusions and Zod. Native Node
 subprocess/filesystem/crypto APIs keep the implementation Bun- and Node-compatible. The accepted
 primary-source research is in `docs/research/dependency-verification.md` §10 and
 `docs/research/llm-wiki-loop.md`; the mission's exact argv contracts are verified against

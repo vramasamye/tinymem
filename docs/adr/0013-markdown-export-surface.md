@@ -45,7 +45,7 @@ borrow list (§5, items 1–2) asks for `onemem export` — a Markdown projectio
    `(+N more, see the per-type file)` overflow line; if the digest header alone cannot fit, the
    command errors rather than emit an oversized index — fail closed, never silently truncate to
    uselessness.
-5. **Where it lives.** The renderer is a pure function in `@onememory/core` (records + digest
+5. **Where it lives.** The renderer is a pure function in `@onememory-ai/core` (records + digest
    rollup → bytes; no IO, unit-testable, byte-identical by property test). The service (page
    memories via `listMemoryPage`, read the stored `projects.digest` rollup, write + prune) lives
    in `apps/api/src/runtime` beside the skills service. The CLI command follows the digest

@@ -7,9 +7,9 @@
  * Mutates nothing. `onemem skills promote <id>` is the acting half of the flow.
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { loadSkillForReview, type SkillReviewBundle } from '@onememory/consolidation';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, openRuntime } from '@onememory-ai/api/runtime';
+import { loadSkillForReview, type SkillReviewBundle } from '@onememory-ai/consolidation';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';

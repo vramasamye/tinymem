@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/storage",
+  "name": "@onememory-ai/storage",
   "version": "0.1.0",
   "description": "onememory storage: Postgres dialect (Drizzle schema + SQL) over PGlite (embedded) and Postgres+pgvector (server)",
   "license": "Apache-2.0",
@@ -22,7 +22,7 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@electric-sql/pglite-pgvector": "^0.0.9",
-    "@onememory/core": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "drizzle-kit": "^0.31.11",
     "pg": "^8.23.1",

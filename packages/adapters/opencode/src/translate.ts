@@ -58,7 +58,7 @@
  *   failure-memory family, so the type is not subscribed (counted drop, reason named).
  */
 
-import type { OnememoryEvent } from '@onememory/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 import {
   buildEvent,

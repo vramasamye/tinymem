@@ -15,9 +15,9 @@
  * file the operator owns is their call, never a silent CLI side effect.
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, localUser, openRuntime } from '@onememory/api/runtime';
-import { canTransitionSkill } from '@onememory/core';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, localUser, openRuntime } from '@onememory-ai/api/runtime';
+import { canTransitionSkill } from '@onememory-ai/core';
 
 import { findLiveDaemonUrl, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';

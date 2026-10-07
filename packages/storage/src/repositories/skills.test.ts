@@ -23,7 +23,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import { InvalidSkillTransitionError, type NewSkill } from '@onememory/core';
+import { InvalidSkillTransitionError, type NewSkill } from '@onememory-ai/core';
 
 import { createServerDb } from '../drivers/server';
 import type { OnememoryStorage } from '../drivers/types';

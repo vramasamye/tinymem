@@ -17,7 +17,7 @@ import {
   type EventRuntime,
   type OnememoryEvent,
   type SourceRef,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 export const FIXTURE_PROJECT_ID = '01900000-0000-7000-8000-0000000000aa';
 export const FIXTURE_SESSION_ID = 'sess-m3-golden';

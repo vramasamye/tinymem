@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { StoredSymbol } from '@onememory/core';
+import type { StoredSymbol } from '@onememory-ai/core';
 
 import { buildArchitectureDigest, estimateDigestTokens, moduleOfPath } from './index';
 import type { DigestRepositoryInput } from './index';

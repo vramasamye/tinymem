@@ -1,7 +1,7 @@
 # Mission 11a report — benchmarks v1 (golden dataset + metric harness + CI gates)
 
 **Branch:** `mission/11-benchmarks` (worktree `/Users/apple/Desktop/AI_Coding/onememory-m11`, based on `main` `5c20159`)
-**Scope delivered:** the new `benchmarks/` workspace package `@onememory/benchmarks` (loader, real-engine
+**Scope delivered:** the new `benchmarks/` workspace package `@onememory-ai/benchmarks` (loader, real-engine
 runtime, pure metric math, gate evaluation, markdown report, `bench:run` CLI), five committed golden
 datasets, a committed baseline run, and this report. Nothing outside `benchmarks/**` and this report
 was touched.
@@ -17,7 +17,7 @@ contradiction accuracy, consolidation quality); CI thresholds; results committed
 
 | Area | Delivered |
 |---|---|
-| Workspace package | `benchmarks/eval` → `@onememory/benchmarks` (mirrors the existing package.json / tsconfig / `typecheck` conventions; root workspaces glob already covered `benchmarks/*`) |
+| Workspace package | `benchmarks/eval` → `@onememory-ai/benchmarks` (mirrors the existing package.json / tsconfig / `typecheck` conventions; root workspaces glob already covered `benchmarks/*`) |
 | Datasets | `benchmarks/datasets/golden/*.json` — 5 datasets, 19 fact matchers, 17 declared queries + 1 contradiction probe; Zod-validated loader with cross-field reference checks |
 | Harness | `src/runtime.ts` composes the real `storage` + `extraction` + `retrieval` packages; `src/harness.ts` runs datasets and aggregates metrics |
 | Metrics | `src/metrics.ts` — pure, unit-tested math for all six metric families |
@@ -35,7 +35,7 @@ remains open per the phased plan).
 ## 2. Driving the real engine (design decision)
 
 `benchmarks/eval/src/runtime.ts` composes the workspace packages **directly** rather than depending
-on `@onememory/api/runtime`:
+on `@onememory-ai/api/runtime`:
 
 - the dependency direction is one-way (`apps` depend on `packages`, never the reverse —
   `docs/architecture/repository-structure.md` rule 1), and a benchmark must not reach into an
@@ -48,7 +48,7 @@ on `@onememory/api/runtime`:
 No mocks: the store, extractor, classifier and search engine are the production implementations.
 The runtime is offline by construction — **no embedder and no model router are wired**, so retrieval
 runs the documented lexical + graph default and extraction is heuristic-only. `bench:run` installs
-the M12 network guard (`@onememory/security`) for the duration of the run and records the outbound
+the M12 network guard (`@onememory-ai/security`) for the duration of the run and records the outbound
 attempt count; the committed baseline reports **0 network attempts**. The guard is process-global, so
 the `bun test` gate leaves it off (the runtime is still structurally incapable of an outbound call).
 
@@ -214,7 +214,7 @@ committed baseline is unchanged.
 
 ## 10. Dependencies and assumptions
 
-- Depends on `@onememory/{core,extraction,retrieval,security,storage}` (all `workspace:*`); no new
+- Depends on `@onememory-ai/{core,extraction,retrieval,security,storage}` (all `workspace:*`); no new
   external dependency was introduced.
 - Assumes the embedded PGlite profile is the benchmark target (local-first default). Server-profile
   benchmarking is out of scope for M11a.

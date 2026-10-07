@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-codex/testing` — fixtures built from VERIFIED Codex wire shapes.
+ * `@onememory-ai/adapter-codex/testing` — fixtures built from VERIFIED Codex wire shapes.
  *
  * Every fixture mirrors a published contract (read 2026-10-03):
  * - hook inputs: the generated command-hook schemas in the Codex repository
@@ -19,7 +19,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { join } from 'node:path';
 
-import { renderConfigForProject } from '@onememory/config';
+import { renderConfigForProject } from '@onememory-ai/config';
 
 import type {
   SessionStartHookInput,
@@ -315,7 +315,7 @@ export function malformedRolloutLine(): string {
 }
 
 // ---------------------------------------------------------------------------
-// The fake daemon + project fixtures (the same pattern as `@onememory/mcp/testing`)
+// The fake daemon + project fixtures (the same pattern as `@onememory-ai/mcp/testing`)
 // ---------------------------------------------------------------------------
 
 import type { IngestResponse, SessionContextResponse } from './delivery';

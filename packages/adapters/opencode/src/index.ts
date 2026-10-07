@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-opencode` — the OpenCode adapter (ADR-0010 §6/§7).
+ * `@onememory-ai/adapter-opencode` — the OpenCode adapter (ADR-0010 §6/§7).
  *
  * A translator, nothing more: OpenCode-native plugin signals (events, `tool.execute.after`,
  * `chat.message`) become validated `OnememoryEvent` envelopes (runtime: 'opencode') delivered

@@ -22,7 +22,7 @@ import { join } from 'node:path';
 
 import { toSql } from 'pgvector';
 
-import { memoryContentHash, uuidv7 } from '@onememory/core';
+import { memoryContentHash, uuidv7 } from '@onememory-ai/core';
 
 import { createEmbeddedClient, createEmbeddedDb } from '../drivers/embedded';
 import { migrateEmbedded } from '../drivers/migrate';

@@ -13,7 +13,7 @@
  *   offline with lexical+graph retrieval.
  *
  * The routing vocabulary (operations, provider kinds, profiles, loopback rule) is imported from
- * `@onememory/llm` and the redaction vocabulary from `@onememory/security`: one source of truth per
+ * `@onememory-ai/llm` and the redaction vocabulary from `@onememory-ai/security`: one source of truth per
  * vocabulary, never a copy that can drift.
  */
 
@@ -24,8 +24,8 @@ import {
   RouterConfigSchema,
   isHostedProviderKind,
   isLoopbackBaseUrl,
-} from '@onememory/llm';
-import { PATTERN_GROUP_IDS, ExtraPatternSchema } from '@onememory/security';
+} from '@onememory-ai/llm';
+import { PATTERN_GROUP_IDS, ExtraPatternSchema } from '@onememory-ai/security';
 import { z } from 'zod';
 
 /** Config format version; only version 1 exists. An unknown version fails loudly. */
@@ -37,7 +37,7 @@ export type StorageMode = (typeof STORAGE_MODES)[number];
 export const VECTOR_BACKENDS = ['auto', 'pgvector', 'float8'] as const;
 export type VectorBackendSetting = (typeof VECTOR_BACKENDS)[number];
 
-/** Embedding providers implemented by `@onememory/embeddings` (ADR-0006 §3). */
+/** Embedding providers implemented by `@onememory-ai/embeddings` (ADR-0006 §3). */
 export const EMBEDDING_PROVIDERS = ['ollama', 'openai-compatible', 'local-transformers'] as const;
 export type EmbeddingProviderSetting = (typeof EMBEDDING_PROVIDERS)[number];
 
@@ -171,7 +171,7 @@ export const RedactionSectionSchema = z.strictObject({
   /**
    * Per-group on/off switches — a PARTIAL map (only the keys you switch off). Zod 4's
    * `z.record(z.enum(...), …)` would demand every key exhaustively, which would make the template's
-   * documented `groups: { jwt: false }` example invalid; `@onememory/security`'s own rule (unknown
+   * documented `groups: { jwt: false }` example invalid; `@onememory-ai/security`'s own rule (unknown
    * ids rejected, omitted ids default on) is mirrored here instead so the two cannot drift.
    */
   groups: z
@@ -192,7 +192,7 @@ export const SecuritySectionSchema = z.strictObject({
    * `local` (it would break the local-first invariant).
    */
   network_guard: z.enum(NETWORK_GUARD_MODES).default('auto'),
-  /** ADDITIONAL path exclusion globs; `@onememory/security`'s defaults cannot be removed. */
+  /** ADDITIONAL path exclusion globs; `@onememory-ai/security`'s defaults cannot be removed. */
   exclude_globs: z.array(identifier).default([]),
   redaction: RedactionSectionSchema.optional(),
 });
@@ -201,7 +201,7 @@ export type SecuritySection = z.infer<typeof SecuritySectionSchema>;
 /**
  * Skill-artifact write surface (M15 follow-up 3, ADR-0009 rule 5). Skills are files
  * (`<skills-root>/<name>/SKILL.md`) so runtime-native loaders find them; every runtime scans a
- * skills root (none consumes a manifest — see `@onememory/core`'s runtime-skill table).
+ * skills root (none consumes a manifest — see `@onememory-ai/core`'s runtime-skill table).
  */
 export const SkillsSectionSchema = z.strictObject({
   /**

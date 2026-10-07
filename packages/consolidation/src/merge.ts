@@ -16,7 +16,7 @@
  * every absorbed row remains queryable with its own evidence, and `historyOf` walks the chain.
  */
 
-import type { EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
+import type { EmbeddingIndex, MemoryRecord, Store } from '@onememory-ai/core';
 
 import { authorityViewOf, mergeKeeperOrder } from './authority';
 import { cosineComponents, pairKey, scopeKeyOf } from './cluster';

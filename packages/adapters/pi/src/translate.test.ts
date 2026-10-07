@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { validateOnememoryEvent } from '@onememory/core';
+import { validateOnememoryEvent } from '@onememory-ai/core';
 
 import type { GitCommitFacts } from './git';
 import { translatePiEvent } from './translate';

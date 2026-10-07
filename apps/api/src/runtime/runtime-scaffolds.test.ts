@@ -13,11 +13,11 @@ import {
   mergeClaudeSettingsHooks,
   mergeMcpJson,
   mergeMemoryPointerBlock,
-} from '@onememory/adapter-claude';
-import { scaffoldCodex } from '@onememory/adapter-codex';
-import { scaffoldCursor } from '@onememory/adapter-cursor';
-import { scaffoldPi } from '@onememory/adapter-pi';
-import { scaffoldOpenCode } from '@onememory/adapter-opencode';
+} from '@onememory-ai/adapter-claude';
+import { scaffoldCodex } from '@onememory-ai/adapter-codex';
+import { scaffoldCursor } from '@onememory-ai/adapter-cursor';
+import { scaffoldPi } from '@onememory-ai/adapter-pi';
+import { scaffoldOpenCode } from '@onememory-ai/adapter-opencode';
 
 import {
   RUNTIME_AGENT_IDS,

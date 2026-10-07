@@ -25,8 +25,8 @@
  * warning; contradiction resolution and decay always run — they need no model and no vectors.
  */
 
-import type { Embedder, EmbeddingIndex, MemoryRecord, Store } from '@onememory/core';
-import type { ModelRouter } from '@onememory/llm';
+import type { Embedder, EmbeddingIndex, MemoryRecord, Store } from '@onememory-ai/core';
+import type { ModelRouter } from '@onememory-ai/llm';
 
 import { runContradictionPass, type ContradictionDetector } from './contradiction';
 import { createConflictDetector, CROSS_PHRASING_TYPES } from './conflict';

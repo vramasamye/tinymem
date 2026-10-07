@@ -108,7 +108,7 @@ describe('settings.json hooks scaffold', () => {
       expect(handler.command).toContain('${CLAUDE_PROJECT_DIR}/node_modules/.bin/onemem-claude-hook');
       // The published contract: no repository-relative source path in any invocation.
       expect(handler.command).not.toContain('src/');
-      expect(handler.command).not.toContain('@onememory/');
+      expect(handler.command).not.toContain('@onememory-ai/');
     }
   });
 

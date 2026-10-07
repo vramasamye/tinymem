@@ -3,12 +3,12 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MemoryRecordSchema, type Extractor, type FailurePayload } from '@onememory/core';
-import { createModelRouter, type ModelProvider } from '@onememory/llm';
-import { createEmbeddedDb } from '@onememory/storage';
+import { MemoryRecordSchema, type Extractor, type FailurePayload } from '@onememory-ai/core';
+import { createModelRouter, type ModelProvider } from '@onememory-ai/llm';
+import { createEmbeddedDb } from '@onememory-ai/storage';
 import {
   createExtractHandler, createHeuristicClassifier, createHeuristicExtractor, createLlmExtractor,
-} from '@onememory/extraction';
+} from '@onememory-ai/extraction';
 import {
   decisionSession, testFailureSession, FIXTURE_PROJECT_ID,
 } from '../../../../packages/extraction/src/testing/transcripts';

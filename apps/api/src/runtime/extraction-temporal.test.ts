@@ -16,10 +16,10 @@ import {
   createHeuristicExtractor,
   createExtractHandler,
   storedEventToEnvelope,
-} from '@onememory/extraction';
-import { createRetrievalEngine } from '@onememory/retrieval';
-import { createEmbeddedDb } from '@onememory/storage';
-import { estimateTokens, type NewMemory } from '@onememory/core';
+} from '@onememory-ai/extraction';
+import { createRetrievalEngine } from '@onememory-ai/retrieval';
+import { createEmbeddedDb } from '@onememory-ai/storage';
+import { estimateTokens, type NewMemory } from '@onememory-ai/core';
 
 import {
   FIXTURE_PROJECT_ID,

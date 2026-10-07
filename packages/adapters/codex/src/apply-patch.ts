@@ -16,7 +16,7 @@
  * needs paths and change kinds, not contents.
  */
 
-import type { FileChangeKind } from '@onememory/core';
+import type { FileChangeKind } from '@onememory-ai/core';
 
 export interface ParsedFileChange {
   path: string;

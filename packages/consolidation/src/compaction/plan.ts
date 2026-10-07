@@ -20,11 +20,11 @@
  * "0 = keep forever"), while the summarize tier still runs at its own window.
  */
 
-import type { StoredEvent } from '@onememory/core';
+import type { StoredEvent } from '@onememory-ai/core';
 import type {
   CompactionKeepReason,
   CompactionPlanEntry,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 const DAY_MS = 86_400_000;
 

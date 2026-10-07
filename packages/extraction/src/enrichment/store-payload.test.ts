@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { type ExtractedMemory, type FailurePayload } from '@onememory/core';
+import { type ExtractedMemory, type FailurePayload } from '@onememory-ai/core';
 import { buildEvidence, normalizeEvent } from '../events';
 import { createHeuristicExtractor } from '../heuristic/extractor';
 import { goldenSession, makeInput, testFailureSession, toolFailureSession } from '../testing/transcripts';

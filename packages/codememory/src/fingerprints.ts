@@ -4,7 +4,7 @@ import { lstat, open, readdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { TextDecoder } from 'node:util';
 
-import { createPathExclusionPolicy, isPathExcluded } from '@onememory/security';
+import { createPathExclusionPolicy, isPathExcluded } from '@onememory-ai/security';
 
 import { parseIndex, parsePaths, parseRenames, requireGit, runGit } from './git';
 import type { GitRename, IndexEntry } from './git';

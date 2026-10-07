@@ -20,7 +20,7 @@ Two files, no edits to any pre-existing file:
   `document.added`/`conversation.message`/`git.commit`/`explicit.remember`/`terminal.output`
   event stream, the real extract-job handler (`createExtractHandler` over the real heuristic
   extractor + classifier), the real `CodeMemoryStore` write port, and the real retrieval engine —
-  under `@onememory/security`'s network guard (zero model calls, zero network, local-first
+  under `@onememory-ai/security`'s network guard (zero model calls, zero network, local-first
   invariant intact).
 
 The test is deliberately **two-phased so it demonstrates the DoD without contriving it**:
@@ -99,7 +99,7 @@ are not.
   paraphrase like "What are the steps to authenticate a request?" would return nothing for
   content worded "Authentication procedure…" — the test's paraphrases were chosen to share
   lexemes. Recall for true paraphrases is the embedder's job (an opt-in local transformers
-  embedder already exists in `@onememory/embeddings`).
+  embedder already exists in `@onememory-ai/embeddings`).
 - **F5 — the retrieval search response does not expose persisted code refs, so the Phase 2 DoD
   is only partially demonstrated and is NOT met by this mission.** The wire schema
   (`MemorySearchResponse` in `packages/core`) gives a returned memory item

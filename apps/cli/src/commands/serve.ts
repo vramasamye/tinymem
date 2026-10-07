@@ -12,7 +12,7 @@
  * auth state. Absent → no auth, the local-first default (zero network calls).
  */
 
-import { startDaemon, type DaemonHandle } from '@onememory/api/runtime';
+import { startDaemon, type DaemonHandle } from '@onememory-ai/api/runtime';
 import type { Io } from '../io';
 
 export interface ServeOptions {

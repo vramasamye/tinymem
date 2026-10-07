@@ -1,5 +1,5 @@
 /**
- * `@onememory/extraction` — EXTRACT (stage 4) + CLASSIFY (stage 5) implementations.
+ * `@onememory-ai/extraction` — EXTRACT (stage 4) + CLASSIFY (stage 5) implementations.
  *
  * `createHeuristicExtractor()` is the zero-LLM correctness baseline; `createLlmExtractor({router})`
  * adds recall behind the model router; `createFallbackExtractor(llm, heuristic)` is the pipeline's

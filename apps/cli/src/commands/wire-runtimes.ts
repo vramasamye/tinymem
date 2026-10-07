@@ -26,12 +26,12 @@ import {
   mergeMcpJson,
   mergeMemoryPointerBlock,
   type ScaffoldMergeResult,
-} from '@onememory/adapter-claude';
-import { scaffoldCodex } from '@onememory/adapter-codex';
-import { scaffoldCursor } from '@onememory/adapter-cursor';
-import { scaffoldPi } from '@onememory/adapter-pi';
-import { scaffoldOpenCode } from '@onememory/adapter-opencode';
-import { RUNTIME_AGENT_IDS } from '@onememory/api/runtime';
+} from '@onememory-ai/adapter-claude';
+import { scaffoldCodex } from '@onememory-ai/adapter-codex';
+import { scaffoldCursor } from '@onememory-ai/adapter-cursor';
+import { scaffoldPi } from '@onememory-ai/adapter-pi';
+import { scaffoldOpenCode } from '@onememory-ai/adapter-opencode';
+import { RUNTIME_AGENT_IDS } from '@onememory-ai/api/runtime';
 
 import type { Io } from '../io';
 import type { Prompt } from '../prompt';

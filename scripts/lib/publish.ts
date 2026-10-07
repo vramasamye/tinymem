@@ -116,7 +116,7 @@ export interface PublishablePackage {
 }
 
 /**
- * Topological order over the workspace-internal dependency edges (`@onememory/*`), alphabetical
+ * Topological order over the workspace-internal dependency edges (`@onememory-ai/*`), alphabetical
  * within a level so the order is deterministic: a consumer never resolves a dependency that has
  * not been published yet.
  */

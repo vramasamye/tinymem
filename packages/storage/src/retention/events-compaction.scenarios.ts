@@ -7,7 +7,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import { uuidv7, type NewEventDigest } from '@onememory/core';
+import { uuidv7, type NewEventDigest } from '@onememory-ai/core';
 
 import { isUniqueViolation } from '../drivers/client';
 import type { OnememoryStorage } from '../drivers/types';

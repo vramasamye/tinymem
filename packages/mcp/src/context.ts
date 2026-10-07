@@ -12,14 +12,14 @@
  * - project-scope resolution (input → config → env) and the audited-actor identity.
  */
 
-import type { Embedder, Store } from '@onememory/core';
-import { createRetrievalEngine } from '@onememory/retrieval';
-import type { RetrievalEngine } from '@onememory/retrieval';
-import { createEmbeddedDb, createServerDb } from '@onememory/storage';
-import { sourcesRepo, type OnememoryStorage } from '@onememory/storage';
-import type { Database } from '@onememory/storage';
-import { redactValue } from '@onememory/security';
-import type { Redaction } from '@onememory/core';
+import type { Embedder, Store } from '@onememory-ai/core';
+import { createRetrievalEngine } from '@onememory-ai/retrieval';
+import type { RetrievalEngine } from '@onememory-ai/retrieval';
+import { createEmbeddedDb, createServerDb } from '@onememory-ai/storage';
+import { sourcesRepo, type OnememoryStorage } from '@onememory-ai/storage';
+import type { Database } from '@onememory-ai/storage';
+import { redactValue } from '@onememory-ai/security';
+import type { Redaction } from '@onememory-ai/core';
 
 import { resolveMcpConfig, type McpEnv, type OnememoryMcpConfig, type OnememoryMcpConfigInput, type StorageConfig } from './config';
 import { SERVER_NAME, SERVER_VERSION } from './version';

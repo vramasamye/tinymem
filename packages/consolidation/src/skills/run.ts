@@ -27,11 +27,11 @@ import type {
   SkillGenerationReport,
   SkillRecord,
   SkillStore,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import {
   resolveSkillGenerationConfig,
   type SkillGenerationConfigInput,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { errorMessage } from '../util';
 import { buildSkillCandidate } from './generate';
@@ -48,7 +48,7 @@ const MAX_CANDIDATE_RECORDS = 20;
 
 /** What `runSkillGeneration` needs. */
 export interface SkillGenerationInput {
-  /** The storage port implementation (`createSkillStore(db)` from `@onememory/storage`). */
+  /** The storage port implementation (`createSkillStore(db)` from `@onememory-ai/storage`). */
   skills: SkillStore;
   /** Project scope: a project id runs one project's pass; `undefined` runs every scope. */
   scope?: { project_id?: string };

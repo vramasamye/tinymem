@@ -9,8 +9,8 @@
  * - `fail` retries with exponential backoff until max_attempts, then dead-letters (`status=dead`).
  */
 
-import { EnqueueJobSchema, uuidv7 } from '@onememory/core';
-import type { EnqueueJobInput, EnqueueJobResult, JobRecord } from '@onememory/core';
+import { EnqueueJobSchema, uuidv7 } from '@onememory-ai/core';
+import type { EnqueueJobInput, EnqueueJobResult, JobRecord } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 import { isUniqueViolation } from '../drivers/client';

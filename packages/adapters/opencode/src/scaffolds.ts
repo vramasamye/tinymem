@@ -63,7 +63,7 @@ export interface OpenCodeMcpOptions {
 
 /** The default server entry path (the workspace package bin; Bun runs the TS directly). */
 export function defaultOpenCodeStdioArgs(): string[] {
-  return ['node_modules/@onememory/mcp/src/bin.ts'];
+  return ['node_modules/@onememory-ai/mcp/src/bin.ts'];
 }
 
 type StdioOptions = OpenCodeMcpOptions & { transport?: 'stdio' };
@@ -193,7 +193,7 @@ export const OPENCODE_PLUGIN_MARKER = 'onememory:generated (onemem init)';
 export const OPENCODE_PLUGIN_RELPATH = 'plugins/onememory.ts';
 
 /** The plugin import specifier — the package the project already has installed. */
-export const OPENCODE_ADAPTER_PACKAGE = '@onememory/adapter-opencode';
+export const OPENCODE_ADAPTER_PACKAGE = '@onememory-ai/adapter-opencode';
 
 /**
  * The generated plugin file. One named export (OpenCode's documented plugin shape: "a

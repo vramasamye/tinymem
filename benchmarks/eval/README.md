@@ -3,8 +3,8 @@
 Memory-quality evaluation harness (backlog **M11**; the originating "spec §25" is not present as a
 file in this repository, so every metric below cites the architecture doc it is derived from).
 
-The harness drives the **real engine** — `@onememory/storage` (embedded PGlite), `@onememory/extraction`
-(heuristic, no-LLM), `@onememory/retrieval` and, for datasets that opt in, `@onememory/consolidation`
+The harness drives the **real engine** — `@onememory-ai/storage` (embedded PGlite), `@onememory-ai/extraction`
+(heuristic, no-LLM), `@onememory-ai/retrieval` and, for datasets that opt in, `@onememory-ai/consolidation`
 (the M14 automatic lifecycle) — over committed golden datasets. It never mocks the store, the
 extractor, the search engine or the consolidation passes. It runs offline and deterministically:
 no embedder, no model router, no network (AGENTS.md rule 4).
@@ -14,7 +14,7 @@ no embedder, no model router, no network (AGENTS.md rule 4).
 ```text
 benchmarks/
 ├── datasets/golden/   # committed JSON fixtures (backlog M11.1), Zod-validated
-├── eval/              # the harness package (@onememory/benchmarks)
+├── eval/              # the harness package (@onememory-ai/benchmarks)
 │   └── src/
 │       ├── dataset.ts  # schemas + loader
 │       ├── runtime.ts  # composes the real packages into one embedded runtime

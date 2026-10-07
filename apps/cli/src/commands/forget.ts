@@ -7,8 +7,8 @@
 
 import { describeResolution, resolveBackend, type ResolveOptions } from '../resolve';
 import type { Io } from '../io';
-import { BackendError } from '@onememory/api/runtime';
-import type { ForgetOutcome, PurgeOutcome } from '@onememory/api/runtime';
+import { BackendError } from '@onememory-ai/api/runtime';
+import type { ForgetOutcome, PurgeOutcome } from '@onememory-ai/api/runtime';
 
 export interface ForgetOptions extends ResolveOptions {
   memoryId: string;

@@ -1,10 +1,10 @@
-# @onememory/web — the memory explorer UI
+# @onememory-ai/web — the memory explorer UI
 
 The Phase 6 / M10 surface: memories search/filter, per-memory timeline (status
 history), the entity/memory graph, projects, decisions, failures, skills,
 sources/provenance, and the quality dashboard — **every value on these pages comes
 from the REST API** (`apps/api`, `/v1/*`). There is no client-side memory truth: the
-Zod mirrors in `src/api/schemas.ts` are `satisfies`-linked to `@onememory/core`'s
+Zod mirrors in `src/api/schemas.ts` are `satisfies`-linked to `@onememory-ai/core`'s
 canonical types, and every response is validated at the HTTP boundary before a page
 renders it.
 
@@ -29,7 +29,7 @@ cd onememory/apps/web && bun run dev
 
 The daemon has no CORS middleware, so the client defaults to same-origin relative
 URLs (`/v1/...`) and the Vite dev server proxies them to
-`http://127.0.0.1:7331` (`DEFAULT_DAEMON_PORT` in `@onememory/config`). For a
+`http://127.0.0.1:7331` (`DEFAULT_DAEMON_PORT` in `@onememory-ai/config`). For a
 deployed build behind a different origin, set `VITE_ONEMORY_API` (absolute base —
 requires CORS on the API; see the mission report follow-up) and/or
 `ONEMEMORY_API_PROXY_TARGET` (dev proxy target).
@@ -51,7 +51,7 @@ docker compose -f docker/compose.yaml --profile web up   # then open http://loca
 
 `docker/api-config.yaml` is the container's config: Postgres-backed storage with a
 credential-free `pg_url` (credentials travel in `PGUSER`/`PGPASSWORD`, because
-`@onememory/config` rejects inline userinfo). Both published ports bind loopback only —
+`@onememory-ai/config` rejects inline userinfo). Both published ports bind loopback only —
 the REST API has no authentication of its own (ADR-0012), and the daemon's non-loopback
 bind is acknowledged inside the container by `--listen-public`.
 

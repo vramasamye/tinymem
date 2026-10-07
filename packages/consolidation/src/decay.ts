@@ -14,7 +14,7 @@
  *   the floor (an old decision survives; an old unverified note does not).
  */
 
-import type { MemoryRecord, Store } from '@onememory/core';
+import type { MemoryRecord, Store } from '@onememory-ai/core';
 
 import type { ArchiveRecord } from './types';
 

@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { eventContentHash, type StoredEvent } from '@onememory/core';
+import { eventContentHash, type StoredEvent } from '@onememory-ai/core';
 
 import { classifyEvent, compactionCutoffs, planBatch } from './plan';
 

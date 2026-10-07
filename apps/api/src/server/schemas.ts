@@ -21,7 +21,7 @@ import {
   MemorySearchResponseSchema,
   RedactionSchema,
   SKILL_STATUSES,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { MAX_MEMORY_PAGE_SIZE, MEMORY_PAGE_INCLUDE } from '../runtime/types';
 
@@ -31,7 +31,7 @@ const z = zOpenApi;
 const isoTimestamp = z.iso.datetime();
 
 /**
- * The router summary both health and stats report (`llmProfileSummary` from `@onememory/config`):
+ * The router summary both health and stats report (`llmProfileSummary` from `@onememory-ai/config`):
  * provider ids, kinds and loopback-ness — environment variable NAMES only, never key values.
  */
 const llmSummary = z.strictObject({
@@ -159,7 +159,7 @@ export const IngestRequestSchema = z
     /**
      * Event envelopes. The canonical shape (`id`, `ingested_at`, `content_hash`, `redactions`) is
      * preferred; a draft that omits them is completed from the payload (canonical JSON hash via
-     * `@onememory/core`) before validation, so adapters do not re-implement hashing.
+     * `@onememory-ai/core`) before validation, so adapters do not re-implement hashing.
      */
     events: z.array(z.unknown()).min(1).max(500),
   })
@@ -450,7 +450,7 @@ export const SessionContextSchema = z
  * Schemas imported from other workspace packages are reused AS-IS, never `.openapi()`-annotated.
  *
  * `.openapi()` is a prototype patch applied to the zod instance *this package* resolves, and it
- * is not retroactive: `@onememory/core`'s schemas are usually constructed before this module is
+ * is not retroactive: `@onememory-ai/core`'s schemas are usually constructed before this module is
  * evaluated (every CLI process loads core before the API surface), so `MemorySearchRequestSchema
  * .openapi(...)` throws in exactly those processes. The OpenAPI generator still describes the
  * schemas structurally — only the cosmetic $ref name is lost, which is a price worth paying for a

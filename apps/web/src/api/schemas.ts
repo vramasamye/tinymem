@@ -2,8 +2,8 @@
  * The REST wire schemas the memory explorer consumes — the browser-side mirror of
  * `apps/api/src/server/schemas.ts` + the canonical core schemas.
  *
- * Why a mirror instead of importing `@onememory/core`'s schemas at runtime:
- * `@onememory/core`'s barrel re-exports `model/hashing.ts` (node:crypto), which must
+ * Why a mirror instead of importing `@onememory-ai/core`'s schemas at runtime:
+ * `@onememory-ai/core`'s barrel re-exports `model/hashing.ts` (node:crypto), which must
  * never enter the browser bundle. So the explorer consumes core **type-only**
  * (`import type`) and re-declares the runtime Zod schemas here; every re-declaration
  * is `satisfies`-linked to the canonical core type, so any drift between this mirror
@@ -27,7 +27,7 @@ import type {
   MemorySearchResponse,
   Redaction,
   SkillPayload,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 // The model vocabulary (type-only) — the canonical enum VALUES are used in the UI's
 // filter forms; importing the const arrays at runtime would pull the core barrel.
@@ -39,10 +39,10 @@ export type {
   MemorySearchResponse,
   Redaction,
   SkillPayload,
-} from '@onememory/core';
-export type MemoryType = import('@onememory/core').MemoryType;
-export type MemoryStatus = import('@onememory/core').MemoryStatus;
-export type DurableMemoryType = import('@onememory/core').DurableMemoryType;
+} from '@onememory-ai/core';
+export type MemoryType = import('@onememory-ai/core').MemoryType;
+export type MemoryStatus = import('@onememory-ai/core').MemoryStatus;
+export type DurableMemoryType = import('@onememory-ai/core').DurableMemoryType;
 
 // Mirrors of `packages/core/src/model/types.ts` const arrays (type-level only; the
 // runtime filter options below carry the values, asserted against these types).
@@ -300,7 +300,7 @@ export const MemorySearchResponseSchema = z
   }) satisfies z.ZodType<MemorySearchResponse>;
 
 /** The outbound search request — typed by core; the API validates it server-side. */
-export type MemorySearchRequest = import('@onememory/core').MemorySearchRequest;
+export type MemorySearchRequest = import('@onememory-ai/core').MemorySearchRequest;
 
 // ---------------------------------------------------------------------------
 // Inspect response (1:1 with apps/api/src/server/schemas.ts)
@@ -491,8 +491,8 @@ export const SessionContextResponseSchema = z.strictObject({
 // Skills review (1:1 with apps/api/src/server/schemas.ts)
 // ---------------------------------------------------------------------------
 
-export type SkillStatus = import('@onememory/core').SkillStatus;
-export type AgentRuntimeIdUi = import('@onememory/core').AgentRuntimeId;
+export type SkillStatus = import('@onememory-ai/core').SkillStatus;
+export type AgentRuntimeIdUi = import('@onememory-ai/core').AgentRuntimeId;
 export const SKILL_STATUSES_UI = ['candidate', 'verified', 'promoted', 'deprecated'] as const satisfies readonly SkillStatus[];
 
 export const SkillSummarySchema = z.strictObject({

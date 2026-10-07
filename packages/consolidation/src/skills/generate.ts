@@ -15,7 +15,7 @@ import {
   MAX_SKILL_DESCRIPTION_CHARS,
   type EvidenceSpan,
   type MemoryRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { MAX_DERIVATION_EVIDENCE } from '../derive';
 import { clampAtWordBoundary } from '../digest/rollup';

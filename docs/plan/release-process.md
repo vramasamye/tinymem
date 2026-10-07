@@ -26,13 +26,13 @@ bun run scripts/release.ts publish --yes       # the real publish (explicitly co
 ## What the build produces
 
 Per publishable package: one bundled ESM file per public entry (`dist/index.js`, plus
-`dist/runtime/index.js` for `@onememory/api`, `dist/bin.js` for the five bins) and declarations
+`dist/runtime/index.js` for `@onememory-ai/api`, `dist/bin.js` for the five bins) and declarations
 mirroring the source layout. Bare specifiers stay external (`--packages=external`), so the
 manifest's dependency graph is the truth; bundling is what makes the repo's extensionless relative
 imports work on Node's ESM loader. Bins are rewritten to `#!/usr/bin/env node` and chmod 0755.
 
 Runtime assets declared in a manifest's `files` ship alongside `dist/` —
-`@onememory/storage` ships its SQL `migrations/`, without which no install could migrate its own
+`@onememory-ai/storage` ships its SQL `migrations/`, without which no install could migrate its own
 database.
 
 ## What the smoke proves (and why it is the real gate)
@@ -48,15 +48,21 @@ stripped from `PATH` for every child process) and then:
 5. hygiene: `node` shebangs, no `workspace:` specifiers, no `bun` shebangs in the installed files.
 
 CI runs exactly this (`packed-artifacts` job) on every push. It has already paid for itself: the
-first run caught an undeclared dependency (`@modelcontextprotocol/client` in `@onememory/mcp`,
+first run caught an undeclared dependency (`@modelcontextprotocol/client` in `@onememory-ai/mcp`,
 invisible in the monorepo because npm hoists), the missing SQL migrations, and a bundle-relative
 path that resolved outside the installed package.
 
 ## Versioning and order
 
 One version across the workspace (currently `0.1.0`, pre-1.0 honest). `release.ts` refuses to run
-if the manifests disagree. Publish order is topological over `@onememory/*` edges, alphabetical
+if the manifests disagree. Publish order is topological over `@onememory-ai/*` edges, alphabetical
 within a level, and is printed by `release.ts order`; the CLI (`onememory`) is always last.
+
+**Scope.** The 17 internal packages publish under `@onememory-ai` — the npm org `onememory` was
+already claimed by a third party when the release was prepared (ADR-0014 amendment). The CLI keeps
+the unscoped name `onememory`, so the documented install path stays `npx onememory init`.
+`scripts/lib/scope.test.ts` enforces both halves; if npm ever rejects the unscoped name, the
+fallback is `@onememory-ai/onememory`.
 
 To cut a release: bump `version` in every manifest (they must match), run the pipeline above, then
 publish in the printed order. Bumping the version is deliberately manual — it is a product

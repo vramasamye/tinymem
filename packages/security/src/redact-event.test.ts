@@ -6,8 +6,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { OnememoryEventSchema, eventContentHash, uuidv7 } from '@onememory/core';
-import type { OnememoryEvent, Redaction } from '@onememory/core';
+import { OnememoryEventSchema, eventContentHash, uuidv7 } from '@onememory-ai/core';
+import type { OnememoryEvent, Redaction } from '@onememory-ai/core';
 
 import { redactEvent, RedactEventError } from './index';
 

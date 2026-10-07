@@ -16,8 +16,8 @@
  * this pass and explicit user statements are the only two creation paths.
  */
 
-import { extractTechMentions } from '@onememory/extraction';
-import type { ModelRouter } from '@onememory/llm';
+import { extractTechMentions } from '@onememory-ai/extraction';
+import type { ModelRouter } from '@onememory-ai/llm';
 import { z } from 'zod';
 
 import {
@@ -27,7 +27,7 @@ import {
   type MemoryRecord,
   type NewMemory,
   type Store,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { mergeKeeperOrder, authorityViewOf } from './authority';
 import { cosineComponents, scopeKeyOf } from './cluster';

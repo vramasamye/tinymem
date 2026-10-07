@@ -7,7 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { createRetrievalEngine, type RetrievalEngine } from '@onememory/retrieval';
+import { createRetrievalEngine, type RetrievalEngine } from '@onememory-ai/retrieval';
 
 import { createOnememoryMcpContext } from './context';
 import { openMcpTestWorld, type McpTestWorld } from './testing';

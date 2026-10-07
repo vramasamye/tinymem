@@ -10,8 +10,8 @@
 
 import { z } from 'zod';
 
-import type { Embedder } from '@onememory/core';
-import { RedactorConfigSchema } from '@onememory/security';
+import type { Embedder } from '@onememory-ai/core';
+import { RedactorConfigSchema } from '@onememory-ai/security';
 
 import { TOOL_PROFILES, type ToolProfile } from './schemas';
 

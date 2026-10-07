@@ -31,16 +31,16 @@ import {
   type ProjectRecord,
   type Redaction,
   type UserRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import {
   buildSessionContext,
   deriveLabel,
   deriveSummary,
   estimateTokens,
   type SessionContext,
-} from '@onememory/retrieval';
-import { RedactEventError, isEventPathExcluded, redactEvent } from '@onememory/security';
-import { searchRepo, sourcesRepo } from '@onememory/storage';
+} from '@onememory-ai/retrieval';
+import { RedactEventError, isEventPathExcluded, redactEvent } from '@onememory-ai/security';
+import { searchRepo, sourcesRepo } from '@onememory-ai/storage';
 
 import type { OnememoryRuntime } from './composition';
 import {

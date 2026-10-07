@@ -12,7 +12,7 @@
  * payload fails the job loudly rather than running a pass over the wrong scope.
  */
 
-import { jobPayloadFields } from '@onememory/core';
+import { jobPayloadFields } from '@onememory-ai/core';
 import { z } from 'zod';
 
 /** The `consolidate` / `decay` job payload (strict — the worker boundary validates external input). */

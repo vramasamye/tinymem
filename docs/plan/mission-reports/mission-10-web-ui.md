@@ -1,9 +1,9 @@
 # Mission 10 report — Web UI (memory explorer)
 
 **Branch:** `mission/10-web-ui` (worktree `onememory-m10`, base `main` @ `7251c5a`)
-**Scope delivered:** `apps/web` (`@onememory/web`, private) — the Phase 6 / M10 memory explorer:
+**Scope delivered:** `apps/web` (`@onememory-ai/web`, private) — the Phase 6 / M10 memory explorer:
 11 routes over 9 feature modules, one HTTP boundary (`src/api/client.ts`) whose Zod mirrors are
-`satisfies`-linked to `@onememory/core`'s canonical types, and 73 tests (boundary, route map,
+`satisfies`-linked to `@onememory-ai/core`'s canonical types, and 73 tests (boundary, route map,
 per-page controllers, render smoke). No `apps/api`, `packages/**`, architecture-doc, ADR, or
 root-config file touched — the only root-adjacent change is the additive `bun.lock` entry for the
 new workspace package (the root `package.json` `workspaces: ["apps/*", …]` glob already covers
@@ -15,7 +15,7 @@ new workspace package (the root `package.json` `workspaces: ["apps/*", …]` glo
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| 1 | `apps/web` is a real workspace package; root `package.json` untouched unless needed | **delivered (no root edit)** | `apps/web/package.json` (`@onememory/web`, scripts `dev/build/preview/test/typecheck`); auto-discovered by the existing `"apps/*"` workspace glob; `bun install` links it (additive `bun.lock` diff only) |
+| 1 | `apps/web` is a real workspace package; root `package.json` untouched unless needed | **delivered (no root edit)** | `apps/web/package.json` (`@onememory-ai/web`, scripts `dev/build/preview/test/typecheck`); auto-discovered by the existing `"apps/*"` workspace glob; `bun install` links it (additive `bun.lock` diff only) |
 | 2 | Routes for every M10 surface: memories list/filter + full-text + structured search, timeline (status history), graph, projects, decisions, failures, skills, sources/provenance drill-down, quality dashboard | **delivered — 11 routes** | `src/router.tsx` `APP_ROUTES` (pinned by `src/router.test.ts`): `/` → redirect, `/memories`, `/memories/:memoryId`, `/memories/:memoryId/timeline`, `/projects`, `/decisions`, `/failures`, `/skills`, `/graph`, `/sources`, `/quality` |
 | 3 | Every claim on screen is API data; per-page controller test asserting no fallback hard-coded values | **delivered** | 9 controller tests (one per feature): exact pass-through equality against fixture responses (`vm.memories` `toEqual` the API payload), empty-response cases asserting zero rows + the API's own warnings (no invented content), 404 cases asserting the API's error envelope surfaces verbatim. Render smoke (`src/smoke.test.tsx`): each surface's View rendered via `react-dom/server` with controller output — fixture-derived strings present, and with empty API responses the data markers are absent |
 | 4 | `bun run dev` starts on a known port; one route renders without errors | **delivered** | Vite dev server on **5173** (bumps only if taken), verified live: `GET /` 200 with the shell, `/src/main.tsx` 200 (transformed). "One route renders" is proven stronger: all 10 surface Views render to string without errors in the smoke suite, and a live end-to-end run (§4) rendered real engine data |
@@ -28,7 +28,7 @@ new workspace package (the root `package.json` `workspaces: ["apps/*", …]` glo
 | Build/dev | **Vite 8** + `@vitejs/plugin-react` | the repo's existing toolchain family (root devDeps already carry vitest/vite); zero new toolchain invented |
 | UI | **React 19** + `react-dom` | the documented repo convention for `apps/web` ("bun + TypeScript strict + Vite + React") |
 | Routing | **react-router 7** (`createBrowserRouter`) | mature, covers the whole need (paths, params, query params, links); route table exported as data so the route-map test pins it |
-| Validation | **zod 4** (same version as the repo) | every API response validated at the boundary; schemas re-declared browser-side and `satisfies`-linked to canonical `@onememory/core` types so drift fails `tsc` (core is imported **type-only** — its barrel re-exports `model/hashing.ts` (`node:crypto`), which must never enter the browser bundle; the production build logs no node-builtin warning) |
+| Validation | **zod 4** (same version as the repo) | every API response validated at the boundary; schemas re-declared browser-side and `satisfies`-linked to canonical `@onememory-ai/core` types so drift fails `tsc` (core is imported **type-only** — its barrel re-exports `model/hashing.ts` (`node:crypto`), which must never enter the browser bundle; the production build logs no node-builtin warning) |
 | Tests | **bun test** (repo runner) + `react-dom/server` render-to-string | no DOM emulation dependency at all: controllers are plain async functions (API client injected), Views are pure functions of view-models — both testable headlessly, the same way every other package in this repo tests |
 
 ## 3. API → UI data flow
@@ -64,7 +64,7 @@ explorer is a viewer; forget/restore/purge are CLI/SDK operations, not UI scope)
 
 Base URL: same-origin relative by default (`/v1/...`) because the daemon serves `/v1` without
 CORS — the Vite dev server proxies `/v1` → `http://127.0.0.1:7331` (`DEFAULT_DAEMON_PORT`,
-`@onememory/config`), and a deployed build sits behind the same origin. `VITE_ONEMEMORY_API`
+`@onememory-ai/config`), and a deployed build sits behind the same origin. `VITE_ONEMEMORY_API`
 overrides with an absolute base; `ONEMEMORY_API_PROXY_TARGET` overrides the dev proxy target.
 
 ## 4. Validation matrix (all run in the worktree)

@@ -22,8 +22,8 @@ import type {
   SnapshotInput,
   SymbolFileInput,
   SymbolRecordInput,
-} from '@onememory/core';
-import { uuidv7 } from '@onememory/core';
+} from '@onememory-ai/core';
+import { uuidv7 } from '@onememory-ai/core';
 
 import { createServerDb } from './drivers/server';
 import type { Database } from './drivers/client';

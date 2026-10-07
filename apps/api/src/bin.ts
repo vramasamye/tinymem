@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
- * `@onememory/api` serve entry (`bun run src/bin.ts` / `bun run serve`).
+ * `@onememory-ai/api` serve entry (`bun run src/bin.ts` / `bun run serve`).
  *
  * The user-facing command is `onemem serve` (apps/cli); this entry exists so the daemon can be
- * started without the CLI package (e.g. `bunx --package @onememory/api bun src/bin.ts` in tests
+ * started without the CLI package (e.g. `bunx --package @onememory-ai/api bun src/bin.ts` in tests
  * and container images). Same rule either way: one daemon owns the embedded data directory.
  */
 

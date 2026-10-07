@@ -1,7 +1,7 @@
 /**
  * Vite config for the memory explorer UI.
  *
- * The daemon (ADR-0010) serves `/v1/*` from `host:port` in `@onememory/config`
+ * The daemon (ADR-0010) serves `/v1/*` from `host:port` in `@onememory-ai/config`
  * (`DEFAULT_DAEMON_PORT` = 7331) and has **no CORS middleware** — so both the dev
  * server and `vite preview` proxy `/v1` to the daemon and the client defaults to
  * same-origin relative URLs. Override the target with `ONEMEMORY_API_PROXY_TARGET`

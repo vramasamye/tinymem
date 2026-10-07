@@ -14,7 +14,7 @@
  */
 
 import { z } from 'zod';
-import type { JobQueue, SourceKind, Store, StoredEvent } from '@onememory/core';
+import type { JobQueue, SourceKind, Store, StoredEvent } from '@onememory-ai/core';
 
 import {
   NormalizedBatchSchema,

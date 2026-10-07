@@ -1,14 +1,14 @@
 /**
  * The synthetic `document.added` bridge (M4f): a re-read file must flow through the REAL
- * extraction pipeline (`@onememory/extraction`'s heuristic extractor — composed, never edited),
+ * extraction pipeline (`@onememory-ai/extraction`'s heuristic extractor — composed, never edited),
  * offline, with zero model calls. If the pipeline rejects the synthetic envelope or extracts
  * nothing from real source prose, the re-index is a placeholder, not a feature.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createHeuristicExtractor } from '@onememory/extraction';
-import { installNetworkGuard } from '@onememory/security';
-import { validateOnememoryEvent, type ExtractionInput, type SourceRef } from '@onememory/core';
+import { createHeuristicExtractor } from '@onememory-ai/extraction';
+import { installNetworkGuard } from '@onememory-ai/security';
+import { validateOnememoryEvent, type ExtractionInput, type SourceRef } from '@onememory-ai/core';
 
 import { buildCodeDocumentEvent, fileEvidence, MAX_DOCUMENT_CHARS, pathFromLocator } from './code-events';
 

@@ -10,7 +10,7 @@ target; empty directories from later phases are created with `.gitkeep` only whe
 onememory/
 ├── apps/
 │   ├── api/                  # REST API server (Hono). Serves /v1/*, OpenAPI spec, jobs trigger.
-│   ├── cli/                  # The `onemem` binary (commander/citty). Thin wrapper over @onememory/sdk.
+│   ├── cli/                  # The `onemem` binary (commander/citty). Thin wrapper over @onememory-ai/sdk.
 │   └── web/                  # Memory explorer UI (Phase 6): memories, timeline, graph, decisions,
 │                             #   failures, skills, sources, quality dashboard.
 ├── packages/
@@ -43,7 +43,7 @@ onememory/
 │   │                         #   re-index; architecture digest.
 │   ├── mcp/                  # MCP server: stdio + Streamable HTTP, all memory tools.
 │   ├── sdk/                  # Composition root + public facade (`MemoryEngine`), stable
-│   │                         #   programmatic API. Published as `@onememory/sdk`.
+│   │                         #   programmatic API. Published as `@onememory-ai/sdk`.
 │   ├── config/               # Config discovery & validation (onememory.config.yaml + zod),
 │   │                         #   doctor checks shared with CLI.
 │   └── adapters/             # Runtime adapters. Translate runtime events → OnememoryEvent.
@@ -105,7 +105,7 @@ As-built (M14 + M4f): one further engine-to-engine import remains: consolidation
 (the tech-mention scanner used for entity grouping). Shared pure defaults and helpers — the decay
 half-life table, chars/4 token estimator, and document extraction cap — live in core; codememory
 holds a test-only devDependency on extraction (runtime code uses the core Extractor port);
-apps/api imports @onememory/codememory directly for the drift scheduler/reindex wiring, matching
+apps/api imports @onememory-ai/codememory directly for the drift scheduler/reindex wiring, matching
 its existing engine imports.
 ```
 
@@ -126,11 +126,11 @@ its existing engine imports.
 
 | Package | Name | Published |
 |---|---|---|
-| SDK | `@onememory/sdk` | yes |
-| Core (types/ports) | `@onememory/core` | yes (advanced embedding) |
+| SDK | `@onememory-ai/sdk` | yes |
+| Core (types/ports) | `@onememory-ai/core` | yes (advanced embedding) |
 | CLI | `onememory` (binary `onemem`) | yes |
-| MCP server | `@onememory/mcp` | yes |
-| Adapters | `@onememory/adapter-claude`, `-codex`, `-cursor`, `-pi`, `-opencode` | yes |
+| MCP server | `@onememory-ai/mcp` | yes |
+| Adapters | `@onememory-ai/adapter-claude`, `-codex`, `-cursor`, `-pi`, `-opencode` | yes |
 | Others | internal until stable | no |
 
 `onemem init` scaffolds the config, embedded storage, and registered project. Claude Code and
@@ -148,7 +148,7 @@ scaffolds only accept loopback HTTP URLs because the daemon has no authenticatio
 - E2E: CLI init/doctor wiring, daemon HTTP MCP, and combined transcript extraction → explicit
   supersession → temporal retrieval acceptance tests live beside their apps. Automatic
   contradiction detection and authority resolution remain M14 acceptance work.
-- Benchmarks: `benchmarks/eval` (`@onememory/benchmarks`) with golden datasets in
+- Benchmarks: `benchmarks/eval` (`@onememory-ai/benchmarks`) with golden datasets in
   `benchmarks/datasets/golden/` — measures retrieval precision/recall, token efficiency (budget
   packer), pollution, temporal accuracy, contradiction accuracy, consolidation quality. The gate
   test runs in CI on every push (`bun test` discovers it); a scheduled nightly `bench:run` +

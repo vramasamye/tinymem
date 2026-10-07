@@ -28,7 +28,7 @@
  * touches promoted rows - so re-running can only be a no-op.
  *
  * The pass runs inline in the ingest path rather than as a job: the job-queue vocabulary
- * (`JOB_KINDS` in `@onememory/core`) has no session-sweep kind, the pass is DB-only (no model, no
+ * (`JOB_KINDS` in `@onememory-ai/core`) has no session-sweep kind, the pass is DB-only (no model, no
  * network - local-first invariant holds), and it is bounded by the session's working rows.
  */
 
@@ -37,7 +37,7 @@ import {
   type EvidenceSpan,
   type SessionRecord,
   type WorkingMemoryRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { OnememoryRuntime } from './composition';
 

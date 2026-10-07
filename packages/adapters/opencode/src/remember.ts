@@ -1,9 +1,9 @@
 /**
  * Explicit "remember" utterance detection for OpenCode user messages.
  *
- * The canonical pattern is `@onememory/adapter-claude/src/remember.ts` (mission 6); adapters do
+ * The canonical pattern is `@onememory-ai/adapter-claude/src/remember.ts` (mission 6); adapters do
  * not import each other (repository-structure rule), so the same contract is reimplemented here —
- * exactly as `@onememory/adapter-codex`, `@onememory/adapter-cursor` and `@onememory/adapter-pi`
+ * exactly as `@onememory-ai/adapter-codex`, `@onememory-ai/adapter-cursor` and `@onememory-ai/adapter-pi`
  * did (their files are the byte-identical contract; the conformance suite asserts the resulting
  * clause is the same). Only imperative remember requests anchored at the START of a user
  * utterance qualify: a conversational "do you remember yesterday?" must not mint an

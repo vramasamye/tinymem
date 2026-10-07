@@ -6,7 +6,7 @@
  * in the marker, the record, a log line, or an error message.
  */
 
-import type { RedactionKind } from '@onememory/core';
+import type { RedactionKind } from '@onememory-ai/core';
 
 export const REDACTION_MARKER_PREFIX = '[REDACTED:';
 export const REDACTION_MARKER_SUFFIX = ']';

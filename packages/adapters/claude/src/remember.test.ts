@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { eventContentHash, validateOnememoryEvent } from '@onememory/core';
+import { eventContentHash, validateOnememoryEvent } from '@onememory-ai/core';
 
 import { extractRememberUtterance } from './remember';
 

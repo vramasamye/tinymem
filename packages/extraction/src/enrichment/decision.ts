@@ -23,7 +23,7 @@
  * never an invalid candidate.
  */
 
-import { DecisionExtractionSchema, type DecisionAlternative, type DecisionExtraction } from '@onememory/core';
+import { DecisionExtractionSchema, type DecisionAlternative, type DecisionExtraction } from '@onememory-ai/core';
 
 import {
   DECISION_CLAUSE_BREAK,

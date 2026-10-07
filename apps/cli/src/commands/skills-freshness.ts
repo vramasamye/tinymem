@@ -12,10 +12,10 @@
  * yet — refuse, not route, while a daemon owns the data dir).
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { runSkillFreshness } from '@onememory/consolidation';
-import type { SkillFreshnessReport } from '@onememory/core';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, openRuntime } from '@onememory-ai/api/runtime';
+import { runSkillFreshness } from '@onememory-ai/consolidation';
+import type { SkillFreshnessReport } from '@onememory-ai/core';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';

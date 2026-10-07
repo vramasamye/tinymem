@@ -58,7 +58,7 @@ label says what ran — no model runs in this pass; the local-first invariant ho
 `ingestEvents` (`memory-service.ts`) collects `session.end` observations for events that were
 **stored or duplicate** (deduped by session id — one pass per distinct session per batch), then —
 after enqueueing the normalize job — runs one `runSessionEndLifecycle` pass per session. The pass
-runs inline rather than as a job: the job-queue vocabulary (`JOB_KINDS` in `@onememory/core`) has
+runs inline rather than as a job: the job-queue vocabulary (`JOB_KINDS` in `@onememory-ai/core`) has
 no session-sweep kind, the pass is DB-only and bounded by the session's working rows. A
 `session.end` without `scope.session_id` warns ("no session-end lifecycle pass can run") and runs
 nothing. The pass summary rides the existing `warnings` channel of `IngestResult` — the only field
@@ -155,7 +155,7 @@ extraction pipeline stays parked while the synchronous pass is exercised determi
 Post-review (standards + spec, two independent reviewers) fixes applied on the branch before
 merge (`54f635a`):
 
-- promoted token estimates reuse the shared `estimateTokens` from `@onememory/core` instead of a
+- promoted token estimates reuse the shared `estimateTokens` from `@onememory-ai/core` instead of a
   local `content.length / 4`;
 - `SessionEndLifecycleResult.skipped_total` is computed by the pass, so callers cannot undercount
   by omitting a skip reason;

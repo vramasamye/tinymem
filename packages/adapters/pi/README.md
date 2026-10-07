@@ -1,4 +1,4 @@
-# @onememory/adapter-pi
+# @onememory-ai/adapter-pi
 
 The [Pi coding agent](https://pi.dev) adapter for **onememory** — the self-hostable, local-first
 persistent memory engine for AI coding agents.
@@ -44,7 +44,7 @@ The generated extension shim is three lines: it imports `createPiExtension` from
 no separate hook process:
 
 ```ts
-import { createPiExtension } from '@onememory/adapter-pi';
+import { createPiExtension } from '@onememory-ai/adapter-pi';
 
 export default function onememory(pi) {
   createPiExtension(pi);

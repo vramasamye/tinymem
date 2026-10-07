@@ -1,9 +1,9 @@
 /**
  * ⚠️ TEST-ONLY helpers — never imported by production paths (exported via the `./testing`
- * subpath, mirroring @onememory/retrieval's convention).
+ * subpath, mirroring @onememory-ai/retrieval's convention).
  *
  * `openMcpTestServer`: an isolated embedded-PGlite world (fresh temp dir) + the deterministic
- * hash-axis embedder from @onememory/retrieval/testing + the retrieval engine + a full MCP
+ * hash-axis embedder from @onememory-ai/retrieval/testing + the retrieval engine + a full MCP
  * server context — everything the test suites need, with per-test cleanup and fixed clocks.
  */
 
@@ -11,9 +11,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Embedder } from '@onememory/core';
-import { createTestEmbedder, type TestEmbedder } from '@onememory/retrieval/testing';
-import { createEmbeddedDb, type OnememoryStorage } from '@onememory/storage';
+import type { Embedder } from '@onememory-ai/core';
+import { createTestEmbedder, type TestEmbedder } from '@onememory-ai/retrieval/testing';
+import { createEmbeddedDb, type OnememoryStorage } from '@onememory-ai/storage';
 
 import { createOnememoryMcpContext, type OnememoryMcpContext } from './context';
 import type { ToolProfile } from './schemas';

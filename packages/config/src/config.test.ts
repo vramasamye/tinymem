@@ -363,7 +363,7 @@ describe('derived decisions', () => {
     expect(redactionOptions(defaultConfigObject())).toEqual({});
   });
 
-  test('exclusion globs carry only config ADDITIONS (the invariants live in @onememory/security)', () => {
+  test('exclusion globs carry only config ADDITIONS (the invariants live in @onememory-ai/security)', () => {
     expect(exclusionGlobs(defaultConfigObject())).toEqual([]);
     expect(exclusionGlobs(parseConfig({ version: 1, security: { exclude_globs: ['secrets/**'] } }))).toEqual([
       'secrets/**',

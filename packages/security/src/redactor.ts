@@ -22,7 +22,7 @@ import {
   type RedactorConfig,
 } from './patterns';
 
-import type { Redaction, RedactionKind, Redactor, RedactionResult } from '@onememory/core';
+import type { Redaction, RedactionKind, Redactor, RedactionResult } from '@onememory-ai/core';
 
 // ---------------------------------------------------------------------------
 // Scanner (one string -> marked string + records)

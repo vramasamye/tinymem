@@ -94,7 +94,7 @@ export type CursorMcpDocument = z.infer<typeof CursorMcpDocumentSchema>;
 
 /** The default server entry path (the workspace package bin; Bun runs the TS directly). */
 export function defaultMcpServerArgs(): string[] {
-  return ['${workspaceFolder}/node_modules/@onememory/mcp/src/bin.ts'];
+  return ['${workspaceFolder}/node_modules/@onememory-ai/mcp/src/bin.ts'];
 }
 
 type StdioOptions = CursorMcpOptions & { transport?: 'stdio' };

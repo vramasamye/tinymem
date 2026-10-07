@@ -1,5 +1,5 @@
 /**
- * `@onememory/mcp` — the model-facing protocol surface (ADR-0010): the MCP server that exposes
+ * `@onememory-ai/mcp` — the model-facing protocol surface (ADR-0010): the MCP server that exposes
  * onememory to AI coding agents. stdio primary; optional Streamable HTTP in BOTH forms —
  * stateless shared-server mode (`http.ts`, the daemon's `/mcp` mount) and the sessionful
  * server-mode transport (`streamable-http/`, `Mcp-Session-Id` + SSE + resumability); optional

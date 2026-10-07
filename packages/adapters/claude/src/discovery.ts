@@ -3,10 +3,10 @@
  * daemon answering?
  *
  * Wire formats (deliberate re-declaration — see mission-6.md §4): the readers are tiny strict
- * schemas pinned to the formats owned by `@onememory/config` (`project.json`,
- * packages/config/src/project-state.ts) and `@onememory/api` (`daemon.json`,
+ * schemas pinned to the formats owned by `@onememory-ai/config` (`project.json`,
+ * packages/config/src/project-state.ts) and `@onememory-ai/api` (`daemon.json`,
  * apps/api/src/runtime/lock.ts). The hook binary must spawn in milliseconds on EVERY tool call,
- * so it depends on `@onememory/core` only (importing the config/api packages would pull the router,
+ * so it depends on `@onememory-ai/core` only (importing the config/api packages would pull the router,
  * yaml, and composition graphs into each spawn). Both formats are stable cross-process wire
  * records; if either evolves, the field names below are the contract to update.
  */

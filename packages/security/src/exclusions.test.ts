@@ -5,8 +5,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { eventContentHash, uuidv7, validateOnememoryEvent } from '@onememory/core';
-import type { OnememoryEvent } from '@onememory/core';
+import { eventContentHash, uuidv7, validateOnememoryEvent } from '@onememory-ai/core';
+import type { OnememoryEvent } from '@onememory-ai/core';
 
 
 import {

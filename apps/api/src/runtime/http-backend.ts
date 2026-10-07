@@ -6,7 +6,7 @@
  * unchanged in both modes — the only difference is where the work happens.
  */
 
-import type { MemorySearchRequest, MemorySearchResponse } from '@onememory/core';
+import type { MemorySearchRequest, MemorySearchResponse } from '@onememory-ai/core';
 
 import type { DoctorReport } from './doctor';
 import {
@@ -38,8 +38,8 @@ import {
   type RememberOutcome,
   type StatsResult,
 } from './types';
-import type { ProjectRecord } from '@onememory/core';
-import type { SessionContext } from '@onememory/retrieval';
+import type { ProjectRecord } from '@onememory-ai/core';
+import type { SessionContext } from '@onememory-ai/retrieval';
 
 export interface HttpBackendOptions {
   baseUrl: string;

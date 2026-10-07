@@ -1,4 +1,4 @@
-# @onememory/adapter-cursor
+# @onememory-ai/adapter-cursor
 
 The Cursor adapter for onememory (ADR-0010). It is a **translator**: Cursor-native hook activity
 becomes validated `OnememoryEvent` envelopes (`source.runtime: 'cursor'`), delivered to the
@@ -26,7 +26,7 @@ Notes that come from Cursor's own documentation:
   `.cursor/rules` is ignored. The rule is emitted with `alwaysApply: true` (a bootstrap that is
   only @-mentionable would not bootstrap anything).
 - **Project hooks run from the project root**, so the scaffolded command is the relative
-  `bun node_modules/@onememory/adapter-cursor/src/bin.ts`. `CURSOR_PROJECT_DIR` is exported to
+  `bun node_modules/@onememory-ai/adapter-cursor/src/bin.ts`. `CURSOR_PROJECT_DIR` is exported to
   every hook and is used as a fallback when discovering the project.
 - `mcp.json` values support `${env:NAME}` and `${workspaceFolder}`; values that must come from the
   user's environment (e.g. a Postgres URL in server mode) are emitted as `${env:NAME}`, so no

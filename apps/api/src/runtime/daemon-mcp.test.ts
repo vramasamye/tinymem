@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ProjectStateSchema, renderDefaultConfigYaml, saveProjectState } from '@onememory/config';
+import { ProjectStateSchema, renderDefaultConfigYaml, saveProjectState } from '@onememory-ai/config';
 
 import { openRuntime, startDaemon, type DaemonHandle } from './index';
 

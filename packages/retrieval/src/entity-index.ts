@@ -5,8 +5,8 @@
  * longest surface form first so specific aliases win over short ones.
  */
 
-import { normalizeEntityName } from '@onememory/core';
-import type { EntityRecord } from '@onememory/core';
+import { normalizeEntityName } from '@onememory-ai/core';
+import type { EntityRecord } from '@onememory-ai/core';
 
 export interface EntityIndexOptions {
   /** Refresh TTL for the loaded registry (default 30s). */

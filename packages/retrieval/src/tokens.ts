@@ -1,9 +1,9 @@
 /**
  * Retrieval text shaping. Token estimation remains re-exported here for API compatibility; the
- * canonical implementation is shared from `@onememory/core`.
+ * canonical implementation is shared from `@onememory-ai/core`.
  */
 
-export { estimateTokens } from '@onememory/core';
+export { estimateTokens } from '@onememory-ai/core';
 
 /** Split text into sentences (terminator + following whitespace). Empty sentences dropped. */
 export function sentencesOf(text: string): string[] {

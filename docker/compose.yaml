@@ -42,7 +42,7 @@ services:
       context: ..
       dockerfile: docker/api.Dockerfile
     environment:
-      # Credential-free URL by contract: @onememory/config rejects a pg_url that carries
+      # Credential-free URL by contract: @onememory-ai/config rejects a pg_url that carries
       # inline userinfo. The credentials travel in the standard libpq variables the `pg`
       # driver reads (PGUSER/PGPASSWORD), so the URL names only host/port/database.
       ONEMEMORY_PG_URL: postgresql://postgres:5432/onememory

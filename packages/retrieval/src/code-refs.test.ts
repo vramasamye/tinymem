@@ -14,15 +14,15 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import type { SnapshotInput, SymbolFileInput, SymbolRecordInput } from '@onememory/core';
-import { MemorySearchResponseSchema } from '@onememory/core';
-import type { Database } from '@onememory/storage';
-import type { OnememoryStorage } from '@onememory/storage';
+import type { SnapshotInput, SymbolFileInput, SymbolRecordInput } from '@onememory-ai/core';
+import { MemorySearchResponseSchema } from '@onememory-ai/core';
+import type { Database } from '@onememory-ai/storage';
+import type { OnememoryStorage } from '@onememory-ai/storage';
 
 import { createRetrievalEngine } from './engine';
 import type { RetrievalEngine } from './engine';
 import { matchingSymbol, moreRefsPlaceholder, toCodeRefEntries } from './code-refs';
-import type { HydratedCodeRef } from '@onememory/storage';
+import type { HydratedCodeRef } from '@onememory-ai/storage';
 import { seedWorld, WORLD_NOW, type WorldHandle } from './test-world';
 
 const blob = (char: string): string => char.repeat(40);

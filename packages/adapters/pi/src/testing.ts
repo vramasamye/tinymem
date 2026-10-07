@@ -1,5 +1,5 @@
 /**
- * `@onememory/adapter-pi` internal fixtures — payloads built from VERIFIED Pi wire shapes.
+ * `@onememory-ai/adapter-pi` internal fixtures — payloads built from VERIFIED Pi wire shapes.
  *
  * Every fixture mirrors a documented contract (read 2026-10-06, mission 9):
  * - event payloads: `packages/coding-agent/src/core/extensions/types.ts` in earendil-works/pi
@@ -16,7 +16,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { join } from 'node:path';
 
-import { renderConfigForProject } from '@onememory/config';
+import { renderConfigForProject } from '@onememory-ai/config';
 
 import type {
   PiSessionStartEvent,

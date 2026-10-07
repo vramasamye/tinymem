@@ -11,9 +11,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { projectDigestEntriesOf, type MemoryRecord, type NewMemory } from '@onememory/core';
-import { renderDefaultConfigYaml } from '@onememory/config';
-import { digestRepo } from '@onememory/storage';
+import { projectDigestEntriesOf, type MemoryRecord, type NewMemory } from '@onememory-ai/core';
+import { renderDefaultConfigYaml } from '@onememory-ai/config';
+import { digestRepo } from '@onememory-ai/storage';
 
 import { BackendError, openRuntime, type OnememoryRuntime } from './index';
 import { exportProject, type ExportProjectReport } from './export-service';

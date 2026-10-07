@@ -1,7 +1,7 @@
 # Mission 12 report — Security core: secret redaction, path exclusions, privacy gate
 
 **Branch:** `mission/12-security`
-**Scope delivered:** `packages/security` (`@onememory/security`) — the `Redactor` port implementation,
+**Scope delivered:** `packages/security` (`@onememory-ai/security`) — the `Redactor` port implementation,
 path exclusion policy, privacy network gate, the ingest integration helper, tests, this report.
 **ADR:** 0007 (detect-and-redact at the earliest boundary; kind + location + length ONLY; `.env`/key
 files excluded entirely; 100% local mode enforced by testable CI; no secret vault ever).
@@ -118,7 +118,7 @@ stored payloads, which the suite proves are clean.
    schema). Caller contract: catch `RedactEventError` → dead-letter log.
 7. **Network guard scope is `globalThis.fetch`** with origin-only recording (taint-safe by
    construction). It does not cover `node:http` sockets, WebSocket, or `sendBeacon` — see follow-ups.
-8. **`@onememory/storage` is a devDependency** of security (taint test only). No runtime
+8. **`@onememory-ai/storage` is a devDependency** of security (taint test only). No runtime
    dependency; no cycle (storage does not import security).
 9. Regexes use ES2022 `d` (hasIndices) + lookbehind — fine on Bun and Node ≥22 (root engines).
 

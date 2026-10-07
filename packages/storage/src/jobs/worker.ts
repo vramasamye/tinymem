@@ -11,7 +11,7 @@
  *   is recorded as failed (never silently marked done).
  */
 
-import type { JobKind, JobRecord } from '@onememory/core';
+import type { JobKind, JobRecord } from '@onememory-ai/core';
 
 import type { Database } from '../drivers/client';
 

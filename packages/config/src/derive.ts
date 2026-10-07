@@ -6,8 +6,8 @@
  * all make the same decision from the same config — one place to read, one place to change.
  */
 
-import { MODEL_OPERATIONS, isLoopbackBaseUrl, type ModelOperation } from '@onememory/llm';
-import type { ExtraPatternInput } from '@onememory/security';
+import { MODEL_OPERATIONS, isLoopbackBaseUrl, type ModelOperation } from '@onememory-ai/llm';
+import type { ExtraPatternInput } from '@onememory-ai/security';
 
 import type { ConfigIssue, OnememoryConfig, VectorBackendSetting } from './schema';
 import {
@@ -141,7 +141,7 @@ export function networkGuardPlan(config: OnememoryConfig): NetworkGuardPlan {
       };
 }
 
-/** The redactor options for `@onememory/security` (kind + location + length only, ADR-0007). */
+/** The redactor options for `@onememory-ai/security` (kind + location + length only, ADR-0007). */
 export interface RedactionOptions {
   groups?: Record<string, boolean>;
   extraPatterns?: ExtraPatternInput[];

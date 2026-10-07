@@ -9,12 +9,12 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { ConfigNotFoundError } from '@onememory/config';
+import { ConfigNotFoundError } from '@onememory-ai/config';
 
-import { BackendError } from '@onememory/api/runtime';
+import { BackendError } from '@onememory-ai/api/runtime';
 
 import { resolveProjectIdForCwd } from './resolve';
-import type { LoadedConfig } from '@onememory/config';
+import type { LoadedConfig } from '@onememory-ai/config';
 
 const POINTER_ID = '00000000-0000-7000-8000-0000000000a1';
 const NESTED_ID = '00000000-0000-7000-8000-0000000000b2';

@@ -10,7 +10,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createEmbeddedDb } from '@onememory/storage';
+import { createEmbeddedDb } from '@onememory-ai/storage';
 
 import { parseConsolidationJobPayload } from './job';
 

@@ -1,5 +1,5 @@
 /**
- * `@onememory/embeddings` — `Embedder` implementations (ADR-0006 §3, dependency-verification §5–6).
+ * `@onememory-ai/embeddings` — `Embedder` implementations (ADR-0006 §3, dependency-verification §5–6).
  *
  * Providers, in the ADR's preference order:
  * 1. `ollamaEmbedder` — native `POST /api/embed` (NOT the deprecated `/api/embeddings`), loopback
@@ -14,7 +14,7 @@
  * detectable and routed through the `re_embed` job instead of silently mixing vectors.
  */
 
-import type { Embedder } from '@onememory/core';
+import type { Embedder } from '@onememory-ai/core';
 
 export type EmbedderProviderId = 'ollama' | 'openai-compatible' | 'local-transformers';
 

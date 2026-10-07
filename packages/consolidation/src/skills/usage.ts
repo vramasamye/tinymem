@@ -21,7 +21,7 @@ import type {
   SkillStore,
   SkillUsageEvent,
   SkillUsageSnapshot,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 /** Bumped when the mention heuristic changes (snapshots are not persisted — read-only). */
 export const SKILL_USAGE_HOOK_VERSION = 'skill-usage.v1';

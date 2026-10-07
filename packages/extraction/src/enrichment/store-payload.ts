@@ -7,7 +7,7 @@ import {
   FailureStorePayloadSchema,
   type ExtractedMemory,
   type NewMemoryPayload,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { NormalizedEvent } from '../events';
 import { createFailureSignature, failureIncidentOf } from './failure';

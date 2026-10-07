@@ -11,9 +11,9 @@
 
 import { Command, InvalidOptionArgumentError, type OptionValues } from 'commander';
 
-import { ConfigError, ConfigNotFoundError } from '@onememory/config';
-import { BackendError, ONEMEMORY_VERSION } from '@onememory/api/runtime';
-import { isMainModule } from '@onememory/core';
+import { ConfigError, ConfigNotFoundError } from '@onememory-ai/config';
+import { BackendError, ONEMEMORY_VERSION } from '@onememory-ai/api/runtime';
+import { isMainModule } from '@onememory-ai/core';
 
 import { createIo, type Io } from './io';
 import { createClackPrompt, createNonInteractivePrompt, PromptRequiredError, type Prompt } from './prompt';

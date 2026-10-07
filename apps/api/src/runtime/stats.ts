@@ -7,11 +7,11 @@
  * a job queue count API, and an aggregate working-memory depth API.
  */
 
-import { MEMORY_STATUSES, DURABLE_MEMORY_TYPES } from '@onememory/core';
+import { MEMORY_STATUSES, DURABLE_MEMORY_TYPES } from '@onememory-ai/core';
 
 import type { OnememoryRuntime } from './composition';
 import { PROJECT_MEMORY_READ_LIMIT, listProjectMemories, requireProject } from './memory-service';
-import { llmProfileSummary } from '@onememory/config';
+import { llmProfileSummary } from '@onememory-ai/config';
 import type { StatsResult } from './types';
 
 export interface StatsOptions {
@@ -57,12 +57,12 @@ export async function computeStats(
     working = { session_id: options.session_id, depth: rows.length };
   } else {
     warnings.push(
-      'working-memory depth not reported: working memory is session-scoped and @onememory/storage exposes no aggregate API (pass --session <id>)',
+      'working-memory depth not reported: working memory is session-scoped and @onememory-ai/storage exposes no aggregate API (pass --session <id>)',
     );
   }
 
   warnings.push(
-    'job queue statistics unavailable: @onememory/core\u2019s JobQueue port and @onememory/storage expose no job-count API (coordinator follow-up, see the mission-13 report)',
+    'job queue statistics unavailable: @onememory-ai/core\u2019s JobQueue port and @onememory-ai/storage expose no job-count API (coordinator follow-up, see the mission-13 report)',
   );
 
   return {

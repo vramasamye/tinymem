@@ -38,7 +38,7 @@ import {
   type MemoryRecord,
   type NewMemory,
   type Store,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { buildCodeDocumentEvent, fileEvidence } from './code-events';
 import {

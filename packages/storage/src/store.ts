@@ -10,7 +10,7 @@ import type {
   JobQueue,
   MemoryStatus,
   Store,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 import type {
   EntityBinding,
   EnqueueJobResult,
@@ -40,7 +40,7 @@ import type {
   EdgeRecord,
   EntityRecord,
   MemoryRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import type { Database } from './drivers/client';
 

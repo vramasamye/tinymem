@@ -30,16 +30,16 @@ declarations.**
 
 - JS: `bun build <entries> --target node --format esm --packages=external --outdir dist --root src`.
   Bundling per entry (not per file) is what makes extensionless relative imports a non-issue while
-  keeping every bare specifier (`zod`, `hono`, `@onememory/*`, `node:*`) external — so the
+  keeping every bare specifier (`zod`, `hono`, `@onememory-ai/*`, `node:*`) external — so the
   dependency graph in the manifest is still the truth and no library code is duplicated.
 - Types: `tsc -p tsconfig.build.json` with `declaration` + `emitDeclarationOnly`, `rootDir: src`,
   `outDir: dist`, excluding tests and scenario files.
 - Entries are **derived from the manifest**: every target in `exports` that is not test-support,
-  plus every `bin` target. `@onememory/api` therefore ships both `dist/index.js` and
+  plus every `bin` target. `@onememory-ai/api` therefore ships both `dist/index.js` and
   `dist/runtime/index.js` (the subpath the CLI imports), and no hand-maintained build table can
   drift from the manifests.
 - **Runtime assets ship with the code.** A manifest may list files beyond `dist/` in `files`
-  (`@onememory/storage` ships `migrations/`, the SQL set every install needs to create its own
+  (`@onememory-ai/storage` ships `migrations/`, the SQL set every install needs to create its own
   database). The staging step copies exactly what the manifest declares, and the build anchors such
   paths at the *package root* rather than at a module's own depth: the published bundle inlines
   every module into `dist/index.js`, so a `../../migrations` written for `src/drivers/` resolved
@@ -94,7 +94,7 @@ and still pass every test in the repo — then break every install. The release 
 dist bundles, extracts real import specifiers (column-0 anchored, so template-embedded scaffold
 code is not mistaken for imports) and refuses to stage a package whose imports are not all
 declared in `dependencies`/`peerDependencies`/`optionalDependencies`. It found
-`@modelcontextprotocol/client` hidden in `@onememory/mcp`'s devDependencies on its first run.
+`@modelcontextprotocol/client` hidden in `@onememory-ai/mcp`'s devDependencies on its first run.
 
 ## Options considered
 
@@ -107,7 +107,7 @@ declared in `dependencies`/`peerDependencies`/`optionalDependencies`. It found
   the dev manifest's `.ts` entries; a staged manifest is reviewable and testable without a
   registry).
 - **Bundling dependencies too** (rejected: duplicated library code, broken dedupe/audit story, and
-  `@onememory/*` versions would no longer be expressible as dependencies).
+  `@onememory-ai/*` versions would no longer be expressible as dependencies).
 - **Shipping a Node adapter for `serve` now** (`@hono/node-server`) — deferred: it is a runtime
   feature with its own tests, tracked in the M13 report and the backlog, not a packaging concern.
 
@@ -125,6 +125,31 @@ declared in `dependencies`/`peerDependencies`/`optionalDependencies`. It found
   daemon runtime, and a Node-only user gets an explicit error instead of a crash.
 - CI gains the pack smoke, so a packaging regression fails the build rather than the user's first
   `npx`.
+
+## Amendment (2026-10-07): the workspace scope is `@onememory-ai`
+
+The release was prepared with the workspace scope `@onememory`. At publish time the npm org
+`onememory` turned out to be **already claimed by a third party** — it owns zero packages (both
+`@onememory/core` and `@onememory` resolved 404), but the scope itself is unavailable, so those
+names could never be published by this project. The workspace scope is therefore `@onememory-ai`
+(`mission/19-scope-rename`):
+
+- **17 internal packages** publish as `@onememory-ai/<name>`. The rename is mechanical and total:
+  manifests, imports, docs, ADRs and the lockfile.
+- **The CLI package keeps the unscoped name `onememory`**, because that is what the documented
+  install path depends on: `npx onememory init`. Unscoped names are independent of orgs, and the
+  registry shows `onememory` unpublished. The binary name `onemem` is unaffected (npm reserves
+  package names, not bin names — `onemem` is taken as both an org and a package, which is exactly
+  why the CLI is named `onememory`).
+- **A guard test enforces it** (`scripts/lib/scope.test.ts`): every publishable package is under the
+  new scope, the CLI is the only unscoped name, and no source file still references the abandoned
+  scope. The guard assembles the abandoned scope from string fragments, because a single literal
+  would itself be rewritten by any future scope sweep — the first run of the guard flagged its own
+  comments, which is the failure mode the fragments exist to prevent.
+
+One residual risk this amendment records: npm may reject a *new* unscoped package name that
+collides with an existing org name. If `onememory` is refused at publish time, the fallback is to
+publish the CLI as `@onememory-ai/onememory` and document `npx @onememory-ai/onememory init`.
 
 ## References
 

@@ -8,10 +8,10 @@
  * endpoint yet — refuse, not route, while a daemon owns the data dir).
  */
 
-import { loadConfig } from '@onememory/config';
-import { BackendError, openRuntime } from '@onememory/api/runtime';
-import { collectSkillUsage } from '@onememory/consolidation';
-import type { SkillStatus, SkillUsageSnapshot } from '@onememory/core';
+import { loadConfig } from '@onememory-ai/config';
+import { BackendError, openRuntime } from '@onememory-ai/api/runtime';
+import { collectSkillUsage } from '@onememory-ai/consolidation';
+import type { SkillStatus, SkillUsageSnapshot } from '@onememory-ai/core';
 
 import { findLiveDaemonUrl, resolveProjectId, type ResolveOptions } from '../resolve';
 import { shortDate } from '../io';

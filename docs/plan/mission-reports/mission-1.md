@@ -1,7 +1,7 @@
 # Mission 1 report — Core storage & schema
 
 **Branch:** `mission/1-core-storage`
-**Scope delivered:** (A) `@onememory/core`, (B) `@onememory/storage`, (C) GATE-1 verdict, (D) tests, (E) this report.
+**Scope delivered:** (A) `@onememory-ai/core`, (B) `@onememory-ai/storage`, (C) GATE-1 verdict, (D) tests, (E) this report.
 **Verdict: GATE-1 PASS.** pglite-pgvector works inside PGlite under Bun; the same repository
 code passes the identical integration suite on real Postgres + pgvector.
 
@@ -132,7 +132,7 @@ float8 fallback remains as a tested insurance seam, not a primary path.
    doc-shaped payloads. Adapters (M4+) may rely on the injection but SHOULD send it.
 5. **`JobQueue.fail` gained an optional `{ now }` injectable clock** (mirrors `claim`) so
    retry/backoff is deterministic through the port. Core-only, additive.
-6. **zod is a direct dependency of `@onememory/storage`** (not just core) — repositories
+6. **zod is a direct dependency of `@onememory-ai/storage`** (not just core) — repositories
    parse every input through core's schemas at the boundary.
 7. **Extension-less embedded boots fail at migration** (loudly): `memory_vectors` uses
    `vector(384)`, so a PGlite build without the vector extension cannot apply the migration
@@ -175,7 +175,7 @@ float8 fallback remains as a tested insurance seam, not a primary path.
 
 - `createEmbeddedDb(dataDir)` / `createServerDb(url)` → `OnememoryStorage` with
   `store` / `jobs` / `vectors` / `migrate()` / `close()`, identical on both profiles.
-- Core schemas + model are importable from `@onememory/core` (Zod-first, snake_case).
+- Core schemas + model are importable from `@onememory-ai/core` (Zod-first, snake_case).
 - The committed migration is the single source of schema truth for every later mission.
 - No placeholder logic anywhere: unimplemented pipeline kinds fail via `JobKindNotImplemented`
   rather than fake success.

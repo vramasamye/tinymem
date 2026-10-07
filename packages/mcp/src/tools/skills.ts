@@ -16,7 +16,7 @@
  * runtime-native loaders (Claude Code, OpenCode), which is exactly why the index stays lean.
  */
 
-import { DEFAULT_SKILL_SERVE_TOKENS, estimateTokens, type SkillRecord, type SkillStatus } from '@onememory/core';
+import { DEFAULT_SKILL_SERVE_TOKENS, estimateTokens, type SkillRecord, type SkillStatus } from '@onememory-ai/core';
 
 import type { MemorySkillsOutput } from '../schemas';
 
@@ -109,7 +109,7 @@ export function servingOrder(skills: readonly SkillRecord[]): SkillRecord[] {
  * warnings — the exact discipline every other list tool follows.
  */
 export function serveProjectSkills(
-  storage: { skills: Pick<import('@onememory/core').SkillStore, 'listSkills'> },
+  storage: { skills: Pick<import('@onememory-ai/core').SkillStore, 'listSkills'> },
   input: {
     projectId: string;
     limit?: number;

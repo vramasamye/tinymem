@@ -14,7 +14,7 @@ import {
   SKILL_MD_SECTIONS,
   type EvidenceSpan,
   type MemoryRecord,
-} from '@onememory/core';
+} from '@onememory-ai/core';
 
 import { memoryFixture } from '../testing';
 import {

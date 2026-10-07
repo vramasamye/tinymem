@@ -1,5 +1,5 @@
 {
-  "name": "@onememory/security",
+  "name": "@onememory-ai/security",
   "version": "0.1.0",
   "description": "onememory security core: secret detection & redaction at ingest, path exclusions, and the 100%-local privacy gate",
   "license": "Apache-2.0",
@@ -15,12 +15,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onememory/core": "workspace:*",
+    "@onememory-ai/core": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@onememory/mcp": "workspace:*",
-    "@onememory/storage": "workspace:*",
+    "@onememory-ai/mcp": "workspace:*",
+    "@onememory-ai/storage": "workspace:*",
     "@types/bun": "^1.4.2"
   }
 }

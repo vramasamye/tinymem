@@ -165,7 +165,7 @@ describe('OpenCode wire — opencode.json mcp entries', () => {
   test('a local entry requires a command string array', () => {
     const valid = OpenCodeMcpLocalEntrySchema.safeParse({
       type: 'local',
-      command: ['bun', 'node_modules/@onememory/mcp/src/bin.ts'],
+      command: ['bun', 'node_modules/@onememory-ai/mcp/src/bin.ts'],
       environment: { ONEMEMORY_MCP_AGENT_ID: 'opencode' },
       enabled: true,
     });

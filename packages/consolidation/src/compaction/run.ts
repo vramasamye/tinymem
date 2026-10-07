@@ -26,8 +26,8 @@ import type {
   EventsCompactionReport,
   NewEventDigest,
   StoredEvent,
-} from '@onememory/core';
-import { resolveEventsCompactionConfig } from '@onememory/core';
+} from '@onememory-ai/core';
+import { resolveEventsCompactionConfig } from '@onememory-ai/core';
 
 import { errorMessage } from '../util';
 import { compactionCutoffs, planBatch } from './plan';
@@ -35,7 +35,7 @@ import { buildEventDigest } from './summary';
 
 /** What `runEventsCompaction` needs. Everything but the compactor is optional. */
 export interface EventsCompactionInput {
-  /** The storage port implementation (`createEventsCompactor(db)` from `@onememory/storage`). */
+  /** The storage port implementation (`createEventsCompactor(db)` from `@onememory-ai/storage`). */
   compactor: EventsCompactor;
   /** Project scope: a project id compacts one project; `undefined` compacts every scope. */
   scope?: { project_id?: string };

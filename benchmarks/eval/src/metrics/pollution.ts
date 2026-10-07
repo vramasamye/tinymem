@@ -14,7 +14,7 @@
  *    deterministic local vectors, same type and same project (mirroring the M14 near-duplicate
  *    merge gate's scope rule). Offline there is no embedder, so the vectors are lowercased
  *    character-trigram term counts — a lexical proxy for the embedder cosine, computed with the
- *    repository's own `cosineSimilarity` (`@onememory/storage`). Same-content memories cannot
+ *    repository's own `cosineSimilarity` (`@onememory-ai/storage`). Same-content memories cannot
  *    exist (ingest dedupes on content hash), so a pair here means near-identical wording the
  *    merge pass left behind (its vector-gated offline skip, or a true miss with an embedder).
  *
@@ -27,7 +27,7 @@
  * never carry per-run uuids).
  */
 
-import { cosineSimilarity } from '@onememory/storage';
+import { cosineSimilarity } from '@onememory-ai/storage';
 
 /** The duplicate-detection cosine gate — the M14 near-duplicate merge default (`run.ts`). */
 export const POLLUTION_DUPLICATE_COSINE = 0.97;
