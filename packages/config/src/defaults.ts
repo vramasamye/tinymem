@@ -106,6 +106,10 @@ security:
 #   .pi/skills (Pi)   .agents/skills (Codex/Cursor/Pi)   ~/.claude/skills (global, any runtime)
 # Per-run overrides: 'onemem skills promote <id> --runtime <id>' or '--dir <path>'.
 skills: {}
+
+# Markdown export (ADR-0013): where 'onemem export' writes the git-diffable projection of the
+# store. Absent dir → <project root>/memory. A ~/... value resolves against HOME.
+export: {}
 `;
 }
 

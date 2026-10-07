@@ -213,6 +213,18 @@ export const SkillsSectionSchema = z.strictObject({
 });
 export type SkillsSection = z.infer<typeof SkillsSectionSchema>;
 
+/**
+ * Markdown export surface (ADR-0013): `onemem export` renders the store as a git-diffable
+ * Markdown tree; the DB stays canonical and nothing reads the export back. Absent dir →
+ * `<project root>/memory`. A `~/...` value resolves against HOME. Per-run `--dir <path>`
+ * overrides it.
+ */
+export const ExportSectionSchema = z.strictObject({
+  /** Default directory `onemem export` writes into. Absent → `<project root>/memory`. */
+  dir: identifier.optional(),
+});
+export type ExportSection = z.infer<typeof ExportSectionSchema>;
+
 // ---------------------------------------------------------------------------
 // Root schema + fail-closed cross-field rules
 // ---------------------------------------------------------------------------
@@ -226,6 +238,7 @@ const RootShape = {
   daemon: DaemonSectionSchema.default(() => DaemonSectionSchema.parse({})),
   security: SecuritySectionSchema.default(() => SecuritySectionSchema.parse({})),
   skills: SkillsSectionSchema.default(() => SkillsSectionSchema.parse({})),
+  export: ExportSectionSchema.default(() => ExportSectionSchema.parse({})),
 };
 
 /** One actionable validation failure (path + message; never a secret value). */

@@ -77,6 +77,16 @@ describe('strict schema validation', () => {
     expect(result.success).toBeFalse();
   });
 
+  test('export.dir is optional and accepts a project-relative or ~/global export root', () => {
+    expect(parseConfig({ version: 1, export: { dir: 'docs/memory' } }).export.dir).toBe('docs/memory');
+    expect(parseConfig({ version: 1, export: { dir: '~/memory' } }).export.dir).toBe('~/memory');
+    expect(parseConfig({ version: 1, export: {} }).export.dir).toBeUndefined();
+  });
+
+  test('an empty export.dir is rejected (a directory, not a blank string)', () => {
+    expect(safeParseConfig({ version: 1, export: { dir: '' } }).success).toBeFalse();
+  });
+
   test('an unknown key is rejected with its path (a typo is not forward compatibility)', () => {
     const result = safeParseConfig({ version: 1, embedding: { provider: 'ollama' } });
     expect(result.success).toBeFalse();
