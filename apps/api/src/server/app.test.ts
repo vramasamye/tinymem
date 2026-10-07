@@ -20,6 +20,7 @@ import type {
   ProjectListResult,
   PurgeOutcome,
   RememberOutcome,
+  SkillSummary,
   StatsResult,
 } from '../runtime/types';
 import type { MemorySearchRequest, MemorySearchResponse, ProjectRecord } from '@onememory/core';
@@ -28,8 +29,27 @@ import { createApiApp } from './app';
 
 const PROJECT_ID = '0195a7f0-9f5e-7a1d-bc2d-000000000001';
 const MEMORY_ID = '0195a7f0-9f5e-7a1d-bc2d-000000000002';
+const SKILL_ID = '0195a7f0-9f5e-7a1d-bc2d-000000000003';
+const SKILL_MARKDOWN = '---\nname: test-skill\ndescription: a test skill\n---\n\n# Test skill\n';
 
 const iso = '2026-10-01T12:00:00.000Z';
+
+const skillSummary: SkillSummary = {
+  id: SKILL_ID,
+  project_id: PROJECT_ID,
+  name: 'test-skill',
+  description: 'a test skill',
+  version: '1.0.0',
+  status: 'candidate',
+  path: 'skills/test-skill/SKILL.md',
+  usage_count: 0,
+  success_rate: null,
+  evidence_count: 1,
+  verified_at: iso,
+  source_failure_ids: [],
+  created_at: iso,
+  updated_at: iso,
+};
 
 const project: ProjectRecord = {
   id: PROJECT_ID,
@@ -194,6 +214,8 @@ interface Scripted {
   projectListResult?: ProjectListResult;
   pageOptions?: MemoryPageOptions;
   consolidateInput?: Record<string, unknown>;
+  promoteInput?: Record<string, unknown>;
+  deprecateInput?: Record<string, unknown>;
 }
 
 function fakeBackend(script: Scripted = {}): OnememoryBackend {
@@ -252,6 +274,39 @@ function fakeBackend(script: Scripted = {}): OnememoryBackend {
         status: 'pending',
         note: 'queued',
       };
+    },
+    listSkills: async (projectId) => ({
+      project_id: projectId,
+      skills: [skillSummary],
+      warnings: [],
+    }),
+    reviewSkill: async (projectId, skillId) => {
+      if (skillId !== SKILL_ID) throw new BackendError(`skill ${skillId} is not in project`, 'not_found');
+      return {
+        project_id: projectId,
+        skill: skillSummary,
+        markdown: SKILL_MARKDOWN,
+        audit: [],
+        unresolved_failure_ids: [],
+      };
+    },
+    promoteSkill: async (input) => {
+      script.promoteInput = { ...input };
+      if (input.dir !== undefined && input.runtime !== undefined) {
+        throw new BackendError('pass either dir or runtime, not both', 'invalid_request');
+      }
+      return {
+        project_id: input.project_id,
+        skill: skillSummary,
+        written_path: '/tmp/skills/test-skill/SKILL.md',
+        skills_root: '/tmp/skills',
+        skills_root_source: input.runtime === undefined ? 'dir-flag' : 'runtime-flag',
+        markdown_bytes: SKILL_MARKDOWN.length,
+      };
+    },
+    deprecateSkill: async (input) => {
+      script.deprecateInput = { ...input };
+      return { project_id: input.project_id, skill: skillSummary };
     },
     close: async () => {},
   };
@@ -315,6 +370,10 @@ describe('system endpoints', () => {
       '/v1/projects/{id}/memories/{memoryId}/purge',
       '/v1/projects/{id}/stats',
       '/v1/projects/{id}/consolidate',
+      '/v1/projects/{id}/skills',
+      '/v1/projects/{id}/skills/{skillId}',
+      '/v1/projects/{id}/skills/{skillId}/promote',
+      '/v1/projects/{id}/skills/{skillId}/deprecate',
     ]) {
       expect(document.paths[path]).toBeDefined();
     }
@@ -593,6 +652,69 @@ describe('consolidation', () => {
   test('an unknown key in the body is rejected (strict requests)', async () => {
     const response = await post(`/v1/projects/${PROJECT_ID}/consolidate`, { force: true });
     expect(response.status).toBe(400);
+  });
+});
+
+describe('skills review surface', () => {
+  const skillPath = `/v1/projects/${PROJECT_ID}/skills/${SKILL_ID}`;
+
+  test('GET skills lists the project review queue', async () => {
+    const response = await get(`/v1/projects/${PROJECT_ID}/skills`);
+    expect(response.status).toBe(200);
+    const payload = await body(response);
+    expect(payload.project_id).toBe(PROJECT_ID);
+    expect((payload.skills as Array<{ id: string }>).map((skill) => skill.id)).toEqual([SKILL_ID]);
+  });
+
+  test('GET one skill returns the SKILL.md bytes; an unknown skill is a typed 404', async () => {
+    const response = await get(skillPath);
+    expect(response.status).toBe(200);
+    expect((await body(response)).markdown).toBe(SKILL_MARKDOWN);
+
+    const missing = await get(`/v1/projects/${PROJECT_ID}/skills/${MEMORY_ID}`);
+    expect(missing.status).toBe(404);
+  });
+
+  test('a skill id that is not a UUID is a 400 (param validation)', async () => {
+    const response = await get(`/v1/projects/${PROJECT_ID}/skills/not-a-uuid`);
+    expect(response.status).toBe(400);
+  });
+
+  test('promote forwards the write target and note with the path ids', async () => {
+    const script: Scripted = {};
+    const response = await post(`${skillPath}/promote`, { runtime: 'codex', note: 'looks right' }, script);
+    expect(response.status).toBe(200);
+    expect(script.promoteInput).toMatchObject({
+      project_id: PROJECT_ID,
+      skill_id: SKILL_ID,
+      runtime: 'codex',
+      note: 'looks right',
+    });
+    const payload = await body(response);
+    expect(payload.written_path).toBe('/tmp/skills/test-skill/SKILL.md');
+    expect(payload.skills_root_source).toBe('runtime-flag');
+  });
+
+  test('promote with both dir and runtime is a 400 from the backend', async () => {
+    const response = await post(`${skillPath}/promote`, { dir: '/tmp/x', runtime: 'codex' });
+    expect(response.status).toBe(400);
+  });
+
+  test('promote rejects unknown body keys (strict requests)', async () => {
+    const response = await post(`${skillPath}/promote`, { force: true });
+    expect(response.status).toBe(400);
+  });
+
+  test('deprecate requires a note and forwards it', async () => {
+    const missing = await post(`${skillPath}/deprecate`, {});
+    expect(missing.status).toBe(400);
+    const empty = await post(`${skillPath}/deprecate`, { note: '' });
+    expect(empty.status).toBe(400);
+
+    const script: Scripted = {};
+    const response = await post(`${skillPath}/deprecate`, { note: 'wrong fix' }, script);
+    expect(response.status).toBe(200);
+    expect(script.deprecateInput).toEqual({ project_id: PROJECT_ID, skill_id: SKILL_ID, note: 'wrong fix' });
   });
 });
 

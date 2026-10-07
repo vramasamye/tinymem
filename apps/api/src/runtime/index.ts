@@ -75,6 +75,14 @@ export {
 
 export { createLocalBackend, requireProjectId, type LocalBackendOptions } from './local-backend';
 
+export {
+  deprecateSkill,
+  listProjectSkills,
+  promoteSkill,
+  reviewSkill,
+  summarizeSkill,
+} from './skills-service';
+
 export { createHttpBackend, type HttpBackendOptions } from './http-backend';
 
 export {
@@ -101,6 +109,8 @@ export {
   type ConsolidateOutcome,
   type ContextOptions,
   type CreateProjectInput,
+  type DeprecateSkillInput,
+  type DeprecateSkillResult,
   type ForgetInput,
   type ForgetOutcome,
   type HealthReport,
@@ -109,6 +119,11 @@ export {
   type IngestResult,
   type InspectResult,
   type ListOptions,
+  type PromoteSkillInput,
+  type PromoteSkillResult,
+  type SkillListResult,
+  type SkillReviewResult,
+  type SkillSummary,
   DEFAULT_MEMORY_PAGE_SIZE,
   MAX_MEMORY_PAGE_SIZE,
   MEMORY_PAGE_INCLUDE,

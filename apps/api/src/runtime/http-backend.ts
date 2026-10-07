@@ -16,6 +16,12 @@ import {
   type ConsolidateInput,
   type ConsolidateOutcome,
   type CreateProjectInput,
+  type DeprecateSkillInput,
+  type DeprecateSkillResult,
+  type PromoteSkillInput,
+  type PromoteSkillResult,
+  type SkillListResult,
+  type SkillReviewResult,
   type ForgetInput,
   type ForgetOutcome,
   type HealthReport,
@@ -213,6 +219,27 @@ export function createHttpBackend(options: HttpBackendOptions): OnememoryBackend
           ...(input.actor === undefined ? {} : { actor: input.actor }),
         },
       }),
+
+    listSkills: (projectId: string) => call<SkillListResult>('GET', `/v1/projects/${encode(projectId)}/skills`),
+
+    reviewSkill: (projectId: string, skillId: string) =>
+      call<SkillReviewResult>('GET', `/v1/projects/${encode(projectId)}/skills/${encode(skillId)}`),
+
+    promoteSkill: (input: PromoteSkillInput) =>
+      call<PromoteSkillResult>('POST', `/v1/projects/${encode(input.project_id)}/skills/${encode(input.skill_id)}/promote`, {
+        body: {
+          ...(input.dir === undefined ? {} : { dir: input.dir }),
+          ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
+          ...(input.note === undefined ? {} : { note: input.note }),
+        },
+      }),
+
+    deprecateSkill: (input: DeprecateSkillInput) =>
+      call<DeprecateSkillResult>(
+        'POST',
+        `/v1/projects/${encode(input.project_id)}/skills/${encode(input.skill_id)}/deprecate`,
+        { body: { note: input.note } },
+      ),
 
     async close() {
       // The daemon owns its lifetime; the client has nothing to release.

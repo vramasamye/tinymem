@@ -14,6 +14,7 @@
 
 import type { MemorySearchRequest, MemorySearchResponse } from '@onememory/core';
 import type { LlmProfileSummary } from '@onememory/config';
+import type { SkillStatus, SkillsTargetSource } from '@onememory/core';
 import type {
   DurableMemoryType,
   EntityRecord,
@@ -250,6 +251,76 @@ export interface ConsolidateOutcome {
 /**
  * Everything the CLI (and later adapters through the REST API) can ask onememory to do.
  */
+/**
+ * The list/detail projection of a `skills` row (M15 follow-up 4): wire-shaped, no payload
+ * internals. `path` is the canonical project-relative identity; the write root is chosen at
+ * promotion time and reported as `written_path`.
+ */
+export interface SkillSummary {
+  id: string;
+  project_id: string | null;
+  name: string;
+  description: string;
+  version: string;
+  status: SkillStatus;
+  path: string;
+  usage_count: number;
+  success_rate: number | null;
+  evidence_count: number;
+  verified_at: string;
+  source_failure_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillListResult {
+  project_id: string;
+  skills: SkillSummary[];
+  warnings: string[];
+}
+
+/** The review bundle: the row, the SKILL.md bytes as promotion would write them, the audit. */
+export interface SkillReviewResult {
+  project_id: string;
+  skill: SkillSummary;
+  markdown: string;
+  audit: MemoryEventRecord[];
+  unresolved_failure_ids: string[];
+}
+
+export interface PromoteSkillInput {
+  project_id: string;
+  skill_id: string;
+  /** Explicit write directory (highest precedence). */
+  dir?: string;
+  /** Write into this runtime's canonical skills root. */
+  runtime?: string;
+  note?: string;
+  /** `$HOME` for `~/` expansion. */
+  home?: string | null;
+}
+
+export interface PromoteSkillResult {
+  project_id: string;
+  skill: SkillSummary;
+  written_path: string;
+  skills_root: string;
+  skills_root_source: SkillsTargetSource;
+  markdown_bytes: number;
+}
+
+export interface DeprecateSkillInput {
+  project_id: string;
+  skill_id: string;
+  /** Why — required and audited (`deprecated` is terminal). */
+  note: string;
+}
+
+export interface DeprecateSkillResult {
+  project_id: string;
+  skill: SkillSummary;
+}
+
 export interface OnememoryBackend {
   readonly kind: 'local' | 'remote';
   /** HTTP base URL in remote mode; `null` when the backend owns storage in-process. */
@@ -284,5 +355,13 @@ export interface OnememoryBackend {
    * the API/CLI never awaits a pass.
    */
   consolidate(input: ConsolidateInput): Promise<ConsolidateOutcome>;
+  /** The project's skills (review queue), newest-updated first. */
+  listSkills(projectId: string): Promise<SkillListResult>;
+  /** The review bundle for one skill (row + SKILL.md bytes + audit). */
+  reviewSkill(projectId: string, skillId: string): Promise<SkillReviewResult>;
+  /** Write the artifact and flip `candidate → verified`, audited. */
+  promoteSkill(input: PromoteSkillInput): Promise<PromoteSkillResult>;
+  /** Reject or retire a skill (`→ deprecated`, terminal), audited; any artifact is kept. */
+  deprecateSkill(input: DeprecateSkillInput): Promise<DeprecateSkillResult>;
   close(): Promise<void>;
 }

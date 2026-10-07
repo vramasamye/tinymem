@@ -26,6 +26,12 @@ import {
   requireProject,
 } from './memory-service';
 import { computeStats, type StatsOptions } from './stats';
+import {
+  deprecateSkill,
+  listProjectSkills,
+  promoteSkill,
+  reviewSkill,
+} from './skills-service';
 import { BackendError, type ConsolidateOutcome, type HealthReport, type OnememoryBackend } from './types';
 import { ONEMEMORY_VERSION } from './version';
 
@@ -190,6 +196,22 @@ export function createLocalBackend(
             ? `a ${kind} pass for this project is already ${result.job.status}; it will run when the daemon worker picks it up`
             : `queued a ${kind} pass; it runs when the daemon worker picks it up`,
       };
+    },
+
+    listSkills(projectId) {
+      return listProjectSkills(runtime, projectId);
+    },
+
+    reviewSkill(projectId, skillId) {
+      return reviewSkill(runtime, projectId, skillId);
+    },
+
+    promoteSkill(input) {
+      return promoteSkill(runtime, input);
+    },
+
+    deprecateSkill(input) {
+      return deprecateSkill(runtime, input);
     },
 
     async close() {

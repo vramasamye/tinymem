@@ -20,6 +20,7 @@ import {
   MemorySearchRequestSchema,
   MemorySearchResponseSchema,
   RedactionSchema,
+  SKILL_STATUSES,
 } from '@onememory/core';
 
 import { MAX_MEMORY_PAGE_SIZE, MEMORY_PAGE_INCLUDE } from '../runtime/types';
@@ -256,6 +257,8 @@ export const ConsolidateResponseSchema = z
   })
   .openapi('ConsolidateResponse');
 
+// ---------------------------------------------------------------- skills (M15 review surface)
+
 export const MemoryEventRecordSchema = z
   .looseObject({
     id: z.uuid(),
@@ -268,6 +271,84 @@ export const MemoryEventRecordSchema = z
     at: isoTimestamp,
   })
   .openapi('MemoryEventRecord');
+
+export const SkillSummarySchema = z
+  .strictObject({
+    id: z.uuid(),
+    project_id: z.uuid().nullable(),
+    name: z.string().min(1),
+    description: z.string(),
+    version: z.string(),
+    status: z.enum(SKILL_STATUSES),
+    /** The canonical project-relative identity, `skills/<name>/SKILL.md`. */
+    path: z.string(),
+    usage_count: z.number().int().min(0),
+    success_rate: z.number().min(0).max(1).nullable(),
+    evidence_count: z.number().int().min(0),
+    verified_at: isoTimestamp,
+    source_failure_ids: z.array(z.uuid()),
+    created_at: isoTimestamp,
+    updated_at: isoTimestamp,
+  })
+  .openapi('SkillSummary');
+
+export const SkillListResponseSchema = z
+  .strictObject({
+    project_id: z.uuid(),
+    skills: z.array(SkillSummarySchema),
+    warnings: z.array(z.string()),
+  })
+  .openapi('SkillListResponse');
+
+export const SkillReviewResponseSchema = z
+  .strictObject({
+    project_id: z.uuid(),
+    skill: SkillSummarySchema,
+    /** The SKILL.md bytes exactly as promotion would write them. */
+    markdown: z.string(),
+    audit: z.array(MemoryEventRecordSchema),
+    /** Cited failures that could no longer be re-read — never silent. */
+    unresolved_failure_ids: z.array(z.uuid()),
+  })
+  .openapi('SkillReviewResponse');
+
+export const PromoteSkillRequestSchema = z
+  .strictObject({
+    /** Explicit write directory (highest precedence; mutually exclusive with `runtime`). */
+    dir: z.string().min(1).optional(),
+    /** Write into this runtime's canonical skills root: claude-code | codex | cursor | pi | opencode. */
+    runtime: z.string().min(1).optional(),
+    /** Why — recorded in the audit trail. */
+    note: z.string().max(500).optional(),
+  })
+  .openapi('PromoteSkillRequest');
+
+export const PromoteSkillResponseSchema = z
+  .strictObject({
+    project_id: z.uuid(),
+    skill: SkillSummarySchema,
+    written_path: z.string().min(1),
+    skills_root: z.string().min(1),
+    skills_root_source: z.enum(['dir-flag', 'runtime-flag', 'config', 'project-default']),
+    markdown_bytes: z.number().int().min(0),
+  })
+  .openapi('PromoteSkillResponse');
+
+export const DeprecateSkillRequestSchema = z
+  .strictObject({
+    /** Why — required: `deprecated` is terminal and the reason is audited. */
+    note: z.string().min(1).max(500),
+  })
+  .openapi('DeprecateSkillRequest');
+
+export const DeprecateSkillResponseSchema = z
+  .strictObject({ project_id: z.uuid(), skill: SkillSummarySchema })
+  .openapi('DeprecateSkillResponse');
+
+export const SkillIdParamSchema = z.object({
+  id: z.uuid().openapi({ param: { name: 'id', in: 'path' } }),
+  skillId: z.uuid().openapi({ param: { name: 'skillId', in: 'path' } }),
+});
 
 export const EntityRecordSchema = z
   .looseObject({

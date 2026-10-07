@@ -22,6 +22,13 @@ import { BackendError, type MemoryPageInclude, type OnememoryBackend } from '../
 import {
   ConsolidateRequestSchema,
   ConsolidateResponseSchema,
+  DeprecateSkillRequestSchema,
+  DeprecateSkillResponseSchema,
+  PromoteSkillRequestSchema,
+  PromoteSkillResponseSchema,
+  SkillIdParamSchema,
+  SkillListResponseSchema,
+  SkillReviewResponseSchema,
   ContextQuerySchema,
   CreateProjectRequestSchema,
   DoctorReportSchema,
@@ -590,6 +597,112 @@ export function createApiApp(deps: ApiDeps): OpenAPIHono {
           ...(body.actor === undefined ? {} : { actor: body.actor }),
         }),
         202,
+      );
+    },
+  );
+
+  // ---------------------------------------------------------------- skills (M15 review surface)
+  // The review surface the web UI renders (M15 follow-up 4): the queue, the review bundle, and the
+  // two audited flips. Promotion is synchronous here (unlike consolidation): it writes one file
+  // and flips one row — cheap, and the caller wants the written path back. The skills root is
+  // chosen per call (`runtime` > `dir` per the resolver), which is why the CLI no longer has a
+  // monopoly on write-target selection.
+
+  add(
+    createRoute({
+      method: 'get',
+      path: '/v1/projects/{id}/skills',
+      tags: ['system'],
+      summary: 'List the project skills (the review queue), newest-updated first',
+      request: { params: IdParamSchema },
+      responses: {
+        200: { content: { 'application/json': { schema: SkillListResponseSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id } = c.req.valid('param');
+      return respond(c, SkillListResponseSchema, await backend.listSkills(id), 200);
+    },
+  );
+
+  add(
+    createRoute({
+      method: 'get',
+      path: '/v1/projects/{id}/skills/{skillId}',
+      tags: ['system'],
+      summary: 'The skill review bundle: the row, the SKILL.md bytes, the audit trail',
+      request: { params: SkillIdParamSchema },
+      responses: {
+        200: { content: { 'application/json': { schema: SkillReviewResponseSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id, skillId } = c.req.valid('param');
+      return respond(c, SkillReviewResponseSchema, await backend.reviewSkill(id, skillId), 200);
+    },
+  );
+
+  add(
+    createRoute({
+      method: 'post',
+      path: '/v1/projects/{id}/skills/{skillId}/promote',
+      tags: ['system'],
+      summary: 'Write the SKILL.md and verify the skill (candidate → verified)',
+      request: {
+        params: SkillIdParamSchema,
+        body: { content: { 'application/json': { schema: PromoteSkillRequestSchema } } },
+      },
+      responses: {
+        200: { content: { 'application/json': { schema: PromoteSkillResponseSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id, skillId } = c.req.valid('param');
+      const body = c.req.valid('json');
+      return respond(
+        c,
+        PromoteSkillResponseSchema,
+        await backend.promoteSkill({
+          project_id: id,
+          skill_id: skillId,
+          ...(body.dir === undefined ? {} : { dir: body.dir }),
+          ...(body.runtime === undefined ? {} : { runtime: body.runtime }),
+          ...(body.note === undefined ? {} : { note: body.note }),
+          // The server process expands `~` against its own $HOME, which is where a daemon-mode
+          // deployment writes. The web UI never passes `dir`, so this only affects API callers.
+          home: process.env['HOME'] ?? null,
+        }),
+        200,
+      );
+    },
+  );
+
+  add(
+    createRoute({
+      method: 'post',
+      path: '/v1/projects/{id}/skills/{skillId}/deprecate',
+      tags: ['system'],
+      summary: 'Reject or retire a skill (→ deprecated, terminal), audited',
+      request: {
+        params: SkillIdParamSchema,
+        body: { content: { 'application/json': { schema: DeprecateSkillRequestSchema } } },
+      },
+      responses: {
+        200: { content: { 'application/json': { schema: DeprecateSkillResponseSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const { id, skillId } = c.req.valid('param');
+      const body = c.req.valid('json');
+      return respond(
+        c,
+        DeprecateSkillResponseSchema,
+        await backend.deprecateSkill({ project_id: id, skill_id: skillId, note: body.note }),
+        200,
       );
     },
   );
