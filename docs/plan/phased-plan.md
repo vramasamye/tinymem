@@ -193,8 +193,11 @@ everything the engine claims.
 Definition of done (Wave B):
 - [ ] `npx onememory init` scaffolds a scratch project with no repo checkout; `onemem doctor`
       passes there.
-- [ ] Durable writes can carry user scope; user-level memories answer from any project; a
-      nested cwd resolves to its project; each runtime identifies itself in the audit trail.
+- [x] Durable writes can carry user scope; user-level memories answer from any project; a
+      nested cwd resolves to its project; each runtime identifies itself in the audit trail. — M17
+      (`mission/17-scope-identity`, merged to main): report
+      `docs/plan/mission-reports/mission-17-scope-identity.md`; ADR-0004 and ADR-0010 amendments
+      record the scope-admission and per-runtime-identity decisions.
 - [x] `onemem export` renders every durable memory with provenance; a re-run is byte-identical;
       nothing reads the export back as a source of truth; the session-index artifact stays under
       its cap or the writer errors (Claude Code index discipline). — M18
@@ -202,8 +205,9 @@ Definition of done (Wave B):
       `docs/plan/mission-reports/mission-18-export.md`.
 - [ ] Packages published; CI smoke-tests the published artifacts.
 
-Status (2026-10-07): M18 closed first (the export surface is the trust surface the rest of the
-release rides). M16 (publishing) and M17 (scope & identity) remain.
+Status (2026-10-07): M18 and M17 closed; M16 (publishing) is the last Wave B item. M17 also closed
+a retrieval correctness bug the Wave B wording implied: project-scoped searches were soft-scoped,
+so other projects' rows could rank into answers.
 
 ### Wave A — data correctness
 

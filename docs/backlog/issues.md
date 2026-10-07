@@ -776,6 +776,27 @@ Signature recurrence matching → SKILL.md candidates → review/promote flow �
 
 ---
 
+## Cross-mission follow-ups — raised by M17 (scope & identity)
+
+Merged 2026-10-07 (mission report: `docs/plan/mission-reports/mission-17-scope-identity.md`).
+Scope admission is hard and unioned (ADR-0004 amendment), nested cwds resolve to their project,
+and the daemon URL carries each runtime's `?agent=` identity (ADR-0010 amendment). Residual items:
+
+1. **Entity-name resolution does not know the scope union.** `searchRepo.listScopeEntities` lists
+   the project's entities (`projectId`) or the global ones (`null`); the M17 union added the
+   caller's user-level rows to candidate admission but not to the entity index. Consequence: with
+   `entities: ["<name>"]` in a project-scoped request, an entity bound ONLY to a user-level memory
+   resolves as not-found — the honest empty result path, not a leak (documented in
+   `docs/architecture/retrieval.md` §1 Stage 2). Closing it means a union arm in
+   `listScopeEntities` + `EntityIndex` keying by `(projectId, userId)`, plus the storage tests.
+2. **Server-profile clients keep the default identity.** The per-runtime `?agent=` id rides the
+   daemon URL that `onemem init` scaffolds (embedded profile). The `server` profile scaffolds no
+   MCP entry at all — an operator's hand-written stdio entry reports `onememory-mcp` unless they
+   set `ONEMEMORY_MCP_AGENT_ID` (already honored by the MCP config). Either scaffold stdio entries
+   with that env var or document the variable in the runtime matrix.
+
+---
+
 ## Post-1.0 follow-ups (still out of scope until 1.0 ships)
 
 The post-1.0 list from the phased plan is unchanged; we crossed the 1.0 line:
