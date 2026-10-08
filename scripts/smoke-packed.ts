@@ -84,7 +84,7 @@ async function run(cmd: string[], cwd: string): Promise<{ exitCode: number; stdo
 
 /** The installed copies of OUR packages (third-party packages are none of our business). */
 function installedOnememoryPackages(nodeModules: string): string[] {
-  const dirs = [join(nodeModules, 'onememory')];
+  const dirs: string[] = [];
   const scope = join(nodeModules, '@onememory-ai');
   if (existsSync(scope)) {
     for (const entry of readdirSync(scope, { withFileTypes: true })) {
@@ -137,7 +137,7 @@ try {
   check(install.exitCode === 0, `npm install exits 0${install.exitCode === 0 ? '' : ` (${install.stderr.trim().slice(0, 400)})`}`);
 
   console.log('\nartifact hygiene');
-  const installed = join(scratch, 'node_modules', 'onememory');
+  const installed = join(scratch, 'node_modules', '@onememory-ai', 'cli');
   check(existsSync(join(installed, 'dist', 'bin.js')), 'the CLI ships dist/bin.js');
   if (existsSync(join(installed, 'dist', 'bin.js'))) {
     const shebang = readFileSync(join(installed, 'dist', 'bin.js'), 'utf8').split('\n')[0]!;
@@ -183,13 +183,13 @@ try {
   check(search.exitCode === 0, `onemem search exits 0${search.exitCode === 0 ? '' : ` (${search.stderr.trim().slice(0, 400)})`}`);
   check(search.stdout.includes('stores memories under node'), 'the remembered text comes back from search');
 
-  console.log('\nnpx onememory (the documented install path, Wave B DoD)');
+  console.log('\nnpx @onememory-ai/cli (the documented install path, Wave B DoD)');
   const npxProject = join(scratch, 'npx-project');
   mkdirSync(npxProject, { recursive: true });
-  const npxInit = await run(['npx', '--no-install', 'onememory', 'init', '--cwd', npxProject, '--name', 'npx-smoke', '--preset', 'local'], scratch);
-  check(npxInit.exitCode === 0, `npx onememory init exits 0${npxInit.exitCode === 0 ? '' : ` (${npxInit.stderr.trim().slice(0, 400)})`}`);
-  const npxDoctor = await run(['npx', '--no-install', 'onememory', 'doctor', '--cwd', npxProject, '--json', '--no-probe'], scratch);
-  check(npxDoctor.exitCode === 0, `npx onememory doctor exits 0${npxDoctor.exitCode === 0 ? '' : ` (${npxDoctor.stderr.trim().slice(0, 400)})`}`);
+  const npxInit = await run(['npx', '--no-install', '@onememory-ai/cli', 'init', '--cwd', npxProject, '--name', 'npx-smoke', '--preset', 'local'], scratch);
+  check(npxInit.exitCode === 0, `npx @onememory-ai/cli init exits 0${npxInit.exitCode === 0 ? '' : ` (${npxInit.stderr.trim().slice(0, 400)})`}`);
+  const npxDoctor = await run(['npx', '--no-install', '@onememory-ai/cli', 'doctor', '--cwd', npxProject, '--json', '--no-probe'], scratch);
+  check(npxDoctor.exitCode === 0, `npx @onememory-ai/cli doctor exits 0${npxDoctor.exitCode === 0 ? '' : ` (${npxDoctor.stderr.trim().slice(0, 400)})`}`);
 } finally {
   if (failures.length > 0) {
     console.log(`\nsmoke: ${failures.length} check(s) FAILED — scratch kept at ${scratch}`);

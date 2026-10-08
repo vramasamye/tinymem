@@ -2,9 +2,10 @@
  * Scope guard (M19, ADR-0014 amendment): every internal package lives under ONE scope.
  *
  * The npm org `onememory` was already claimed when the release was prepared, so the workspace
- * scope is `@onememory-ai` while the CLI package keeps the unscoped name `onememory` (that is the
- * name `npx onememory init` depends on). A half-done rename — one manifest left behind, one doc
- * still advertising the old scope — is exactly the kind of thing that passes a build and breaks an
+ * scope is `@onememory-ai`. The CLI lives in that scope too (`@onememory-ai/cli`): the registry
+ * refused the unscoped name as too similar to an existing package, and names inside our own scope
+ * are not subject to that check. A half-done rename — one manifest left behind, one doc still
+ * advertising the old name — is exactly the kind of thing that passes a build and breaks an
  * install, so it is asserted here against the real files.
  */
 
@@ -15,7 +16,10 @@ import { publishableDirs, readManifest } from './manifest';
 
 const repoRoot = join(import.meta.dir, '..', '..');
 export const SCOPE = '@onememory-ai';
-export const CLI_PACKAGE = 'onememory';
+export const CLI_PACKAGE = `${SCOPE}/cli`;
+export const INSTALL_COMMAND = `npx ${CLI_PACKAGE} init`;
+/** The refused unscoped CLI name, fragmented for the same reason as the abandoned scope below. */
+const REFUSED_INSTALL_PATTERN = new RegExp(`npx ${'one' + 'memory'}(?![-\\w/])`);
 
 /**
  * The ABANDONED scope, assembled from fragments on purpose: written as one literal it is the old
@@ -60,13 +64,20 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 }
 
 describe('the workspace scope', () => {
-  test('every package name is the new scope, except the CLI package', () => {
+  test('every published package name is in the new scope, the CLI included', () => {
     const names = publishableDirs(repoRoot).map((dir) => readManifest(repoRoot, dir).name);
-    const wrongScope = names.filter((name) => name.startsWith('@') && !name.startsWith(`${SCOPE}/`));
-    expect(wrongScope, `packages still on another scope: ${wrongScope.join(', ')}`).toEqual([]);
-    // The CLI keeps its unscoped name: `npx onememory init` is the documented install path.
+    const outside = names.filter((name) => !name.startsWith(`${SCOPE}/`));
+    // Unscoped names go through the registry's similar-name check; scoped ones do not.
+    expect(outside, `packages outside ${SCOPE}: ${outside.join(', ')}`).toEqual([]);
     expect(names).toContain(CLI_PACKAGE);
-    expect(names.filter((name) => !name.startsWith('@'))).toEqual([CLI_PACKAGE]);
+  });
+
+  test('the root entry docs advertise the scoped install command, never the refused name', () => {
+    for (const doc of ['README.md', 'AGENTS.md']) {
+      const text = readFileSync(join(repoRoot, doc), 'utf8');
+      expect(text, `${doc} must not advertise the refused CLI name`).not.toMatch(REFUSED_INSTALL_PATTERN);
+      expect(text, `${doc} must show ${INSTALL_COMMAND}`).toContain(INSTALL_COMMAND);
+    }
   });
 
   test('no source file still references the abandoned scope', () => {
@@ -85,11 +96,14 @@ describe('the workspace scope', () => {
     const smoke = readFileSync(join(repoRoot, 'scripts', 'smoke-packed.ts'), 'utf8');
     expect(smoke).toContain(`'${SCOPE}'`);
     expect(smoke).not.toMatch(ABANDONED_SCOPE_PATTERN);
+    // The smoke must exercise the documented install command, not the refused name.
+    expect(smoke).toContain(`'${CLI_PACKAGE}'`);
+    expect(smoke).not.toMatch(REFUSED_INSTALL_PATTERN);
     // The scoped-package guard in the manifest tooling keys off the leading '@', not a fixed name.
     expect(existsSync(join(repoRoot, 'scripts', 'lib', 'publish.ts'))).toBe(true);
   });
 
-  test('the unscoped CLI name is untouched in the published manifest', () => {
+  test('the CLI manifest carries the scoped name and the onemem bin', () => {
     const cli = readManifest(repoRoot, 'apps/cli');
     expect(cli.name).toBe(CLI_PACKAGE);
     const bin = cli.bin;

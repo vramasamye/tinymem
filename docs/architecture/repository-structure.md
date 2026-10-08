@@ -128,7 +128,7 @@ its existing engine imports.
 |---|---|---|
 | SDK | `@onememory-ai/sdk` | yes |
 | Core (types/ports) | `@onememory-ai/core` | yes (advanced embedding) |
-| CLI | `onememory` (binary `onemem`) | yes |
+| CLI | `@onememory-ai/cli` (binary `onemem`) | yes |
 | MCP server | `@onememory-ai/mcp` | yes |
 | Adapters | `@onememory-ai/adapter-claude`, `-codex`, `-cursor`, `-pi`, `-opencode` | yes |
 | Others | internal until stable | no |

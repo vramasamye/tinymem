@@ -201,6 +201,26 @@ Decisions:
 The granular token configured during release preparation (`onememorynpm`) has no bypass and
 therefore no publishing use; it is revoked once the trusted publishers are validated.
 
+## Amendment (2026-10-08): the CLI is `@onememory-ai/cli`
+
+The first release published all 17 scoped packages and then the registry refused the unscoped CLI:
+`403 Forbidden — Package name too similar to existing package one-memory`. The residual risk the
+2026-10-07 amendment recorded came true, though through npm's similar-name check rather than an org
+collision. That check does not apply to names inside a scope the publisher owns, so:
+
+- **The CLI package is `@onememory-ai/cli`.** Every published package now lives under one scope;
+  there is no unscoped name left for the registry to refuse. `cli` was chosen over the earlier
+  fallback `@onememory-ai/onememory` because the scope already says "onememory".
+- **The install path is `npx @onememory-ai/cli init`.** npx runs a package's only bin, so the
+  command works unchanged; the binary stays `onemem`. Running the daemon under Bun, where the bin
+  name differs from the package name, is `bunx --bun -p @onememory-ai/cli onemem serve`.
+- **The guard tightens** (`scripts/lib/scope.test.ts`): no publishable package may be unscoped, the
+  smoke must drive `npx @onememory-ai/cli`, and the root entry docs must advertise that command and
+  never the refused one.
+
+Mentions of `npx onememory init` earlier in this ADR and in mission reports are the historical
+record of what was planned; this amendment supersedes them.
+
 ## References
 
 ADR-0001 (stack/runtime), ADR-0002 (embedded profile's single-owner process model),

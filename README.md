@@ -39,7 +39,7 @@ a different premise:
 
 | | |
 |---|---|
-| CLI | `onemem` (`npx onememory init`) |
+| CLI | `onemem` (`npx @onememory-ai/cli init`) |
 | License | Apache-2.0 |
 | Runtime | TypeScript on Bun / Node LTS |
 | Storage | Postgres + pgvector (server) · PGlite embedded (local) |
@@ -50,7 +50,7 @@ a different premise:
 Initialize a project with the local-first defaults. Runtime wiring is opt-in:
 
 ```sh
-npx onememory init --with-claude --with-codex
+npx @onememory-ai/cli init --with-claude --with-codex
 onemem doctor
 onemem serve
 ```

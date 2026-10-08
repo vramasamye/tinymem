@@ -232,7 +232,7 @@ describe('the real workspace', () => {
     const order = publishOrder(packages);
     expect(order.length).toBe(packages.length);
     // The CLI is the entry point: it must come after everything it depends on.
-    expect(order.indexOf('onememory')).toBeGreaterThan(order.indexOf('@onememory-ai/api'));
+    expect(order.indexOf('@onememory-ai/cli')).toBeGreaterThan(order.indexOf('@onememory-ai/api'));
     expect(order.indexOf('@onememory-ai/api')).toBeGreaterThan(order.indexOf('@onememory-ai/core'));
   });
 });
