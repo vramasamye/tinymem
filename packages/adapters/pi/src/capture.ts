@@ -6,9 +6,11 @@
  * send: if the redactor cannot make an event safe, the event does not leave this process.
  *
  * Session-start context injection (ADR-0010 §6: injection beats polling): the extension fetches the
- * daemon's compact project context once per session and delivers it as a steering user message
- * prefixed with the `PI_CONTEXT_INJECTION_PREFIX` sentinel — the translator drops that sentinel on
- * the way back in, so the injection is engine OUTPUT and never becomes memory INPUT.
+ * daemon's compact project context once per session and delivers it as a system-prompt section at
+ * `before_agent_start` (pi's mutable `systemPromptOptions`; mission 23 — the steer-user-message
+ * channel throws there on real pi), prefixed with the `PI_CONTEXT_INJECTION_PREFIX` sentinel — the
+ * translator drops any sentinel-prefixed user message on the way back in, so the injection is engine
+ * OUTPUT and never becomes memory INPUT.
  */
 
 import { isEventPathExcluded, redactEvent } from '@onememory-ai/security';

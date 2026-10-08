@@ -76,10 +76,23 @@ export const PiSessionShutdownEventSchema = z.looseObject({
 });
 export type PiSessionShutdownEvent = z.infer<typeof PiSessionShutdownEventSchema>;
 
-/** `before_agent_start`: the raw user prompt after expansion, before the agent loop. */
+/**
+ * `before_agent_start`: the raw user prompt after expansion, before the agent loop, plus the
+ * MUTABLE normalized `systemPromptOptions` — pi's sanctioned injection channel ("Mutable prompt
+ * sections. Later handlers observe mutations made by earlier handlers"; the runner collects the
+ * mutations into its combined result). Optional, because a pi without the surface must fail soft
+ * in the extension. Verified live against the installed pi 1.0.4 (mission 23): the alternative —
+ * `sendUserMessage` with `deliverAs: "steer"` — throws at this event ("Agent is already
+ * processing a prompt"), because that call only queues while the agent is *streaming*.
+ */
 export const PiBeforeAgentStartEventSchema = z.looseObject({
   type: z.literal('before_agent_start'),
   prompt: z.string(),
+  systemPromptOptions: z
+    .looseObject({
+      sections: z.record(z.string(), z.string()),
+    })
+    .optional(),
 });
 export type PiBeforeAgentStartEvent = z.infer<typeof PiBeforeAgentStartEventSchema>;
 
