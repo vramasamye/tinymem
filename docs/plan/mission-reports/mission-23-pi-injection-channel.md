@@ -75,4 +75,4 @@ user's other extension. It is an environment observation, not a defect here.)
 
 ## Commits
 
-- (recorded on merge)
+- `4b66382` fix(pi): inject the project context as a system-prompt section
