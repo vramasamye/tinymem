@@ -179,7 +179,11 @@ async function publish(plan: ReleasePlan, flags: PublishFlags): Promise<void> {
     if (flags.dryRun) args.push('--dry-run');
     if (flags.otp !== undefined) args.push('--otp', flags.otp);
     try {
-      await $`npm ${args}`.cwd(repoRoot);
+      // npm only runs its browser 2FA flow when stdin and stdout are a TTY;
+      // piped output makes it fail fast with EOTP and a redacted auth URL.
+      const child = Bun.spawn(['npm', ...args], { cwd: repoRoot, stdio: ['inherit', 'inherit', 'inherit'] });
+      const exitCode = await child.exited;
+      if (exitCode !== 0) throw new Error(`release: npm publish ${pkg.name} exited with code ${exitCode}`);
     } catch (error) {
       if (published.length > 0) {
         const next = resumeFrom(selected, published.length);
