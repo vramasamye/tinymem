@@ -40,7 +40,7 @@
       },
     },
     "apps/cli": {
-      "name": "onememory",
+      "name": "@onememory-ai/cli",
       "version": "0.1.0",
       "bin": {
         "onemem": "./src/bin.ts",
@@ -462,6 +462,8 @@
 
     "@onememory-ai/benchmarks": ["@onememory-ai/benchmarks@workspace:benchmarks/eval"],
 
+    "@onememory-ai/cli": ["@onememory-ai/cli@workspace:apps/cli"],
+
     "@onememory-ai/codememory": ["@onememory-ai/codememory@workspace:packages/codememory"],
 
     "@onememory-ai/config": ["@onememory-ai/config@workspace:packages/config"],
@@ -637,8 +639,6 @@
     "node-gyp-build": ["node-gyp-build@4.8.4", "", { "bin": { "node-gyp-build": "bin.js", "node-gyp-build-optional": "optional.js", "node-gyp-build-test": "build-test.js" } }, "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ=="],
 
     "obug": ["obug@2.2.1", "", {}, "sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q=="],
-
-    "onememory": ["onememory@workspace:apps/cli"],
 
     "openapi3-ts": ["openapi3-ts@4.6.1", "", { "dependencies": { "yaml": "^2.9.0" } }, "sha512-XW9MOldkhoICNeXVzzmXzmOW5G73ppOEGmh7fLCqHjgfdEYCGGN+00MlVCeUZgovjjfC56j9tvtDt1zGabNjjA=="],
 

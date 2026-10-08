@@ -1,6 +1,6 @@
 # Release process (npm)
 
-How a commit becomes `npx onememory init` on a user's machine. Decisions live in
+How a commit becomes `npx @onememory-ai/cli init` on a user's machine. Decisions live in
 [ADR-0014](../adr/0014-npm-distribution.md); this is the operational runbook.
 
 ## The shape of a release
@@ -41,10 +41,10 @@ The unit suites run under Bun and import `bun:test`, so they cannot prove Node c
 smoke installs the packed tarballs into a scratch directory with **npm and Node only** (Bun is
 stripped from `PATH` for every child process) and then:
 
-1. `onememory init` scaffolds a scratch project (local preset, offline),
+1. `onemem init` scaffolds a scratch project (local preset, offline),
 2. `onemem doctor --json` reports no failing checks,
 3. `onemem remember` → `onemem search` round-trips a memory through embedded PGlite,
-4. `npx onememory init` + `doctor` — the documented install path,
+4. `npx @onememory-ai/cli init` + `doctor` — the documented install path,
 5. hygiene: `node` shebangs, no `workspace:` specifiers, no `bun` shebangs in the installed files.
 
 CI runs exactly this (`packed-artifacts` job) on every push. It has already paid for itself: the
@@ -56,13 +56,14 @@ path that resolved outside the installed package.
 
 One version across the workspace (currently `0.1.0`, pre-1.0 honest). `release.ts` refuses to run
 if the manifests disagree. Publish order is topological over `@onememory-ai/*` edges, alphabetical
-within a level, and is printed by `release.ts order`; the CLI (`onememory`) is always last.
+within a level, and is printed by `release.ts order`; the CLI (`@onememory-ai/cli`) is always last.
 
-**Scope.** The 17 internal packages publish under `@onememory-ai` — the npm org `onememory` was
-already claimed by a third party when the release was prepared (ADR-0014 amendment). The CLI keeps
-the unscoped name `onememory`, so the documented install path stays `npx onememory init`.
-`scripts/lib/scope.test.ts` enforces both halves; if npm ever rejects the unscoped name, the
-fallback is `@onememory-ai/onememory`.
+**Scope.** All 18 packages publish under `@onememory-ai` — the npm org `onememory` was already
+claimed by a third party (ADR-0014 amendment, 2026-10-07), and the registry refused the unscoped
+CLI name as too similar to an existing package (amendment, 2026-10-08). The CLI is
+`@onememory-ai/cli` with the bin `onemem`, so the documented install path is
+`npx @onememory-ai/cli init`. `scripts/lib/scope.test.ts` enforces that no publishable package is
+unscoped and that the root docs advertise that command.
 
 To cut a release: bump `version` in every manifest (they must match), run the pipeline above, then
 publish in the printed order. Bumping the version is deliberately manual — it is a product
@@ -82,7 +83,9 @@ bun run scripts/release.ts publish --yes
 ```
 
 npm prints an auth URL (or offers to open it); complete the passkey challenge in the browser and
-the publish proceeds. If a package fails mid-sequence, the run reports exactly what published and
+the publish proceeds. `release.ts` spawns npm with inherited stdio for exactly this reason: npm
+only runs the browser flow when stdin and stdout are a TTY, and with piped output it fails fast
+with `EOTP` and a redacted URL. If a package fails mid-sequence, the run reports exactly what published and
 the `--from` command that resumes (`--only <name>` re-runs one package; `--otp <code>` passes a
 numeric code through if npm ever offers one). npm redacts the challenge URL to `***` in captured
 output, so this cannot be driven from a non-interactive shell — that is by design.
@@ -101,7 +104,7 @@ output, so this cannot be driven from a non-interactive shell — that is by des
    staged manifest's `repository.url` must match `github.com/vramasamye/tinymem`, which
    `repoMetadataOf` derives from the root manifest.
 
-The unscoped CLI (`onememory`) and the 17 scoped packages all need their own one-time trusted
+All 18 packages (the CLI included) need their own one-time trusted
 publisher configuration; 18 clicks, once, and no token ever exists to leak or rotate.
 
 ## Repository metadata
@@ -118,5 +121,5 @@ derivation (`githubRepoOf`, `repoMetadataOf`).
 `onemem serve` (the daemon) and the MCP `http` transport use `Bun.serve` and fail with an explicit
 message under Node. Everything else — `init`, `doctor`, `remember`, `search`, `digest`, `export`,
 the adapters, and the stdio MCP server — runs on Node LTS ≥ 22. Running the daemon under Bun is
-the documented path: `bunx --bun onememory serve`. A Node HTTP adapter is tracked in the backlog,
+the documented path: `bunx --bun -p @onememory-ai/cli onemem serve`. A Node HTTP adapter is tracked in the backlog,
 not in the packaging layer.

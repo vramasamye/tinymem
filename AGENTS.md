@@ -61,7 +61,7 @@ for AI coding agents. This file is the contract every contributor — human or A
 
 ## What "done" means
 
-A new developer runs `npx onememory init`, then `onemem doctor`, opens Claude Code / Codex /
+A new developer runs `npx @onememory-ai/cli init`, then `onemem doctor`, opens Claude Code / Codex /
 Cursor / Pi / OpenCode in their project — and the agent already knows the project's architecture
 decisions, conventions, past failures, and solutions, with minimal injected tokens, zero
 hand-maintained `AGENTS.md` bookkeeping, and zero cloud dependency.
