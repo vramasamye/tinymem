@@ -25,7 +25,7 @@ async function fixture(git = true): Promise<string> {
 }
 
 async function command(root: string, ...args: string[]): Promise<string> {
-  const result = await execute('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 30_000 });
+  const result = await execute('git', ['-C', root, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', ...args], { encoding: 'utf8', timeout: 30_000 });
   return result.stdout.trim();
 }
 
