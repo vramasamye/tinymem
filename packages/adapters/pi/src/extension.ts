@@ -9,9 +9,13 @@
  * - `pi.on(event, handler)` — "returns a function that unsubscribes that registration"; handlers
  *   run in registration order and are awaited, so all capture work is hard-bounded by the
  *   delivery timeouts (2.5s ingest / 2s context) and never blocks a session beyond that.
- * - `pi.sendUserMessage(content, { deliverAs: "steer" })` — steering messages are "added to the
- *   context before the next LLM call", which is where the session context belongs: injected at
- *   `before_agent_start` (once per session), it rides the same agent run as the user's prompt.
+ * - `before_agent_start` carries the mutable, normalized `systemPromptOptions` — "Mutable prompt
+ *   sections. Later handlers observe mutations made by earlier handlers" — which is the
+ *   sanctioned injection channel: the context is written into one section and rides the same
+ *   agent run as the user's prompt. (Verified live against pi 1.0.4, mission 23: the
+ *   extension-facing `sendUserMessage` "always triggers a turn" and only queues via `deliverAs`
+ *   *while streaming* — at `before_agent_start` the agent is *processing*, so that call throws
+ *   `Agent is already processing a prompt` and kills the turn; the adapter must not call it.)
  * - `ctx.sessionManager.getSessionId()` — the session id Pi itself exposes to tools via the
  *   `PI_SESSION_ID` environment variable (verified in `tools/bash.ts`).
  * - `ctx.cwd` — the working directory (session events need it; `session_start` carries no cwd).
@@ -44,7 +48,30 @@ export interface PiExtensionApi {
     event: PiCaptureEventName,
     handler: (event: PiCaptureEvent, ctx: PiExtensionContext) => void | Promise<void>,
   ): () => void;
-  sendUserMessage(content: string, options?: { deliverAs?: 'steer' | 'followUp' }): void;
+}
+
+/**
+ * The system-prompt section the project context is injected into at `before_agent_start`. Pi
+ * wraps every non-preamble section in a tag of the same name, diffs sections against the
+ * transcript, and sends a patch only when they change — so re-applying the same section on every
+ * agent start costs no tokens.
+ */
+export const PI_CONTEXT_SECTION = 'onememory-project-context';
+
+/**
+ * Write the injection into the event's mutable, normalized `systemPromptOptions.sections` —
+ * Pi's documented `before_agent_start` mutation channel. Returns `false` when the surface is
+ * absent (an older Pi): the caller reports and moves on, because a missing injection channel
+ * must never break a session.
+ */
+function applyPiContextSection(event: unknown, text: string): boolean {
+  if (typeof event !== 'object' || event === null) return false;
+  const options = (event as { systemPromptOptions?: unknown }).systemPromptOptions;
+  if (typeof options !== 'object' || options === null) return false;
+  const sections = (options as { sections?: unknown }).sections;
+  if (typeof sections !== 'object' || sections === null) return false;
+  (sections as Record<string, string>)[PI_CONTEXT_SECTION] = text;
+  return true;
 }
 
 export interface PiExtensionOptions {
@@ -83,9 +110,11 @@ export function createPiExtension(
   options: PiExtensionOptions = {},
 ): Array<() => void> {
   const env = options.env ?? process.env;
-  /** Sessions that already received the context injection (in-memory: a process restart re-injects
-   * once — the same freshness contract as Claude Code's SessionStart hook). */
-  const injected = new Set<string>();
+  /** Sessions whose project context has been fetched (in-memory: a process restart re-fetches
+   * once — the same freshness contract as Claude Code's SessionStart hook). The fetched context
+   * is re-applied on EVERY agent start: pi re-normalizes `systemPromptOptions` per agent run, so
+   * a section written once would be gone by the next prompt. */
+  const injected = new Map<string, string>();
 
   const captureContext = (ctx: PiExtensionContext): { cwd: string; sessionId?: string } => ({
     cwd: options.cwd ?? ctx.cwd,
@@ -122,9 +151,15 @@ export function createPiExtension(
     pi.on('tool_result', async (event, ctx) => {
       await deliver(event, ctx);
     }),
-    pi.on('before_agent_start', async (_event, ctx) => {
+    pi.on('before_agent_start', async (event, ctx) => {
       const sessionId = safeSessionId(ctx);
-      if (sessionId !== undefined && injected.has(sessionId)) return;
+      const cached = sessionId === undefined ? undefined : injected.get(sessionId);
+      if (sessionId !== undefined && cached !== undefined) {
+        // Fetched earlier this session: re-apply the section only (pi re-normalizes the options
+        // for every agent run, so the section must be re-set or it is gone by the next prompt).
+        applyPiContextSection(event, cached);
+        return;
+      }
       const injection = await buildSessionInjection(
         {
           cwd: options.cwd ?? ctx.cwd,
@@ -138,8 +173,11 @@ export function createPiExtension(
         // Unreachable daemon / empty context: never block or degrade the session (fail-soft).
         return;
       }
-      pi.sendUserMessage(injection.text, { deliverAs: 'steer' });
-      if (sessionId !== undefined) injected.add(sessionId);
+      if (sessionId !== undefined) injected.set(sessionId, injection.text);
+      if (!applyPiContextSection(event, injection.text)) {
+        // An older Pi without the mutation surface: degrade loudly, never break the session.
+        report(ctx, '[onememory] context injection unavailable: no systemPromptOptions at before_agent_start');
+      }
     }),
   ];
   return unsubs;

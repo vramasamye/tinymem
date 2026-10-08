@@ -11,10 +11,13 @@ One install gives Pi three things:
    file edits, errors and how they were resolved, prompts that say "remember that …", assistant
    turns — all of it becomes evidence the engine can extract durable memories from.
 2. **Context injection** — on the first `before_agent_start` of a session, the extension fetches
-   the packed project context from the daemon and delivers it as a steering user message, so a
-   fresh Pi session already knows the project's decisions, conventions, past failures, and
-   solutions. The injection is engine OUTPUT — the translator drops it on the way back in, so the
-   memory index is never re-ingested as user prose.
+   the packed project context from the daemon and writes it into a mutable system-prompt section
+   (`systemPromptOptions.sections`), re-applied on every agent start, so a Pi session always
+   knows the project's decisions, conventions, past failures, and solutions. The injection is
+   engine OUTPUT — the translator drops it on the way back in, so the memory index is never
+   re-ingested as user prose. (Mission 23: the earlier steering-user-message channel throws on
+   real pi 1.0.4 — `sendUserMessage` only queues while the agent is *streaming*, and at
+   `before_agent_start` it is *processing* — so the section channel is the only correct one.)
 3. **MCP tools** — an `onememory` entry in `.pi/mcp.json` points Pi at the daemon's Streamable
    HTTP surface (`url = "http://127.0.0.1:<daemon.port>/mcp"`, ADR-0010 amendment 2026-10-04) and
    exposes `memory_search` / `memory_get` / `memory_store` for explicit recall and writes during

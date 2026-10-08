@@ -11,9 +11,11 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
-import { createPiExtension, type PiExtensionApi, type PiExtensionContext } from './extension';
+import { createPiExtension, PI_CONTEXT_SECTION, type PiExtensionApi, type PiExtensionContext } from './extension';
 import {
   bashToolResultEvent,
+  beforeAgentStartEvent,
+  beforeAgentStartEventWithoutOptions,
   sessionStartEvent,
   startFakeDaemon,
   writeOnememoryProject,
@@ -38,13 +40,30 @@ class FakePi implements PiExtensionApi {
   }
 
   sendUserMessage(content: string, options?: { deliverAs?: 'steer' | 'followUp' }): void {
+    // Real pi 1.0.4 (verified live, mission 23): sendUserMessage "always triggers a turn" and can
+    // only queue via deliverAs WHILE STREAMING. At before_agent_start the agent is *processing*
+    // the prompt, and the call throws — the failure that killed every `pi -p` run.
+    if (this.processing) {
+      throw new Error(
+        'Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion.',
+      );
+    }
     this.sent.push({ content, ...(options === undefined ? {} : { deliverAs: options.deliverAs }) });
   }
 
+  /** True while a before_agent_start handler runs — pi is processing the prompt then. */
+  processing = false;
+
   async fire(event: unknown, ctx: PiExtensionContext): Promise<void> {
     const list = this.handlers.get((event as { type: string }).type) ?? [];
-    for (const handler of list) {
-      await handler(event as never, ctx);
+    const previous = this.processing;
+    if ((event as { type: string }).type === 'before_agent_start') this.processing = true;
+    try {
+      for (const handler of list) {
+        await handler(event as never, ctx);
+      }
+    } finally {
+      this.processing = previous;
     }
   }
 }
@@ -142,19 +161,46 @@ describe('createPiExtension — capture', () => {
 });
 
 describe('createPiExtension — session context injection', () => {
-  test('the first before_agent_start of a session injects once, as a steering user message', async () => {
+  test('the first before_agent_start of a session injects as a system-prompt section — sendUserMessage would throw (real pi 1.0.4)', async () => {
     const pi = new FakePi();
     createPiExtension(pi, { env: {} });
-    await pi.fire({ type: 'before_agent_start', prompt: 'fix the tests' }, extensionCtx(root, 'sess_inj'));
-    expect(pi.sent).toHaveLength(1);
-    expect(pi.sent[0]!.deliverAs).toBe('steer');
-    expect(pi.sent[0]!.content).toContain('[onememory:project-memory-context]');
+    const event = beforeAgentStartEvent('fix the tests');
+    // Real pi is processing the prompt at before_agent_start; the old steer channel threw here
+    // and killed the turn. The handler must not throw and must not call sendUserMessage.
+    await pi.fire(event, extensionCtx(root, 'sess_inj'));
+    expect(pi.sent).toHaveLength(0);
+    expect(event.systemPromptOptions.sections[PI_CONTEXT_SECTION]).toContain('[onememory:project-memory-context]');
+    expect(event.systemPromptOptions.sections[PI_CONTEXT_SECTION]).toContain('PostgreSQL with pgvector');
+  });
 
-    await pi.fire({ type: 'before_agent_start', prompt: 'also the lints' }, extensionCtx(root, 'sess_inj'));
-    expect(pi.sent).toHaveLength(1); // once per session
+  test('every agent start re-applies the section, but the daemon is fetched once per session', async () => {
+    const pi = new FakePi();
+    createPiExtension(pi, { env: {} });
+    const contextFetches = () =>
+      daemon.requests.filter((request) => request.method === 'GET' && request.path.endsWith('/context')).length;
+    const before = contextFetches();
+    const first = beforeAgentStartEvent('fix the tests');
+    const second = beforeAgentStartEvent('also the lints');
+    await pi.fire(first, extensionCtx(root, 'sess_re'));
+    await pi.fire(second, extensionCtx(root, 'sess_re'));
+    // pi re-normalizes systemPromptOptions per agent run, so both runs must carry the section…
+    expect(first.systemPromptOptions.sections[PI_CONTEXT_SECTION]).toContain('[onememory:project-memory-context]');
+    expect(second.systemPromptOptions.sections[PI_CONTEXT_SECTION]).toContain('[onememory:project-memory-context]');
+    // …while the context is fetched from the daemon exactly once for the session.
+    expect(contextFetches()).toBe(before + 1);
 
-    await pi.fire({ type: 'before_agent_start', prompt: 'new session' }, extensionCtx(root, 'sess_inj_2'));
-    expect(pi.sent).toHaveLength(2); // a new session injects again
+    const freshSession = beforeAgentStartEvent('new session');
+    await pi.fire(freshSession, extensionCtx(root, 'sess_re_2'));
+    expect(contextFetches()).toBe(before + 2); // a new session fetches again
+  });
+
+  test('a pi without the systemPromptOptions surface fails soft: no throw, no injection, no message', async () => {
+    const pi = new FakePi();
+    createPiExtension(pi, { env: {} });
+    await expect(
+      pi.fire(beforeAgentStartEventWithoutOptions('hello'), extensionCtx(root, 'sess_old')),
+    ).resolves.toBeUndefined();
+    expect(pi.sent).toHaveLength(0);
   });
 
   test('an unreachable daemon never blocks the prompt (no send, no throw)', async () => {

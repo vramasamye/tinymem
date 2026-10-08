@@ -44,6 +44,37 @@ export function sessionShutdownEvent(
   return { type: 'session_shutdown', reason: 'quit', ...overrides };
 }
 
+/**
+ * `before_agent_start` as the installed pi 1.0.4 delivers it (verified live, mission 23): the
+ * expanded prompt plus the MUTABLE, normalized `systemPromptOptions` — the sanctioned injection
+ * channel ("Mutable prompt sections. Later handlers observe mutations made by earlier handlers").
+ */
+export interface PiBeforeAgentStartFixture {
+  type: 'before_agent_start';
+  prompt: string;
+  systemPrompt: string;
+  systemPromptOptions: { sections: Record<string, string> };
+}
+
+export function beforeAgentStartEvent(
+  prompt: string,
+  options: { systemPromptSections?: Record<string, string> } = {},
+): PiBeforeAgentStartFixture {
+  return {
+    type: 'before_agent_start',
+    prompt,
+    systemPrompt: 'You are a coding assistant.',
+    systemPromptOptions: { sections: { ...(options.systemPromptSections ?? {}) } },
+  };
+}
+
+/** The pre-`systemPromptOptions` shape (an older pi): the extension must fail soft against it. */
+export function beforeAgentStartEventWithoutOptions(
+  prompt: string,
+): { type: 'before_agent_start'; prompt: string } {
+  return { type: 'before_agent_start', prompt };
+}
+
 export function userMessageEndEvent(text: string, overrides: Partial<PiMessageEndEvent['message']> = {}): PiMessageEndEvent {
   return {
     type: 'message_end',

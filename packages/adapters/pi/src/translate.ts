@@ -19,9 +19,10 @@
  *   the utterance is a leading imperative remember request (never both)
  * - message_end (role assistant, text)     → conversation.message
  * - message_end (role system|toolResult|custom) → counted drop (not conversation prose)
- * - message_end (role user, our injection) → counted drop `own_injection` (the memory context the
- *   extension injected via sendUserMessage is engine OUTPUT, not user prose — ingesting it would
- *   mint memories about the memory index)
+ * - message_end (role user, our injection) → counted drop `own_injection` (a memory-context
+ *   message the extension injected is engine OUTPUT, not user prose — ingesting it would
+ *   mint memories about the memory index; the injection rides a system-prompt section since
+ *   mission 23, and the sentinel guard stays so engine output can never become memory input)
  * - tool_result bash/powershell, ok        → terminal.output (exit_code 0: `bash.ts` returns
  *   isError only when exit_code ≠ 0, so a non-error result PROVES a zero exit; the
  *   structuredContent.exit_code confirms when present)
