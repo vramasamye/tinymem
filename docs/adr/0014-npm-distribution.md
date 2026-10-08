@@ -160,6 +160,47 @@ One residual risk this amendment records: npm may reject a *new* unscoped packag
 collides with an existing org name. If `onememory` is refused at publish time, the fallback is to
 publish the CLI as `@onememory-ai/onememory` and document `npx @onememory-ai/onememory init`.
 
+## Amendment (2026-10-08): publishing authenticates by 2FA in a terminal, and by trusted publishing (OIDC) in CI — never by a stored token
+
+Preparing the first release hit npm's 2026 authentication policy head-on:
+
+- **npm requires 2FA for every publish.** An account set to `auth-and-writes` gets `EOTP` for any
+  write, and npm has removed TOTP authenticator apps, so the interactive proof is a browser
+  challenge (passkey/security key), not a paste-able code.
+- **Tokens are being retired as a publishing surface.** Bypass-2FA granular access tokens lost
+  account/org/package management in August 2026 and lose *direct publish* in January 2027, when
+  their write surface shrinks to staging (npm v12 changelog; community discussion #201329). A
+  non-bypass token — like the one configured for this release — cannot publish at all: every
+  attempt returns `EOTP`.
+- **The sanctioned no-token path is trusted publishing (OIDC)**, but a trusted publisher can only
+  be configured on a package that already exists. For a brand-new 18-package release that is a
+  chicken-and-egg problem (namespace-wide OIDC is roadmap-only, no date).
+
+Decisions:
+
+1. **The first release is human-driven.** A person runs
+   `bun run scripts/release.ts publish --yes` in an interactive terminal, completes npm's browser
+   challenge once, and lets the resumable publish loop (M21) carry the sequence; a failure resumes
+   with `--from`. No stored token is involved at any point.
+2. **Every later release publishes from CI by OIDC** (`.github/workflows/release.yml`):
+   `id-token: write`, npm CLI ≥ 11.5.1 on Node ≥ 24, workflow-dispatch only — a registry write is
+   deliberate. After the first release, a trusted publisher is configured per package on npmjs.com
+   (GitHub Actions, `vramasamye` / `tinymem` / `release.yml`, "Allow npm publish" ticked, since
+   configurations created after 2026-09-03 default to stage-only). Each configuration must
+   complete a successful publish within 2 days or it expires; that expiry only deletes the
+   configuration, never the package.
+3. **Staged manifests carry repository metadata, derived from the root manifest.** Trusted
+   publishing validates `repository.url` against the publishing workflow, and the npm package page
+   renders `repository`/`homepage`/`bugs`. A monorepo package points at the repo with `directory`
+   naming its own subdirectory. The root `package.json` is the single source of truth for the URL —
+   the git remote may carry an SSH host *alias* (`git@github.com-personal:…`) that no tool can
+   resolve — and staging refuses to run without it: a bare package page is a defect, not a
+   convenience. `scripts/lib/publish.ts` derives and unit-tests all of this
+   (`githubRepoOf`, `repoMetadataOf`).
+
+The granular token configured during release preparation (`onememorynpm`) has no bypass and
+therefore no publishing use; it is revoked once the trusted publishers are validated.
+
 ## References
 
 ADR-0001 (stack/runtime), ADR-0002 (embedded profile's single-owner process model),
