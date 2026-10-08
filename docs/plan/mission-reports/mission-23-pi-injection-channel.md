@@ -62,8 +62,25 @@ user's other extension. It is an environment observation, not a defect here.)
   the parallel suite, **passes standalone in 2.8s** (the known PGlite-parallel load flake family,
   unrelated to this change).
 - The real-pi feedback loop (`pi -p -a --thinking off "Say OK."` in the packed-install scratch
-  project): red before the fix (2 errors, no answer), re-run green after the fix ships below.
-- The full e2e (read + write through real pi) recorded in the mission follow-up.
+  project): red before the fix (2 errors, no answer), green after the fix (answer, exit 0, no
+  errors).
+- The full e2e against the packed product (18 tarballs npm-installed into a scratch project,
+  `onemem init --with-pi`, real daemon, real `pi` 1.0.4 sessions):
+  - **Read**: a procedural memory ("verify with `node --test` before commits") rolled up by
+    `onemem digest` into the project digest; the fresh pi session's system prompt carried the
+    `<onememory-project-context>` section (verified in the session transcript) and the agent
+    answered `node --test` — a fact that exists nowhere in the project files.
+  - **Write**: the agent stored "the calculator service lives in src/calc.ts" through the
+    `memory_store` MCP tool over the daemon's `/mcp`; `onemem search` finds it with
+    `onemem://memory-store` provenance.
+  - **Capture**: pi session events POST to the daemon and the worker's normalize→extract jobs
+    produce durable memories from them (8 memories after three sessions, from 1 seeded).
+  - Environment notes, not defects: the `(<boundary>) turn_end` error is pi-intercom's, downstream
+    of the killed turn, gone once the injection stopped throwing; a daemon backgrounded with a
+    bare `&` inside a harness shell gets reaped (SIGTERM → clean shutdown) — a normally-managed
+    daemon survives; the digest's decision/failure sections need the extraction pipeline's
+    payload rows (the documented `memory_decisions` boundary), while the procedure section reads
+    plain memories — `onemem digest` (direct mode) builds it.
 
 ## Files changed
 
