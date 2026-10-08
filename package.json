@@ -3,6 +3,10 @@
   "private": true,
   "description": "One memory across every agent — open-source, self-hostable, local-first persistent memory engine for AI coding agents",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vramasamye/tinymem.git"
+  },
   "type": "module",
   "workspaces": [
     "apps/*",

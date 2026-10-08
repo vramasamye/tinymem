@@ -7,7 +7,7 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { publishableDirs, readManifest } from './manifest';
-import { publishOrder, publishableDependencySpec, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, type PlannedPackage } from './publish';
+import { publishOrder, publishableDependencySpec, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, githubRepoOf, repoMetadataOf, type PlannedPackage, type RepoMetadata } from './publish';
 
 const repoRoot = join(import.meta.dir, '..', '..');
 
@@ -109,6 +109,53 @@ describe('staged manifest', () => {
     expect(() =>
       stagedManifest({ name: '@onememory-ai/x', version: '0.1.0', exports: { '.': './src/index.ts' }, files: ['migrations'] }),
     ).toThrow(/must include 'dist'/);
+  });
+});
+
+describe('repository metadata (trusted publishing + the npm page)', () => {
+  test('a GitHub remote in any usual form normalizes to the canonical https URL', () => {
+    expect(githubRepoOf('git+https://github.com/vramasamye/tinymem.git')).toBe('https://github.com/vramasamye/tinymem');
+    expect(githubRepoOf('https://github.com/vramasamye/tinymem')).toBe('https://github.com/vramasamye/tinymem');
+    expect(githubRepoOf('git+ssh://git@github.com/vramasamye/tinymem.git')).toBe('https://github.com/vramasamye/tinymem');
+    expect(githubRepoOf('git@github.com:vramasamye/tinymem.git')).toBe('https://github.com/vramasamye/tinymem');
+    // Trailing path/query decoration on a browser URL still resolves to the repo.
+    expect(githubRepoOf('https://github.com/vramasamye/tinymem/tree/main')).toBe('https://github.com/vramasamye/tinymem');
+  });
+
+  test('a non-GitHub or unresolvable remote fails loudly — trusted publishing is GitHub-only', () => {
+    expect(() => githubRepoOf('git@gitlab.com:vramasamye/tinymem.git')).toThrow(/github\.com/);
+    // The `github.com-personal` SSH alias cannot be resolved to a URL; it must be refused,
+    // not silently published as some other repository.
+    expect(() => githubRepoOf('git@github.com-personal:vramasamye/tinymem.git')).toThrow(/github\.com/);
+    expect(() => githubRepoOf('')).toThrow(/github\.com/);
+  });
+
+  test('repoMetadataOf derives the per-package repository, homepage and bugs from the root manifest', () => {
+    const root = { name: 'onememory', version: '0.0.0', repository: { type: 'git', url: 'git+https://github.com/vramasamye/tinymem.git' } };
+    expect(repoMetadataOf(root, 'packages/core')).toEqual({
+      repository: { type: 'git', url: 'git+https://github.com/vramasamye/tinymem.git', directory: 'packages/core' },
+      homepage: 'https://github.com/vramasamye/tinymem#readme',
+      bugs: { url: 'https://github.com/vramasamye/tinymem/issues' },
+    } satisfies RepoMetadata);
+    // A plain-string repository (npm shorthand form) is accepted too.
+    expect(repoMetadataOf({ name: 'onememory', version: '0.0.0', repository: 'https://github.com/vramasamye/tinymem' }, 'apps/cli').repository.directory).toBe('apps/cli');
+  });
+
+  test('a root manifest without a repository is refused — staged manifests must not ship bare', () => {
+    expect(() => repoMetadataOf({ name: 'onememory', version: '0.0.0' }, 'packages/core')).toThrow(/repository/);
+  });
+
+  test('staged manifests carry the repository metadata, and omit it only when no context is given', () => {
+    const meta = repoMetadataOf(
+      { name: 'onememory', version: '0.0.0', repository: { type: 'git', url: 'git+https://github.com/vramasamye/tinymem.git' } },
+      'packages/core',
+    );
+    const staged = stagedManifest({ name: '@onememory-ai/core', version: '0.1.0', exports: { '.': './src/index.ts' } }, '0.1.0', meta);
+    expect(staged.repository).toEqual(meta.repository);
+    expect(staged.homepage).toBe('https://github.com/vramasamye/tinymem#readme');
+    expect(staged.bugs).toEqual({ url: 'https://github.com/vramasamye/tinymem/issues' });
+    // Without context (unit calls) no repository fields are invented.
+    expect(stagedManifest({ name: '@onememory-ai/core', version: '0.1.0', exports: { '.': './src/index.ts' } }).repository).toBeUndefined();
   });
 });
 

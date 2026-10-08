@@ -23,6 +23,69 @@ export interface StagedManifest extends Record<string, unknown> {
   types: string;
   files: string[];
   engines: { node: string };
+  repository?: { type: string; url: string; directory: string };
+  homepage?: string;
+  bugs?: { url: string };
+}
+
+// ---------------------------------------------------------------------------
+// Repository metadata
+// ---------------------------------------------------------------------------
+
+/**
+ * The per-package GitHub metadata a staged manifest carries (M22, ADR-0014). npm renders
+ * `repository`/`homepage`/`bugs` on the package page, and trusted publishing (OIDC) validates the
+ * `repository.url` against the workflow's repository — a monorepo package points at the repo with
+ * `directory` naming the package's own subdirectory.
+ */
+export interface RepoMetadata {
+  repository: { type: 'git'; url: string; directory: string };
+  homepage: string;
+  bugs: { url: string };
+}
+
+/** Normalize any usual GitHub remote/URL form to `https://github.com/<owner>/<repo>`; refuse the rest. */
+export function githubRepoOf(url: string): string {
+  const forms = [
+    /^git\+https:\/\/github\.com\/([^/]+)\/([^/#?]+?)(?:\.git)?(?:[/?#].*)?$/,
+    /^https:\/\/github\.com\/([^/]+)\/([^/#?]+?)(?:\.git)?(?:[/?#].*)?$/,
+    /^git\+ssh:\/\/git@github\.com[:/]([^/]+)\/([^/#?]+?)(?:\.git)?$/,
+    /^git@github\.com:([^/]+)\/([^/#?]+?)(?:\.git)?$/,
+  ];
+  for (const form of forms) {
+    const match = url.match(form);
+    if (match !== null) return `https://github.com/${match[1]}/${match[2]}`;
+  }
+  // A non-GitHub host, or an SSH host *alias* (`git@github.com-personal:…`) that cannot be
+  // resolved to a URL: both are refused rather than published as something they are not.
+  throw new Error(
+    `release: repository is not a resolvable github.com URL (${url || '(empty)'}) — trusted publishing requires it; set the canonical URL in the root package.json`,
+  );
+}
+
+/**
+ * Derive one package's repository metadata from the root manifest's `repository` and the package's
+ * workspace directory. The root manifest is the source of truth (the git remote may carry an SSH
+ * alias that no tool can resolve), and a missing repository is an error: a published package
+ * without provenance or a repo link is a broken package page, not a convenience.
+ */
+export function repoMetadataOf(root: SourceManifest, dir: string): RepoMetadata {
+  const repository = root.repository;
+  const url =
+    typeof repository === 'string'
+      ? repository
+      : typeof repository === 'object' && repository !== null && typeof (repository as { url?: unknown }).url === 'string'
+        ? ((repository as { url: string }).url)
+        : undefined;
+  if (url === undefined) {
+    throw new Error('release: root package.json declares no repository.url — staged manifests must not ship bare');
+  }
+  const repo = githubRepoOf(url);
+  return {
+    repository: { type: 'git', url: `git+${repo}.git`, directory: dir },
+    homepage: `${repo}#readme`,
+    bugs: { url: `${repo}/issues` },
+  };
 }
 
 /** `workspace:*` / `workspace:^` → `^<version>`; every other spec passes through. */
@@ -64,7 +127,11 @@ function stagedExports(manifest: SourceManifest): Record<string, { types: string
  * `migrations/` alongside `dist/` — the CLI cannot migrate its own database without them) and
  * defaults to `dist` alone.
  */
-export function stagedManifest(manifest: SourceManifest, version: string = manifest.version): StagedManifest {
+export function stagedManifest(
+  manifest: SourceManifest,
+  version: string = manifest.version,
+  repo?: RepoMetadata,
+): StagedManifest {
   const { entries, bins } = deriveTargets(manifest);
   if (entries.length === 0) throw new Error(`release: ${manifest.name} has no publishable entry`);
 
@@ -85,6 +152,11 @@ export function stagedManifest(manifest: SourceManifest, version: string = manif
     ...(manifest.description === undefined ? {} : { description: manifest.description }),
     license: manifest.license ?? 'Apache-2.0',
     type: manifest.type ?? 'module',
+    // Repository metadata (trusted publishing validates `repository.url`; the package page
+    // renders all three). Omitted only when the caller gave no repo context (unit calls).
+    ...(repo === undefined
+      ? {}
+      : { repository: repo.repository, homepage: repo.homepage, bugs: repo.bugs }),
     main: `./${distEntryOf(entries.includes('src/index.ts') ? 'src/index.ts' : entries[0]!)}`,
     types: `./${distTypesOf(entries.includes('src/index.ts') ? 'src/index.ts' : entries[0]!)}`,
     exports: stagedExports(manifest),

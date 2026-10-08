@@ -68,6 +68,51 @@ To cut a release: bump `version` in every manifest (they must match), run the pi
 publish in the printed order. Bumping the version is deliberately manual — it is a product
 decision, not a build artifact.
 
+## Publishing and authentication (npm 2026 rules)
+
+npm requires 2FA for every publish and is retiring token-based publishing entirely (bypass-2FA
+tokens lose *direct publish* in January 2027; non-bypass tokens cannot publish at all). The
+interactive proof is a **browser challenge** — npm removed authenticator-app codes — so there are
+exactly two supported paths, recorded in ADR-0014's 2026-10-08 amendment:
+
+**The first release of a package is human-driven.** In an *interactive* terminal:
+
+```
+bun run scripts/release.ts publish --yes
+```
+
+npm prints an auth URL (or offers to open it); complete the passkey challenge in the browser and
+the publish proceeds. If a package fails mid-sequence, the run reports exactly what published and
+the `--from` command that resumes (`--only <name>` re-runs one package; `--otp <code>` passes a
+numeric code through if npm ever offers one). npm redacts the challenge URL to `***` in captured
+output, so this cannot be driven from a non-interactive shell — that is by design.
+
+**Every later release publishes from CI by trusted publishing (OIDC)** — no token anywhere:
+
+1. Once a package exists, configure its trusted publisher on npmjs.com → package → Settings →
+   Trusted publishing: provider **GitHub Actions**, organization `vramasamye`, repository
+   `tinymem`, workflow filename `release.yml`, and tick **"Allow npm publish"** (configurations
+   created after 2026-09-03 default to stage-only). A configuration must complete a successful
+   publish within **2 days** or it expires (deleting the configuration, never the package) — so
+   configure and then run the workflow promptly.
+2. Run the **release** workflow (manual dispatch only): it tests, builds, stages, packs, runs the
+   packed smoke, and publishes — authenticating with a short-lived OIDC token via
+   `id-token: write` (npm ≥ 11.5.1, Node 24). Nothing about the git remote matters to npm: the
+   staged manifest's `repository.url` must match `github.com/vramasamye/tinymem`, which
+   `repoMetadataOf` derives from the root manifest.
+
+The unscoped CLI (`onememory`) and the 17 scoped packages all need their own one-time trusted
+publisher configuration; 18 clicks, once, and no token ever exists to leak or rotate.
+
+## Repository metadata
+
+Staged manifests carry `repository` (with `directory` naming the package's own subdirectory),
+`homepage` and `bugs`, derived by `scripts/lib/publish.ts` from the **root manifest's**
+`repository` — the single source of truth, because the git remote may be an SSH alias
+(`git@github.com-personal:…`) that no tool can resolve to a URL. Staging refuses to run if the
+root manifest has no GitHub `repository`; `scripts/lib/scope.test.ts`-style unit tests pin the
+derivation (`githubRepoOf`, `repoMetadataOf`).
+
 ## The Bun boundary
 
 `onemem serve` (the daemon) and the MCP `http` transport use `Bun.serve` and fail with an explicit

@@ -1,0 +1,39 @@
+# Release: build → stage → pack → smoke → publish, with no stored npm token (M22, ADR-0014).
+#
+# Publishing authenticates with trusted publishing (OIDC): `id-token: write` lets npm exchange a
+# short-lived, workflow-specific token, so no secret exists to leak or rotate. npm requires
+# CLI ≥ 11.5.1 and Node ≥ 22.14 for the exchange — Node 24 ships npm 11, and the explicit
+# `npm@11` upgrade pins the major so the requirement can never regress silently.
+#
+# This workflow only runs on manual dispatch: a registry write is deliberate, never a side effect
+# of a push. For the trusted-publisher configuration that admits it (per package, on npmjs.com),
+# see docs/plan/release-process.md — the filename of this workflow is part of that configuration.
+
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # the OIDC exchange (trusted publishing)
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install -g npm@11
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run build
+      - run: bun run scripts/release.ts stage
+      - run: bun run scripts/release.ts pack
+      - run: bun run scripts/smoke-packed.ts
+      - run: bun run scripts/release.ts publish --yes

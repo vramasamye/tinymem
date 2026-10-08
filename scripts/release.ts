@@ -23,7 +23,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, write
 import { join } from 'node:path';
 import { undeclaredDependencies } from './lib/deps';
 import { deriveTargets, distEntryOf, publishableDirs, readManifest } from './lib/manifest';
-import { publishOrder, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, type PublishablePackage } from './lib/publish';
+import { publishOrder, stagedManifest, extraPublishedFiles, selectPlanned, resumeFrom, repoMetadataOf, type PublishablePackage } from './lib/publish';
 
 const repoRoot = join(import.meta.dir, '..');
 const releaseDir = join(repoRoot, '.release');
@@ -96,6 +96,11 @@ function assertNoPhantomDependencies(pkg: PublishablePackage): void {
 }
 
 function stage(packages: readonly PublishablePackage[], version: string): void {
+  // The root manifest is the source of truth for the repository URL — the git remote may carry an
+  // SSH host alias (`git@github.com-personal:…`) that no tool can resolve. Every staged manifest
+  // points at the repo with its own `directory` (M22: trusted publishing validates `repository.url`
+  // and the npm package page renders all three fields).
+  const root = readManifest(repoRoot, '.');
   rmSync(stageDir, { recursive: true, force: true });
   for (const pkg of packages) {
     assertBuilt(pkg);
@@ -111,7 +116,10 @@ function stage(packages: readonly PublishablePackage[], version: string): void {
     }
     // The tarball should carry the license text (npm picks up LICENSE automatically).
     cpSync(join(repoRoot, 'LICENSE'), join(target, 'LICENSE'));
-    writeFileSync(join(target, 'package.json'), `${JSON.stringify(stagedManifest(pkg.manifest, version), null, 2)}\n`);
+    writeFileSync(
+      join(target, 'package.json'),
+      `${JSON.stringify(stagedManifest(pkg.manifest, version, repoMetadataOf(root, pkg.dir)), null, 2)}\n`,
+    );
   }
   console.log(`release: staged ${packages.length} package(s) at ${stageDir}`);
 }
